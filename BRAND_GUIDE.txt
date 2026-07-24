@@ -1,0 +1,305 @@
+ABATCHAN BRAND GUIDE
+Version 1.0
+
+
+01. BRAND NAME
+
+Primary display name: abatchan
+Legal company name: ABATCHAN LTD
+
+The brand is styled as one lowercase word: abatchan.
+This is intentional. The lowercase treatment communicates calm confidence,
+modern systems, minimalism, and premium simplicity.
+
+Do not style the public-facing brand as "Abatchan", "ABATCHAN", or
+"Abat Chan" unless a legal or formal document requires the registered name.
+
+
+02. BRAND STATEMENT
+
+abatchan is a modern engineering brand focused on building connected digital
+systems through scalable infrastructure, intelligent design, and clean
+execution.
+
+Core line:
+If it plugs in, I build it.
+
+What abatchan builds:
+- connected web and mobile products
+- automation and workflow systems
+- APIs and integrations
+- operational dashboards and platforms
+- scalable cloud and backend infrastructure
+- developer tools, plugins, and digital products
+
+abatchan is not only a website brand. It represents the engineering of
+connected systems.
+
+
+03. POSITIONING
+
+Category:
+Modern digital engineering, infrastructure, automation, and connected product
+development.
+
+Positioning idea:
+Build connected systems.
+
+Supporting messages:
+- Modern systems. Clean execution.
+- Infrastructure for modern workflows.
+- Engineered to connect. Built to scale.
+- From interface to infrastructure.
+- Systems that work together.
+
+
+04. BRAND PERSONALITY
+
+The brand should feel:
+- modern
+- engineered
+- minimal
+- intelligent
+- calm
+- premium
+- scalable
+- technically confident
+
+Avoid:
+- crypto or Web3 aesthetics
+- gamer visuals
+- neon overload
+- noisy glitches
+- generic AI imagery
+- aggressive or hyper-futuristic type
+- corporate jargon and empty buzzwords
+
+
+05. BRAND VOICE
+
+Write with clarity and restraint. Be direct, specific, and solution-oriented.
+The voice should sound like a capable engineer explaining what matters.
+
+Good:
+"We design the interface, build the system, and connect the workflow."
+"A clean product layer backed by infrastructure that can scale."
+"Build connected systems."
+
+Avoid:
+"We are revolutionising the future with cutting-edge, next-generation AI."
+"Your ultimate digital transformation partner."
+
+
+06. VISUAL DIRECTION
+
+Visual territory:
+- premium minimalism
+- developer infrastructure
+- dark UI systems
+- monochrome-first compositions
+- precise grids and structure
+- cinematic but inspectable imagery
+- subtle indigo signal accents
+
+Use space deliberately. The work should feel organized, not empty.
+Use diagrams, product interfaces, workflow architecture, code-adjacent details,
+and real system states instead of decorative technology imagery.
+
+
+07. COLOUR SYSTEM
+
+Primary Black
+Hex: #0D0D0D
+Use for: dark backgrounds, UI foundations, premium surfaces, video backgrounds.
+
+Soft White
+Hex: #F5F5F3
+Use for: primary type on dark backgrounds, light surfaces, logo contrast.
+
+Accent Indigo
+Hex: #6366F1
+Use for: active states, key interaction points, signal dots, links, small
+highlights, restrained glow, and logo motion finish.
+
+Colour rules:
+- Black and soft white carry most of the brand.
+- Indigo is a signal, not a background theme.
+- Do not add extra accent colours unless a product interface requires semantic
+  states such as success, warning, or error.
+- Avoid gradients as generic decoration.
+
+
+08. TYPOGRAPHY
+
+Primary typeface: Geist
+Use for: wordmark support, product UI, website body text, navigation, labels,
+technical information, and most digital applications.
+
+Recommended weights:
+- Geist Regular: body copy
+- Geist Medium: navigation, labels, the abatchan wordmark, small headings
+- Geist Semibold: key headings and calls to action
+
+Secondary typeface: Satoshi
+Use for: presentation headings, editorial moments, campaign art direction, and
+supporting marketing typography.
+
+Typography rules:
+- prefer lowercase for brand-facing display language
+- use clean hierarchy and normal tracking
+- align intentionally; avoid decorative effects
+- do not use condensed or aggressive display fonts
+
+
+09. LOGO SYSTEM
+
+The logo symbol is built from mirrored, open geometry inspired by "aba".
+It represents connection, modular systems, APIs, workflows, flexible
+infrastructure, and the relationship between frontend and backend.
+
+The symbol communicates:
+- balance and symmetry
+- connected flow
+- adaptable infrastructure
+- a system that can expand
+
+Required versions:
+- primary lockup: symbol plus lowercase wordmark
+- symbol only: avatar, favicon, app icon, watermark
+- white version: dark backgrounds
+- black version: light backgrounds
+- outline version: premium, technical, or blueprint-like uses
+- transparent version: overlays and mockups
+
+Logo rules:
+- keep clear space around the symbol equal to at least one inner curve width
+- use the white mark on #0D0D0D backgrounds
+- use the black mark on #F5F5F3 or white backgrounds
+- use indigo as an accent or final motion state, not everywhere
+- never stretch, rotate, recolour randomly, add drop shadows, or put the logo
+  on visually busy media without enough contrast
+
+
+10. LOGO MOTION
+
+Primary logo animation: approximately 5 seconds at 30 fps.
+
+Timeline:
+0.00-2.00 seconds
+The symbol draws in soft white in this sequence:
+1. bottom curve
+2. left curve
+3. center bridge
+4. right curve
+
+2.00-2.15 seconds
+The completed symbol shifts left to create room for the wordmark.
+
+2.28-4.15 seconds
+A restrained white-to-indigo signal moves through the symbol in the same
+bottom-to-left-to-center-to-right sequence. Each component settles to #6366F1.
+
+3.17-4.24 seconds
+The wordmark "abatchan" in Geist Medium eases in from the right with opacity.
+It is not typed character by character.
+
+4.24-5.00 seconds
+Hold the completed lockup: indigo symbol, soft-white wordmark, black field.
+
+Motion principles:
+- engineered, smooth, and controlled
+- use a single signal pulse, not a chaotic flicker
+- use gentle easing with a very small overshoot only where it feels natural
+- no excessive glow, particles, distortion, or glitch effects
+
+
+11. DIGITAL / WEBSITE DIRECTION
+
+The site should feel like a sophisticated engineering studio and product team.
+
+Recommended layout traits:
+- dark and light modes, with black as the primary cinematic backdrop
+- large but disciplined editorial type
+- system diagrams and real interface previews
+- subtle indigo indicators for interaction and status
+- clean grid systems
+- one clear action per section
+
+Core website language:
+Headline: Build connected systems.
+Supporting copy: We design and engineer the interfaces, infrastructure, and
+integrations behind modern digital products.
+Primary CTA: Start a project
+Secondary CTA: View systems
+
+
+12. SOCIAL CONTENT DIRECTION
+
+Social presence should be premium, system-oriented, and dark-mode native.
+
+Strong content categories:
+- logo and brand system details
+- interface and dashboard previews
+- workflow / architecture diagrams
+- project breakdowns: problem, system, result
+- automation and integration concepts
+- development process clips
+- short technical opinions about building scalable products
+- before-and-after product transformations
+
+Instagram / Behance visual formats:
+- black or soft-white fields
+- precise grid overlays used sparingly
+- indigo signal dots and active states
+- close-up logo construction frames
+- type specimens using Geist and Satoshi
+- diagrams that explain a real workflow
+
+Do not post generic motivational graphics, random code screenshots, or content
+that does not support the system-building point of view.
+
+
+13. CONTENT EXAMPLES
+
+Post headline:
+"A product is not just a screen. It is the system behind it."
+
+Post headline:
+"From workflow to infrastructure."
+
+Post caption:
+"abatchan builds the connected layer: product interfaces, APIs, automations,
+and the infrastructure that keeps them working together."
+
+Notification-style campaign copy:
+Title: Build connected systems.
+Body: Interfaces, infrastructure, and integrations engineered to work as one.
+
+
+14. FUTURE EXTENSIONS
+
+The identity can extend without changing its core:
+- abatchan labs
+- abatchan systems
+- abatchan studio
+- abatchan infra
+
+Keep "abatchan" as the recognisable core in all extensions.
+
+
+15. QUICK BRAND CHECKLIST
+
+Before publishing anything, check:
+- Is it lowercase "abatchan" for public brand use?
+- Does it use #0D0D0D, #F5F5F3, and #6366F1 correctly?
+- Is Geist used for digital work, with Satoshi reserved for support/editorial work?
+- Does it look engineered and calm rather than flashy?
+- Does every visual say something about a connected system, product, workflow,
+  or infrastructure?
+- Is indigo used as a signal rather than the whole design?
+- Is the message direct and technically credible?
+
+Final statement:
+abatchan is a modern engineering brand focused on building connected digital
+systems through scalable infrastructure, intelligent design, and clean
+execution.

@@ -1,0 +1,12 @@
+# Dependencies and build output
+node_modules/
+dist/
+.next/
+
+# Local environment files. Never commit keys or tokens.
+.env
+.env.local
+.env.*.local
+
+# System files
+.DS_Store
