@@ -1,12 +1,5 @@
 const q=(s,c=document)=>c.querySelector(s),qa=(s,c=document)=>[...c.querySelectorAll(s)];
 
-// Use the authentic exported brand symbol already shipped as the official app icon.
-// This replaces the temporary hand-recreated SVG everywhere without exposing master files.
-qa('img[src$="/assets/logo.svg"],img[src="assets/logo.svg"]').forEach(img=>{
-  img.src='/assets/abatchan-favicon-192.png';
-  img.decoding='async';
-});
-
 // Inject the navigation-loader states here so every existing page gets the same behaviour.
 const transitionStyles=document.createElement('style');
 transitionStyles.textContent=`
