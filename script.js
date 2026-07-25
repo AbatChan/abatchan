@@ -1,5 +1,12 @@
 const q=(s,c=document)=>c.querySelector(s),qa=(s,c=document)=>[...c.querySelectorAll(s)];
 
+// Keep the visible copy natural and avoid long-dash punctuation in older static pages.
+document.title=document.title.replaceAll('—','|');
+const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+const textNodes=[];
+while(walker.nextNode())textNodes.push(walker.currentNode);
+textNodes.forEach(node=>{if(node.nodeValue.includes('—'))node.nodeValue=node.nodeValue.replaceAll('—',', ')});
+
 // Inject the navigation-loader states here so every existing page gets the same behaviour.
 const transitionStyles=document.createElement('style');
 transitionStyles.textContent=`
@@ -74,7 +81,7 @@ const form=q('#project-form');
 if(form)form.addEventListener('submit',e=>{
   e.preventDefault();
   const d=new FormData(form);
-  const subject=encodeURIComponent(`Project enquiry — ${d.get('name')}`);
+  const subject=encodeURIComponent(`Project enquiry: ${d.get('name')}`);
   const body=encodeURIComponent(`Name: ${d.get('name')}\nEmail: ${d.get('email')}\nProject type: ${d.get('type')}\n\n${d.get('message')}`);
   location.href=`mailto:hello@abatchan.com?subject=${subject}&body=${body}`;
 });
