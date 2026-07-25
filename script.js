@@ -83,5 +83,5 @@ if(form)form.addEventListener('submit',e=>{
   const d=new FormData(form);
   const subject=encodeURIComponent(`Project enquiry: ${d.get('name')}`);
   const body=encodeURIComponent(`Name: ${d.get('name')}\nEmail: ${d.get('email')}\nProject type: ${d.get('type')}\n\n${d.get('message')}`);
-  location.href=`mailto:hello@abatchan.com?subject=${subject}&body=${body}`;
+  location.href=`mailto:abatchan4@gmail.com?subject=${subject}&body=${body}`;
 });
