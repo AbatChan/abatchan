@@ -7,13 +7,23 @@ const textNodes=[];
 while(walker.nextNode())textNodes.push(walker.currentNode);
 textNodes.forEach(node=>{if(node.nodeValue.includes('—'))node.nodeValue=node.nodeValue.replaceAll('—',', ')});
 
-// Inject the navigation-loader states here so every existing page gets the same behaviour.
+// Use the proper horizontal logo in every header.
+qa('.site-header .brand').forEach(brand=>{
+  brand.innerHTML='<img src="/assets/abatchan-logo-horizontal-indigo-symbol-white-text.png" alt="abatchan">';
+});
+
+// Inject shared visual and navigation states across every existing page.
 const transitionStyles=document.createElement('style');
 transitionStyles.textContent=`
+.site-header .brand img{width:146px!important;height:auto!important;display:block!important;object-fit:contain!important}
+.intro{background:#0c0c0c!important;overflow:hidden!important}
+.intro video{position:absolute!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;object-fit:cover!important;background:#0c0c0c!important;display:block!important}
+.skip{z-index:2}
 .page-transition{transition:none!important;animation:none!important;background:#6366f1!important;transform:scaleY(0);transform-origin:bottom;will-change:transform}
 .page-transition.is-leaving{transform:scaleY(1);transition:transform .42s cubic-bezier(.2,.75,.2,1)!important;transform-origin:bottom;pointer-events:auto}
 .page-transition.is-arriving{transform:scaleY(1);transform-origin:top;pointer-events:auto}
 .page-transition.is-loaded{transform:scaleY(0);transition:transform .52s cubic-bezier(.2,.75,.2,1)!important;transform-origin:top}
+@media(max-width:900px){.site-header .brand img{width:118px!important}}
 @media (prefers-reduced-motion:reduce){.page-transition{transition:none!important}.page-transition.is-loaded{transform:scaleY(0)}}`;
 document.head.appendChild(transitionStyles);
 
