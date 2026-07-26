@@ -73,9 +73,9 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
              radial-gradient(160px 110px at var(--glass-x,50%) var(--glass-y,-30%),rgba(255,255,255,.1),transparent 70%)}
 .site-header>:not(.glass-edge),.mobile-tabs>:not(.glass-edge){position:relative;z-index:2}
 html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{
-  --glass-tint:rgba(255,255,255,.3);
-  --glass-ring:rgba(21,21,25,.14);
-  --glass-spec:rgba(255,255,255,.95);
+  --glass-tint:rgba(255,255,255,.05);
+  --glass-ring:rgba(21,21,25,.05);
+  --glass-spec:rgba(255,255,255,.5);
   box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),0 18px 44px rgba(27,28,34,.16)}
 html[data-theme="light"] .site-header::after,html[data-theme="light"] .mobile-tabs::after{
   background:linear-gradient(165deg,rgba(255,255,255,.3),rgba(255,255,255,.06) 28%,transparent 55%),
