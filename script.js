@@ -35,8 +35,6 @@ qa('.header-actions').forEach(actions=>{
   if(actions.querySelector('.theme-toggle'))return;
   const button=document.createElement('button');
   button.type='button';button.className='theme-toggle';
-  button.setAttribute('aria-label','Switch color theme');button.setAttribute('title','Switch color theme');
-  button.innerHTML='<span class="theme-icon" aria-hidden="true"></span>';
   actions.prepend(button);
 });
 
@@ -76,44 +74,33 @@ qa('footer').forEach(footer=>{
   </div>`;
 });
 
-const transitionStyles=document.createElement('style');
-transitionStyles.textContent=`
-.site-header .brand,.footer-mark{display:inline-flex;align-items:center}.site-header .brand{min-width:146px}.brand-lockup{display:block!important;width:146px!important;height:auto!important;object-fit:contain!important;aspect-ratio:auto!important}.footer-mark .brand-lockup{width:118px!important}
-.theme-toggle{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:transparent;color:var(--paper);display:grid;place-items:center;cursor:pointer;transition:transform .22s,background .22s,border-color .22s}.theme-toggle:hover{transform:translateY(-2px);background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.55)}.theme-icon{width:17px;height:17px;border-radius:50%;display:block;background:currentColor;box-shadow:-6px -5px 0 -4px var(--ink),6px -5px 0 -4px var(--ink),0 7px 0 -4px var(--ink)}
-html[data-theme="light"]{--ink:#f4f4f1;--paper:#151519;--muted:#66676d;--line:rgba(21,21,25,.14);--panel:#ffffff;color-scheme:light}html[data-theme="light"] body{background:#f4f4f1;color:#151519}html[data-theme="light"] .grid-bg{opacity:.12}html[data-theme="light"] .site-header{background:rgba(244,244,241,.78);box-shadow:0 18px 60px rgba(27,28,34,.1)}html[data-theme="light"] .desktop-nav a:hover,html[data-theme="light"] .desktop-nav a.active{background:rgba(21,21,25,.08)}html[data-theme="light"] .system-core,html[data-theme="light"] .work-card,html[data-theme="light"] .process-card,html[data-theme="light"] .contact-card,html[data-theme="light"] .pricing-card,html[data-theme="light"] .quote-step,html[data-theme="light"] .faq-item{background:#fff}html[data-theme="light"] .node,html[data-theme="light"] .arch-node{background:#f7f7f4}html[data-theme="light"] .card-visual,html[data-theme="light"] .terminal,html[data-theme="light"] .dashboard{background:#ededeb}html[data-theme="light"] .terminal pre{color:#55575d}html[data-theme="light"] .social-rail a,html[data-theme="light"] .social-rail button{background:rgba(21,21,25,.025)}html[data-theme="light"] .theme-icon{background:transparent;border:2px solid currentColor;box-shadow:none}html[data-theme="light"] .theme-icon:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:currentColor;transform:translate(4px,-5px)}
-.intro{background:#0c0c0c!important;overflow:hidden!important}.intro video{position:absolute!important;left:50%!important;top:50%!important;width:min(30vw,460px)!important;height:auto!important;max-width:460px!important;max-height:30vh!important;transform:translate(-50%,-50%)!important;object-fit:contain!important;background:#0c0c0c!important;display:block!important}.skip{z-index:2}
-footer{padding:22px 0 28px!important;border-top:1px solid var(--line)!important}.compact-footer{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px}.social-rail{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}.social-rail a,.social-rail button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:rgba(245,245,243,.025);color:var(--muted);display:grid;place-items:center;font:600 10px/1 Geist,Inter,sans-serif;letter-spacing:.03em;transition:transform .22s,background .22s,color .22s,border-color .22s}.social-rail a:hover{transform:translateY(-3px);background:rgba(99,102,241,.14);border-color:rgba(99,102,241,.6);color:var(--paper)}.social-rail button{cursor:not-allowed;opacity:.48}.footer-meta{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:12px;white-space:nowrap}.footer-meta a:hover{color:var(--paper)}
-.page-transition{transition:none!important;animation:none!important;background:#6366f1!important;transform:scaleY(0);transform-origin:bottom;will-change:transform}.page-transition.is-leaving{transform:scaleY(1);transition:transform .42s cubic-bezier(.2,.75,.2,1)!important;transform-origin:bottom;pointer-events:auto}.page-transition.is-arriving{transform:scaleY(1);transform-origin:top;pointer-events:auto}.page-transition.is-loaded{transform:scaleY(0);transition:transform .52s cubic-bezier(.2,.75,.2,1)!important;transform-origin:top}
-@media(max-width:900px){.site-header .brand{min-width:118px}.brand-lockup{width:118px!important}.footer-mark .brand-lockup{width:108px!important}.theme-toggle{width:38px;height:38px}.intro video{width:min(52vw,320px)!important;max-height:34vh!important}.compact-footer{grid-template-columns:1fr;text-align:center;justify-items:center;gap:16px}.footer-meta{white-space:normal}.mobile-tabs a{font-size:9px}}
-@media(prefers-reduced-motion:reduce){.page-transition{transition:none!important}.page-transition.is-loaded{transform:scaleY(0)}}
-/* Liquid Glass, following the iOS 27 refinement: diffuse complex content more
-   strongly, add a darkened edge for separation, brighten the specular highlight. */
-.site-header,.mobile-tabs{--glass-blur:30px;--glass-tint:rgba(13,13,13,.52);--glass-ring:rgba(0,0,0,.55);--glass-spec:rgba(255,255,255,.22);background:var(--glass-tint)!important;backdrop-filter:blur(var(--glass-blur)) saturate(185%)!important;-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(185%)!important;border:0!important;box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),inset 0 -1px 0 rgba(255,255,255,.05),0 22px 58px rgba(0,0,0,.42)!important;isolation:isolate}
-.site-header::before,.mobile-tabs::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 40%,rgba(255,255,255,0) 68%)}
-.site-header>*,.mobile-tabs>*{position:relative;z-index:1}
-html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{--glass-tint:rgba(255,255,255,.55);--glass-ring:rgba(21,21,25,.2);--glass-spec:rgba(255,255,255,.75);box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),0 22px 58px rgba(27,28,34,.12)!important}
-.desktop-nav{position:relative}
-.desktop-nav .nav-lens{position:absolute;top:0;left:0;height:100%;width:0;border-radius:999px;opacity:0;pointer-events:none;z-index:0;background:rgba(245,245,243,.1);box-shadow:0 0 0 1px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.34);backdrop-filter:blur(8px) saturate(160%);-webkit-backdrop-filter:blur(8px) saturate(160%);transition:transform .42s var(--ease),width .42s var(--ease),opacity .28s linear}
-html[data-theme="light"] .desktop-nav .nav-lens{background:rgba(21,21,25,.07);box-shadow:0 0 0 1px rgba(21,21,25,.12),inset 0 1px 0 rgba(255,255,255,.9)}
-.desktop-nav a{position:relative;z-index:1;border-radius:999px}
-.desktop-nav a:hover,.desktop-nav a.active{background:transparent!important;color:var(--paper)}
-.social-rail{gap:8px}
-.social-rail a.social-chip{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;color:var(--muted);background:rgba(245,245,243,.045);border:0;box-shadow:0 0 0 1px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.1);backdrop-filter:blur(10px) saturate(160%);-webkit-backdrop-filter:blur(10px) saturate(160%);transition:transform .24s var(--ease),color .24s,background .24s,box-shadow .24s}
-.social-rail a.social-chip svg{width:17px;height:17px;display:block;fill:currentColor}
-.social-rail a.social-chip:hover{transform:translateY(-3px);color:var(--paper);background:rgba(99,102,241,.2);box-shadow:0 0 0 1px rgba(99,102,241,.6),inset 0 1px 0 rgba(255,255,255,.3),0 12px 26px rgba(99,102,241,.24)}
-.social-rail a.social-chip:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
-html[data-theme="light"] .social-rail a.social-chip{background:rgba(21,21,25,.04);box-shadow:0 0 0 1px rgba(21,21,25,.12),inset 0 1px 0 rgba(255,255,255,.8)}
-@media(prefers-contrast:more){.site-header,.mobile-tabs{--glass-blur:15px;--glass-tint:rgba(13,13,13,.88)}html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{--glass-tint:rgba(255,255,255,.9)}}
-@media(prefers-reduced-transparency:reduce){.site-header,.mobile-tabs,.social-rail a.social-chip{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.site-header,.mobile-tabs{--glass-tint:rgba(13,13,13,.97)}html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{--glass-tint:rgba(244,244,241,.98)}}
-@media(prefers-reduced-motion:reduce){.desktop-nav .nav-lens{transition:none}}
-/* tab bar sizes itself to however many items exist, so adding a nav link can't wrap a row */
-.mobile-tabs{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
-.mobile-tabs a{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* grid children default to min-width:auto, which stops the rail wrapping and overflows it */
-.social-rail{min-width:0}
-@media(max-width:900px){.social-rail a.social-chip{width:34px;height:34px;border-radius:11px}.social-rail a.social-chip svg{width:15px;height:15px}}`;
-document.head.appendChild(transitionStyles);
+// The glass rim. Chrome drops url(#svg-filter) from backdrop-filter, so real
+// feDisplacementMap refraction is off the table; instead each strip samples the
+// live content behind the bar at its own blur radius and hue offset, which
+// colour-splits and smears whatever scrolls underneath at the edges.
+const GLASS_EDGES=['t1','t2','b2','b1','l1','r1'];
+qa('.site-header,.mobile-tabs').forEach(glass=>{
+  if(!glass.querySelector('.glass-edge')){
+    const edge=document.createElement('span');
+    edge.className='glass-edge';edge.setAttribute('aria-hidden','true');
+    edge.innerHTML=GLASS_EDGES.map(c=>`<i class="${c}"></i>`).join('');
+    glass.prepend(edge);
+  }
+  glass.addEventListener('pointermove',e=>{
+    const r=glass.getBoundingClientRect();
+    glass.style.setProperty('--glass-x',((e.clientX-r.left)/r.width*100).toFixed(1)+'%');
+    glass.style.setProperty('--glass-y',((e.clientY-r.top)/r.height*100).toFixed(1)+'%');
+  });
+  glass.addEventListener('pointerleave',()=>{
+    glass.style.removeProperty('--glass-x');glass.style.removeProperty('--glass-y');
+  });
+});
 
+// The button shows the theme it switches *to*, so the glyph agrees with its label.
+const THEME_ICONS={
+  light:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M19.07 4.93 17.3 6.7M6.7 17.3l-1.77 1.77"/></svg>',
+  dark:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 14.2A8.7 8.7 0 0 1 9.8 3.6a8.7 8.7 0 1 0 10.6 10.6Z"/></svg>'
+};
 const updateThemeUI=()=>{
   document.documentElement.dataset.theme=currentTheme;
   renderBrand();
@@ -121,6 +108,7 @@ const updateThemeUI=()=>{
     const next=currentTheme==='dark'?'light':'dark';
     button.setAttribute('aria-label',`Switch to ${next} mode`);
     button.setAttribute('title',`Switch to ${next} mode`);
+    button.innerHTML=THEME_ICONS[next];
   });
 };
 qa('.theme-toggle').forEach(button=>button.addEventListener('click',()=>{
