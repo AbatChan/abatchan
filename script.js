@@ -6,8 +6,11 @@ while(walker.nextNode())textNodes.push(walker.currentNode);
 textNodes.forEach(node=>{if(node.nodeValue.includes('—'))node.nodeValue=node.nodeValue.replaceAll('—',', ')});
 
 const themeKey='abatchanTheme';
-const systemTheme=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
-let currentTheme=localStorage.getItem(themeKey)||systemTheme;
+// No stored value means the OS decides, and keeps deciding — the toggle only
+// pins a theme once the visitor has actually chosen one.
+const themeQuery=matchMedia('(prefers-color-scheme: light)');
+const systemTheme=()=>themeQuery.matches?'light':'dark';
+let currentTheme=localStorage.getItem(themeKey)||systemTheme();
 // Official horizontal lockups, used as-is. The symbol is #6366f1 indigo in both
 // files; only the wordmark differs, so the mark never changes colour with theme.
 //
@@ -144,6 +147,11 @@ qa('.theme-toggle').forEach(button=>button.addEventListener('click',()=>{
   localStorage.setItem(themeKey,currentTheme);
   updateThemeUI();
 }));
+themeQuery.addEventListener('change',()=>{
+  if(localStorage.getItem(themeKey))return;   // an explicit choice outranks the OS
+  currentTheme=systemTheme();
+  updateThemeUI();
+});
 updateThemeUI();
 
 // A single glass lens tracks the active nav item and follows hover/focus, the way
@@ -202,7 +210,7 @@ const transition=q('.page-transition'),navigationKey='abatNavigationPending';
 // stagger, with the symbol landing in the middle, reads as a transition.
 if(transition&&!transition.querySelector('i')){
   transition.innerHTML='<i></i><i></i><i></i><i></i><i></i>'+
-    '<img class="pt-mark" src="/assets/abatchan-symbol-white.svg" alt="" width="504" height="308" aria-hidden="true">';
+    '<img class="pt-mark" src="/assets/abatchan-symbol-white-tight.svg" alt="" width="504" height="309" aria-hidden="true">';
 }
 if(sessionStorage.getItem(navigationKey)==='1'&&transition){
   transition.classList.add('is-arriving');

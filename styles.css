@@ -114,7 +114,9 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
    than one solid indigo sheet. The element itself no longer transforms; each
    column does, so they can be staggered. */
 .page-transition{transition:none;animation:none;background:transparent;transform:none;display:grid;grid-template-columns:repeat(5,1fr);overflow:hidden}
-.page-transition>i{display:block;transform:scaleY(0);transform-origin:bottom;will-change:transform;transition:transform .36s var(--ease);background:linear-gradient(180deg,#8184ff,var(--signal) 55%,#4338ca)}
+/* 1fr columns land on fractional pixels, so the page shows through the seams as
+   hairlines. A half-pixel overlap on each side closes them; the container clips. */
+.page-transition>i{display:block;margin-inline:-.5px;transform:scaleY(0);transform-origin:bottom;will-change:transform;transition:transform .36s var(--ease);background:linear-gradient(180deg,#8184ff,var(--signal) 55%,#4338ca)}
 .page-transition>i:nth-child(2){transition-delay:.025s}
 .page-transition>i:nth-child(3){transition-delay:.05s}
 .page-transition>i:nth-child(4){transition-delay:.075s}
