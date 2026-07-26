@@ -8,8 +8,10 @@ textNodes.forEach(node=>{if(node.nodeValue.includes('—'))node.nodeValue=node.n
 const themeKey='abatchanTheme';
 const systemTheme=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
 let currentTheme=localStorage.getItem(themeKey)||systemTheme;
-const brandMarkup='<img class="brand-lockup" src="/assets/abatchan-logo-horizontal-indigo-symbol-white-text.png" alt="abatchan">';
-const renderBrand=()=>qa('.site-header .brand').forEach(brand=>brand.innerHTML=brandMarkup);
+// Official horizontal lockups, used as-is. The symbol is #6366f1 indigo in both
+// files; only the wordmark differs, so the mark never changes colour with theme.
+const brandMarkup=()=>`<img class="brand-lockup" src="/assets/abatchan-logo-horizontal-indigo-symbol-${currentTheme==='light'?'black':'white'}-text.svg" alt="abatchan">`;
+const renderBrand=()=>qa('.site-header .brand,.footer-mark').forEach(el=>el.innerHTML=brandMarkup());
 
 document.documentElement.dataset.theme=currentTheme;
 renderBrand();
@@ -41,7 +43,7 @@ qa('.header-actions').forEach(actions=>{
 const socialLinks={github:'https://github.com/AbatChan'};
 qa('footer').forEach(footer=>{
   footer.innerHTML=`<div class="shell compact-footer">
-    <a class="footer-mark" href="/" aria-label="abatchan home">${brandMarkup}</a>
+    <a class="footer-mark" href="/" aria-label="abatchan home">${brandMarkup()}</a>
     <div class="social-rail" aria-label="social profiles">
       <a href="${socialLinks.github}" target="_blank" rel="noreferrer" aria-label="GitHub">GH</a>
       <button type="button" data-social="x" aria-label="X link pending">X</button>
