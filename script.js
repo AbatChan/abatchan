@@ -7,15 +7,15 @@ const textNodes=[];
 while(walker.nextNode())textNodes.push(walker.currentNode);
 textNodes.forEach(node=>{if(node.nodeValue.includes('—'))node.nodeValue=node.nodeValue.replaceAll('—',', ')});
 
-// Use the proper horizontal logo in every header.
+// Use the verified horizontal logo in every header.
 qa('.site-header .brand').forEach(brand=>{
-  brand.innerHTML='<img src="/assets/abatchan-logo-horizontal-indigo-symbol-white-text.png" alt="abatchan">';
+  brand.innerHTML='<img src="/assets/abatchan-header-logo-v2.png" alt="abatchan">';
 });
 
 // Inject shared visual and navigation states across every existing page.
 const transitionStyles=document.createElement('style');
 transitionStyles.textContent=`
-.site-header .brand img{width:146px!important;height:auto!important;display:block!important;object-fit:contain!important}
+.site-header .brand img{width:146px!important;height:auto!important;display:block!important;object-fit:contain!important;aspect-ratio:auto!important}
 .intro{background:#0c0c0c!important;overflow:hidden!important}
 .intro video{position:absolute!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;object-fit:cover!important;background:#0c0c0c!important;display:block!important}
 .skip{z-index:2}
