@@ -23,12 +23,29 @@ qa('.desktop-nav').forEach(nav=>{
     nav.insertBefore(link,nav.querySelector('[data-page="/contact"]')||null);
   }
 });
+// The tab bar used unicode glyphs (⌂ ◫ ◎ ↗), which come from four different
+// blocks and so arrive at different weights, sizes and baselines. These are one
+// set on a 24 grid at a single stroke weight, so they read as siblings.
+const TAB_ICONS={
+  '/':'<path d="M3.5 10.4 12 3.2l8.5 7.2V20a1.4 1.4 0 0 1-1.4 1.4H4.9A1.4 1.4 0 0 1 3.5 20Z"/><path d="M9.4 21.4v-6.6h5.2v6.6"/>',
+  '/work':'<rect x="2.8" y="7.2" width="18.4" height="13.6" rx="2.4"/><path d="M8.6 7.2V5.4a2.2 2.2 0 0 1 2.2-2.2h2.4a2.2 2.2 0 0 1 2.2 2.2v1.8"/><path d="M2.8 12.4h18.4"/>',
+  '/about':'<circle cx="12" cy="8" r="3.9"/><path d="M4.9 20.8a7.4 7.4 0 0 1 14.2 0"/>',
+  '/pricing':'<path d="M20.5 13.6 13.6 20.5a2.2 2.2 0 0 1-3.1 0L3.6 13.6a2.2 2.2 0 0 1-.6-1.5V5.2A2.2 2.2 0 0 1 5.2 3h6.9a2.2 2.2 0 0 1 1.5.6l6.9 6.9a2.2 2.2 0 0 1 0 3.1Z"/><path d="M7.6 7.6h.01"/>',
+  '/contact':'<path d="M21.4 2.6 10.9 13.1"/><path d="M21.4 2.6 14.7 21.4l-3.8-8.3-8.3-3.8Z"/>'
+};
+const tabIcon=page=>TAB_ICONS[page]?`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${TAB_ICONS[page]}</svg>`:'';
 qa('.mobile-tabs').forEach(nav=>{
   if(!nav.querySelector('[data-page="/pricing"]')){
     const link=document.createElement('a');
-    link.dataset.page='/pricing';link.href='/pricing';link.innerHTML='<b>◇</b>pricing';
+    link.dataset.page='/pricing';link.href='/pricing';link.innerHTML='<b></b>pricing';
     nav.insertBefore(link,nav.querySelector('[data-page="/contact"]')||null);
   }
+  qa('a[data-page]',nav).forEach(a=>{
+    const icon=tabIcon(a.dataset.page);
+    if(!icon)return;
+    const label=a.textContent.replace(/[^a-z]/gi,'');
+    a.innerHTML=`${icon}<span>${label}</span>`;
+  });
 });
 
 qa('.header-actions').forEach(actions=>{

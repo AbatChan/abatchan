@@ -74,7 +74,7 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
 .site-header>:not(.glass-edge),.mobile-tabs>:not(.glass-edge){position:relative;z-index:2}
 html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{
   --glass-tint:rgba(255,255,255,.3);
-  --glass-ring:rgba(21,21,25,.3);
+  --glass-ring:rgba(21,21,25,.14);
   --glass-spec:rgba(255,255,255,.95);
   box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),0 18px 44px rgba(27,28,34,.16)}
 html[data-theme="light"] .site-header::after,html[data-theme="light"] .mobile-tabs::after{
@@ -123,7 +123,12 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
   /* self-sizing so the injected pricing tab cannot wrap the row */
   .mobile-tabs{bottom:max(12px,env(safe-area-inset-bottom));width:min(440px,calc(100% - 24px));min-height:66px;padding:7px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
   .mobile-tabs a{min-width:0;padding:8px 2px;border-radius:15px;font-size:10px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .mobile-tabs b{margin-bottom:2px}
+  /* one grid for every tab, so the icon box and the label sit on the same two
+     baselines no matter how tall the individual glyph is */
+  .mobile-tabs a{display:grid;grid-template-rows:20px auto;justify-items:center;align-content:center;gap:4px}
+  .mobile-tabs a>svg{width:20px;height:20px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .mobile-tabs a>span{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .mobile-tabs b{display:none}
   .mobile-tabs a.active{background:rgba(245,245,243,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.24)}
   html[data-theme="light"] .mobile-tabs a{color:#3c3e46}
   html[data-theme="light"] .mobile-tabs a.active{color:#151519;background:rgba(79,70,229,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
