@@ -96,55 +96,115 @@ qa('.btn').forEach(btn=>{
 renderBrand();
 
 // ------------------------------------------------------------------- lamp
-// Theme control. Drag the bead down past the threshold and release, or press
-// Enter/Space. Pointer events cover mouse, pen and touch with one path, and
-// touch-action:none on the bead stops the drag turning into a page scroll.
+// Theme control: a pull cord simulated as a Verlet rope.
+//
+// The naive version animated the cord's height on every pointermove, which
+// forces a layout pass per frame and feels like lag. This writes one SVG path
+// and one transform per frame instead — neither triggers reflow — and the loop
+// sleeps as soon as the rope settles, so an idle page costs nothing.
 (function lamp(){
   if(q('.lamp'))return;
+
+  const N=14, SEG=7.2, GRAV=0.62, DAMP=0.986, ITER=5;
+  const ANCHOR={x:60,y:-6};
+  const TRIP=34;                       // pull needed to flip the theme
+
   const el=document.createElement('div');
   el.className='lamp';
-  el.innerHTML='<i class="lamp-cord" aria-hidden="true"></i>'+
+  el.innerHTML='<svg viewBox="0 0 120 250" aria-hidden="true"><path/></svg>'+
     '<button class="lamp-bead" type="button" aria-label="Switch colour theme" data-tip="Pull to switch theme"></button>';
   document.body.appendChild(el);
+  const path=q('path',el), bead=q('.lamp-bead',el);
 
-  const bead=q('.lamp-bead',el);
-  const MAX=64, TRIP=34;                 // how far it stretches, and what counts as a pull
-  let id=null, startY=0, pull=0;
+  // rope points, seeded hanging straight down
+  const P=[];
+  for(let i=0;i<N;i++)P.push({x:ANCHOR.x,y:ANCHOR.y+i*SEG,px:ANCHOR.x,py:ANCHOR.y+i*SEG});
+  const tail=P[N-1];
+  const restY=ANCHOR.y+(N-1)*SEG;
 
-  const setPull=v=>{pull=v;el.style.setProperty('--pull',v.toFixed(1)+'px')};
-  const release=()=>{
-    el.classList.remove('is-dragging');
-    if(pull>=TRIP)toggleTheme();
-    setPull(0);
-    id=null;
+  let dragging=false, grabId=null, target=null, running=false, still=0, pulled=0;
+
+  function step(){
+    for(let i=1;i<N;i++){
+      const p=P[i];
+      if(dragging&&i===N-1)continue;              // the hand owns the tail
+      const vx=(p.x-p.px)*DAMP, vy=(p.y-p.py)*DAMP;
+      p.px=p.x; p.py=p.y;
+      p.x+=vx; p.y+=vy+GRAV;
+    }
+    if(dragging&&target){tail.px=tail.x;tail.py=tail.y;tail.x=target.x;tail.y=target.y}
+    for(let k=0;k<ITER;k++){
+      P[0].x=ANCHOR.x; P[0].y=ANCHOR.y;
+      for(let i=0;i<N-1;i++){
+        const a=P[i],c=P[i+1];
+        let dx=c.x-a.x, dy=c.y-a.y;
+        const d=Math.hypot(dx,dy)||1e-4;
+        const diff=(d-SEG)/d*0.5;
+        dx*=diff; dy*=diff;
+        if(i!==0){a.x+=dx;a.y+=dy}else{a.x=ANCHOR.x;a.y=ANCHOR.y}
+        if(!(dragging&&i+1===N-1)){c.x-=dx;c.y-=dy}
+      }
+    }
+  }
+
+  function draw(){
+    let d='M '+P[0].x.toFixed(1)+' '+P[0].y.toFixed(1);
+    for(let i=1;i<N-1;i++){
+      const mx=(P[i].x+P[i+1].x)/2, my=(P[i].y+P[i+1].y)/2;
+      d+=' Q '+P[i].x.toFixed(1)+' '+P[i].y.toFixed(1)+' '+mx.toFixed(1)+' '+my.toFixed(1);
+    }
+    d+=' L '+tail.x.toFixed(1)+' '+tail.y.toFixed(1);
+    path.setAttribute('d',d);
+    bead.style.transform='translate('+tail.x.toFixed(1)+'px,'+tail.y.toFixed(1)+'px)';
+  }
+
+  function frame(){
+    step(); draw();
+    // sleep when it has settled, so an untouched page burns no frames
+    const moved=Math.abs(tail.x-tail.px)+Math.abs(tail.y-tail.py);
+    still=(!dragging&&moved<0.08)?still+1:0;
+    if(still>12){running=false;return}
+    requestAnimationFrame(frame);
+  }
+  const wake=()=>{still=0;if(!running){running=true;requestAnimationFrame(frame)}};
+
+  const local=e=>{
+    const r=el.getBoundingClientRect();
+    return {x:e.clientX-r.left, y:e.clientY-r.top};
   };
   bead.addEventListener('pointerdown',e=>{
-    id=e.pointerId;startY=e.clientY;
-    bead.setPointerCapture(id);
-    el.classList.remove('hint');
-    el.classList.add('is-dragging');
+    e.preventDefault();
+    grabId=e.pointerId; dragging=true; pulled=0;
+    bead.setPointerCapture(grabId);
+    target=local(e); wake();
   });
   bead.addEventListener('pointermove',e=>{
-    if(e.pointerId!==id)return;
-    // resist past the end so it feels like a cord, not a slider
-    const raw=Math.max(0,e.clientY-startY);
-    setPull(raw<=MAX?raw:MAX+(raw-MAX)*.22);
+    if(e.pointerId!==grabId)return;
+    const p=local(e);
+    // let it swing sideways, but the pull that counts is downward
+    p.x=Math.max(ANCHOR.x-70,Math.min(ANCHOR.x+70,p.x));
+    p.y=Math.min(restY+130,p.y);
+    target=p;
+    pulled=Math.max(pulled,p.y-restY);
+    wake();
   });
-  bead.addEventListener('pointerup',e=>{if(e.pointerId===id)release()});
-  bead.addEventListener('pointercancel',e=>{if(e.pointerId===id)release()});
+  const letGo=e=>{
+    if(e.pointerId!==grabId)return;
+    dragging=false; grabId=null; target=null;
+    if(pulled>=TRIP)toggleTheme();
+    pulled=0; wake();
+  };
+  bead.addEventListener('pointerup',letGo);
+  bead.addEventListener('pointercancel',letGo);
   bead.addEventListener('keydown',e=>{
     if(e.key!==' '&&e.key!=='Enter')return;
     e.preventDefault();
-    setPull(TRIP+8);
-    setTimeout(()=>{setPull(0);toggleTheme()},150);
+    tail.py=tail.y; tail.y+=26;            // give the rope a real yank
+    wake(); toggleTheme();
   });
 
-  // nudge it once per visitor so the cord is discovered
-  if(!localStorage.getItem('abatLampSeen')){
-    el.classList.add('hint');
-    localStorage.setItem('abatLampSeen','1');
-    setTimeout(()=>el.classList.remove('hint'),3200);
-  }
+  addEventListener('resize',wake);
+  draw(); wake();
 })();
 
 // Brand marks from simple-icons (CC0), inlined so the footer makes no third-party

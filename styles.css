@@ -507,44 +507,29 @@ html[data-theme="light"] .assist-form input{color:#151519}
 }
 
 /* --- lamp pull switch ---------------------------------------------------- */
-/* The theme control. It hangs from the top of the viewport and is drawn behind
-   the header, so the cord appears to pass under the glass bar and dangle below
-   it. A literal lamp would fight the brand's minimalism, so it is a 1px cord
-   and a small bead — the gesture carries the idea, not the illustration.
-   It is a real <button>: draggable by pointer or touch, and Enter/Space pulls
-   it for anyone not using a pointer. */
-.lamp{position:fixed;top:0;right:clamp(16px,4.5vw,54px);z-index:99;
-  width:34px;display:flex;flex-direction:column;align-items:center;
-  pointer-events:none;--pull:0px}
-.lamp-cord{width:1px;height:calc(96px + var(--pull));
-  background:linear-gradient(180deg,transparent,var(--line) 14px,var(--line));
-  transition:height .5s cubic-bezier(.2,1.5,.4,1)}
-.lamp-bead{pointer-events:auto;position:relative;flex:0 0 auto;
-  width:26px;height:26px;margin-top:-1px;padding:0;cursor:grab;
+/* A Verlet rope, not an animated height. The previous version resized the cord
+   on every pointermove, which forces a document reflow each frame and is what
+   made it feel like it was dragging. Now the simulation writes one SVG path
+   "d" and one transform per frame - neither reflows the page - and the loop
+   sleeps once the rope stops moving, so idle cost is zero.
+   Drawn behind the header so the cord appears to pass under the glass bar. */
+.lamp{position:fixed;top:0;right:clamp(4px,3.5vw,44px);z-index:99;
+  width:120px;height:250px;pointer-events:none;touch-action:none}
+.lamp svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.lamp path{fill:none;stroke:var(--line);stroke-width:1.25;stroke-linecap:round}
+.lamp-bead{pointer-events:auto;position:absolute;left:0;top:0;
+  width:30px;height:30px;margin:-15px 0 0 -15px;padding:0;cursor:grab;
   border:0;border-radius:50%;background:transparent;
-  display:grid;place-items:center;touch-action:none;-webkit-tap-highlight-color:transparent}
+  display:grid;place-items:center;touch-action:none;-webkit-tap-highlight-color:transparent;
+  will-change:transform}
 .lamp-bead:active{cursor:grabbing}
-.lamp-bead::before{content:"";width:12px;height:12px;border-radius:50%;
+.lamp-bead::before{content:"";width:13px;height:13px;border-radius:50%;
   background:var(--panel);box-shadow:0 0 0 1px var(--edge),0 4px 10px rgba(0,0,0,.4);
-  transition:background .3s,box-shadow .35s,transform .3s var(--ease)}
-.lamp-bead:hover::before{transform:scale(1.14)}
-.lamp-bead:focus-visible{outline:2px solid var(--signal);outline-offset:2px;border-radius:50%}
-/* lit: light mode is the lamp being on */
+  transition:background .3s,box-shadow .35s,transform .25s var(--ease)}
+.lamp-bead:hover::before{transform:scale(1.15)}
+.lamp-bead:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:50%}
+/* light mode is the lamp being on */
 html[data-theme="light"] .lamp-bead::before{background:#ffd77a;
-  box-shadow:0 0 0 1px rgba(214,160,40,.5),0 0 16px 3px rgba(255,206,110,.6),0 0 40px 10px rgba(255,206,110,.28)}
-html[data-theme="light"] .lamp-cord{background:linear-gradient(180deg,transparent,var(--line) 14px,var(--line))}
-.lamp.is-dragging .lamp-cord{transition:none}
-.lamp.is-dragging .lamp-bead{cursor:grabbing}
-/* a one-time nudge so the cord is noticed */
-.lamp.hint .lamp-cord{animation:lampHint 1.5s var(--ease) 2}
-@keyframes lampHint{0%,100%{height:96px}45%{height:112px}}
-@media(max-width:900px){
-  .lamp{right:auto;left:clamp(14px,5vw,28px)}
-  .lamp-cord{height:calc(88px + var(--pull))}
-  @keyframes lampHint{0%,100%{height:88px}45%{height:104px}}
-}
-@media(prefers-reduced-motion:reduce){
-  .lamp-cord{transition:none}
-  .lamp.hint .lamp-cord{animation:none}
-  .lamp-bead::before{transition:background .2s}
-}
+  box-shadow:0 0 0 1px rgba(214,160,40,.5),0 0 16px 3px rgba(255,206,110,.6),0 0 42px 12px rgba(255,206,110,.3)}
+@media(max-width:900px){.lamp{right:auto;left:clamp(2px,3vw,18px)}}
+@media(prefers-reduced-motion:reduce){.lamp-bead::before{transition:background .2s}}
