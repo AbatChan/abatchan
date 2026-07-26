@@ -31,6 +31,19 @@ qa('.mobile-tabs').forEach(nav=>{
   }
 });
 
+const NAV_ICONS={
+  '/':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10.5 9-7 9 7V21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10.5Z"/><path d="M9 22v-7h6v7"/></svg>',
+  '/work':'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></svg>',
+  '/about':'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>',
+  '/pricing':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.3 13.3 20.6a2 2 0 0 1-2.8 0L3.4 13.5a2 2 0 0 1-.6-1.4V5a2 2 0 0 1 2-2h7.1a2 2 0 0 1 1.4.6l7.3 7.3a1.7 1.7 0 0 1 0 2.4Z"/><circle cx="7.5" cy="7.5" r="1"/></svg>',
+  '/contact':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>'
+};
+qa('.mobile-tabs a[data-page]').forEach(link=>{
+  const label=link.textContent.trim();
+  const icon=NAV_ICONS[link.dataset.page];
+  if(icon)link.innerHTML=`${icon}<span>${label}</span>`;
+});
+
 qa('.header-actions').forEach(actions=>{
   if(actions.querySelector('.theme-toggle'))return;
   const button=document.createElement('button');
@@ -112,6 +125,7 @@ html[data-theme="light"] .social-rail a.social-chip{background:rgba(21,21,25,.04
 /* grid children default to min-width:auto, which stops the rail wrapping and overflows it */
 .social-rail{min-width:0}
 @media(max-width:900px){.social-rail a.social-chip{width:34px;height:34px;border-radius:11px}.social-rail a.social-chip svg{width:15px;height:15px}}
+@media(max-width:900px){.social-rail{width:min(100%,440px);flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-inline:contain;padding:2px;scroll-snap-type:inline mandatory;scrollbar-width:none}.social-rail::-webkit-scrollbar{display:none}.social-rail a.social-chip{width:40px;height:40px;min-width:40px;scroll-snap-align:center}.social-rail a.social-chip svg{width:17px;height:17px}.mobile-tabs a{font-size:10px!important}.mobile-tabs a>svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.mobile-tabs a>b{display:none!important}.mobile-tabs a>span{display:block;line-height:1.1}}
 /* Clear Liquid Glass gets its colour and depth from the content beneath it. */
 .site-header,.mobile-tabs{--glass-x:50%;--glass-y:50%;--glass-tint:rgba(13,13,13,.34);--glass-blur:22px;backdrop-filter:blur(var(--glass-blur)) saturate(170%) brightness(1.08)!important;-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(170%) brightness(1.08)!important}
 .site-header::before,.mobile-tabs::before{inset:-34px!important;background:radial-gradient(150px 92px at var(--glass-x) var(--glass-y),rgba(125,110,255,.36),transparent 62%),radial-gradient(210px 120px at calc(var(--glass-x) + 13%) calc(var(--glass-y) - 16%),rgba(76,207,255,.16),transparent 66%),linear-gradient(112deg,rgba(255,255,255,.25),transparent 24% 70%,rgba(121,105,255,.14))!important;filter:blur(13px) saturate(140%);transform:scale(1.06);opacity:.9}
