@@ -98,50 +98,60 @@ renderBrand();
 // ------------------------------------------------------------------- lamp
 // Theme control: a pull cord simulated as a Verlet rope.
 //
-// The naive version animated the cord's height on every pointermove, which
-// forces a layout pass per frame and feels like lag. This writes one SVG path
-// and one transform per frame instead — neither triggers reflow — and the loop
-// sleeps as soon as the rope settles, so an idle page costs nothing.
+// The cord lives on a viewport-sized layer, not in a small box, so the bead can
+// never jam against a container edge. Its limit is the rope's own length,
+// measured radially from the anchor: pull to the end and the switch clicks and
+// springs back mid-drag, the way a real pull switch does. You do not have to
+// let go for it to fire.
+//
+// One SVG path and one transform per frame, so nothing reflows while it moves,
+// and the loop parks itself once the rope is still.
 (function lamp(){
   if(q('.lamp'))return;
 
-  const N=14, SEG=7.2, GRAV=0.62, DAMP=0.986, ITER=5;
-  const ANCHOR={x:60,y:-6};
-  const TRIP=34;                       // pull needed to flip the theme
+  const N=15, SEG=7, GRAV=0.62, DAMP=0.986, ITER=6;
+  const REST=(N-1)*SEG;            // hanging length
+  const STRETCH=78;                // how far past rest it can be pulled
+  const MAXLEN=REST+STRETCH;       // the click point
 
   const el=document.createElement('div');
   el.className='lamp';
-  el.innerHTML='<svg viewBox="0 0 120 250" aria-hidden="true"><path/></svg>'+
-    '<button class="lamp-bead" type="button" aria-label="Switch colour theme" data-tip="Pull to switch theme"></button>';
+  el.innerHTML='<svg aria-hidden="true"><path/></svg>'+
+    '<button class="lamp-bead" type="button" aria-label="Switch colour theme" data-tip="Pull the cord"></button>';
   document.body.appendChild(el);
-  const path=q('path',el), bead=q('.lamp-bead',el);
+  const svg=q('svg',el), path=q('path',el), bead=q('.lamp-bead',el);
 
-  // rope points, seeded hanging straight down
+  const anchor={x:0,y:-6};
+  const place=()=>{
+    anchor.x=innerWidth>900?innerWidth-44:26;
+    svg.setAttribute('viewBox',`0 0 ${innerWidth} ${innerHeight}`);
+  };
+  place();
+
   const P=[];
-  for(let i=0;i<N;i++)P.push({x:ANCHOR.x,y:ANCHOR.y+i*SEG,px:ANCHOR.x,py:ANCHOR.y+i*SEG});
+  for(let i=0;i<N;i++)P.push({x:anchor.x,y:anchor.y+i*SEG,px:anchor.x,py:anchor.y+i*SEG});
   const tail=P[N-1];
-  const restY=ANCHOR.y+(N-1)*SEG;
 
-  let dragging=false, grabId=null, target=null, running=false, still=0, pulled=0;
+  let dragging=false,grabId=null,target=null,running=false,still=0,fired=false,taut=false;
 
   function step(){
     for(let i=1;i<N;i++){
+      if(dragging&&i===N-1)continue;
       const p=P[i];
-      if(dragging&&i===N-1)continue;              // the hand owns the tail
       const vx=(p.x-p.px)*DAMP, vy=(p.y-p.py)*DAMP;
       p.px=p.x; p.py=p.y;
       p.x+=vx; p.y+=vy+GRAV;
     }
     if(dragging&&target){tail.px=tail.x;tail.py=tail.y;tail.x=target.x;tail.y=target.y}
     for(let k=0;k<ITER;k++){
-      P[0].x=ANCHOR.x; P[0].y=ANCHOR.y;
+      P[0].x=anchor.x; P[0].y=anchor.y;
       for(let i=0;i<N-1;i++){
         const a=P[i],c=P[i+1];
         let dx=c.x-a.x, dy=c.y-a.y;
         const d=Math.hypot(dx,dy)||1e-4;
         const diff=(d-SEG)/d*0.5;
         dx*=diff; dy*=diff;
-        if(i!==0){a.x+=dx;a.y+=dy}else{a.x=ANCHOR.x;a.y=ANCHOR.y}
+        if(i!==0){a.x+=dx;a.y+=dy}else{a.x=anchor.x;a.y=anchor.y}
         if(!(dragging&&i+1===N-1)){c.x-=dx;c.y-=dy}
       }
     }
@@ -160,7 +170,6 @@ renderBrand();
 
   function frame(){
     step(); draw();
-    // sleep when it has settled, so an untouched page burns no frames
     const moved=Math.abs(tail.x-tail.px)+Math.abs(tail.y-tail.py);
     still=(!dragging&&moved<0.08)?still+1:0;
     if(still>12){running=false;return}
@@ -168,42 +177,58 @@ renderBrand();
   }
   const wake=()=>{still=0;if(!running){running=true;requestAnimationFrame(frame)}};
 
-  const local=e=>{
-    const r=el.getBoundingClientRect();
-    return {x:e.clientX-r.left, y:e.clientY-r.top};
-  };
+  const setTaut=on=>{if(on!==taut){taut=on;el.classList.toggle('taut',on)}};
+
+  // let go for the visitor, so the rope rebounds while their finger is still down
+  function letGo(){
+    if(grabId!==null&&bead.hasPointerCapture?.(grabId)){try{bead.releasePointerCapture(grabId)}catch{}}
+    dragging=false; grabId=null; target=null; setTaut(false); wake();
+  }
+
   bead.addEventListener('pointerdown',e=>{
     e.preventDefault();
-    grabId=e.pointerId; dragging=true; pulled=0;
+    grabId=e.pointerId; dragging=true; fired=false;
     bead.setPointerCapture(grabId);
-    target=local(e); wake();
+    document.dispatchEvent(new Event('tip:lock'));   // no tooltip mid-pull
+    target={x:e.clientX,y:e.clientY}; wake();
   });
+
   bead.addEventListener('pointermove',e=>{
-    if(e.pointerId!==grabId)return;
-    const p=local(e);
-    // let it swing sideways, but the pull that counts is downward
-    p.x=Math.max(ANCHOR.x-70,Math.min(ANCHOR.x+70,p.x));
-    p.y=Math.min(restY+130,p.y);
-    target=p;
-    pulled=Math.max(pulled,p.y-restY);
+    if(e.pointerId!==grabId||fired)return;
+    let dx=e.clientX-anchor.x, dy=e.clientY-anchor.y;
+    const dist=Math.hypot(dx,dy)||1e-4;
+    setTaut(dist>MAXLEN-16);
+    if(dist>=MAXLEN){
+      // the cord has run out: click, then spring back without waiting for release
+      fired=true;
+      dx*=MAXLEN/dist; dy*=MAXLEN/dist;
+      tail.x=anchor.x+dx; tail.y=anchor.y+dy;
+      tail.px=tail.x; tail.py=tail.y-10;            // kick it upward on rebound
+      toggleTheme();
+      letGo();
+      return;
+    }
+    target={x:e.clientX,y:e.clientY};
     wake();
   });
-  const letGo=e=>{
+
+  const release=e=>{
     if(e.pointerId!==grabId)return;
-    dragging=false; grabId=null; target=null;
-    if(pulled>=TRIP)toggleTheme();
-    pulled=0; wake();
+    letGo();
+    document.dispatchEvent(new Event('tip:unlock'));
   };
-  bead.addEventListener('pointerup',letGo);
-  bead.addEventListener('pointercancel',letGo);
+  bead.addEventListener('pointerup',release);
+  bead.addEventListener('pointercancel',release);
+  bead.addEventListener('lostpointercapture',()=>{if(dragging)letGo()});
+
   bead.addEventListener('keydown',e=>{
     if(e.key!==' '&&e.key!=='Enter')return;
     e.preventDefault();
-    tail.py=tail.y; tail.y+=26;            // give the rope a real yank
+    tail.py=tail.y; tail.y+=STRETCH*.7;             // a real yank, then it rebounds
     wake(); toggleTheme();
   });
 
-  addEventListener('resize',wake);
+  addEventListener('resize',()=>{place();wake()});
   draw(); wake();
 })();
 
@@ -390,7 +415,7 @@ qa('.doc-toc').forEach(toc=>{
 const tip=document.createElement('div');
 tip.className='tip';tip.setAttribute('role','tooltip');tip.hidden=true;
 document.body.appendChild(tip);
-let tipFor=null;
+let tipFor=null,tipLocked=false;
 const placeTip=el=>{
   const r=el.getBoundingClientRect();
   const t=tip.getBoundingClientRect();
@@ -403,7 +428,7 @@ const placeTip=el=>{
 };
 const showTip=el=>{
   const text=el.dataset.tip;
-  if(!text)return;
+  if(!text||tipLocked)return;
   tipFor=el;tip.hidden=false;tip.textContent=text;
   placeTip(el);
   requestAnimationFrame(()=>{if(tipFor===el){placeTip(el);tip.classList.add('is-on')}});
@@ -426,6 +451,9 @@ document.addEventListener('focusin',e=>{
 document.addEventListener('focusout',hideTip);
 addEventListener('scroll',()=>{if(tipFor)placeTip(tipFor)},{passive:true});
 addEventListener('keydown',e=>{if(e.key==='Escape')hideTip()});
+// dragging something should not be narrated by a tooltip sitting under the finger
+document.addEventListener('tip:lock',()=>{tipLocked=true;hideTip()});
+document.addEventListener('tip:unlock',()=>{tipLocked=false});
 
 
 // ---------------------------------------------------------------- assistant
@@ -544,6 +572,49 @@ const CANNED=[
   chips.addEventListener('click',e=>{
     const b=e.target.closest('button');if(b)ask(b.textContent);
   });
+})();
+
+// ------------------------------------------------------------- what's new
+// One announcement at a time. Dismissing writes the id, so that visitor never
+// sees it again; publishing a new one is a new id at the top of the list.
+const NEWS=[
+  {
+    id:'2026-07-brand-and-assistant',
+    tag:"what's new",
+    title:'Brand page, process, and an assistant',
+    body:'The full brand system with downloadable lockups is up, along with how projects actually run. There is also a chat bubble now if you would rather ask than read.',
+    href:'/brand',
+    cta:'see the brand page'
+  }
+];
+
+(function news(){
+  const item=NEWS.find(n=>!localStorage.getItem('abatNews:'+n.id));
+  if(!item)return;
+
+  const el=document.createElement('aside');
+  el.className='news';
+  el.setAttribute('role','status');
+  el.setAttribute('aria-label',"What's new");
+  el.innerHTML=
+    '<button class="news-x" type="button" aria-label="Dismiss">'+
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'+
+    `<span class="news-tag">${item.tag}</span>`+
+    `<h3>${item.title}</h3><p>${item.body}</p>`+
+    (item.href?`<div class="news-foot"><a class="btn primary" href="${item.href}">${item.cta} <span class="arrow">↗</span></a></div>`:'');
+  document.body.appendChild(el);
+
+  const dismiss=()=>{
+    localStorage.setItem('abatNews:'+item.id,'1');
+    el.classList.remove('is-on');
+    setTimeout(()=>el.remove(),420);
+  };
+  q('.news-x',el).addEventListener('click',dismiss);
+  // following the link counts as read
+  el.querySelector('a')?.addEventListener('click',()=>localStorage.setItem('abatNews:'+item.id,'1'));
+
+  // let the page settle first so it does not compete with the intro
+  setTimeout(()=>el.classList.add('is-on'),1400);
 })();
 
 const transition=q('.page-transition'),navigationKey='abatNavigationPending';
