@@ -9,11 +9,23 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://abatchan.com/pricing</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://abatchan.com/about</loc>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://abatchan.com/contact</loc>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://abatchan.com/process</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://abatchan.com/brand</loc>
+    <priority>0.5</priority>
   </url>
 </urlset>

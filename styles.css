@@ -202,3 +202,48 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
   .faq-list details > .faq-body{transition:none}
   .faq-list details > summary::after,.faq-list details > summary::before{transition:none}
 }
+
+/* --- document pages (process, privacy, terms) --------------------------- */
+/* Shared by three pages, so it lives here rather than being pasted into each
+   page's inline <style>. */
+.doc-hero{padding:180px 0 50px}
+.doc-hero h1{max-width:900px}
+.doc-hero p{color:var(--muted);font-size:19px;max-width:640px}
+.doc-meta{margin-top:26px;color:var(--muted);font-size:13px}
+.doc-body{display:grid;grid-template-columns:.32fr 1fr;gap:60px;padding:26px 0 110px}
+.doc-toc{position:sticky;top:120px;height:max-content;display:grid;gap:9px;align-content:start}
+.doc-toc a{color:var(--muted);font-size:14px;padding:5px 0;transition:color .2s}
+.doc-toc a:hover{color:var(--signal-ink,var(--signal))}
+.doc-article{display:grid;gap:0;min-width:0}
+.doc-article section{padding:30px 0;border-top:1px solid var(--line)}
+.doc-article section:first-child{border-top:0;padding-top:0}
+.doc-article h2{font-size:clamp(24px,2.6vw,32px);letter-spacing:-.04em;margin:0 0 14px;scroll-margin-top:110px}
+.doc-article h3{font-size:17px;margin:22px 0 8px;letter-spacing:-.02em}
+.doc-article p{color:var(--muted);margin:0 0 14px;max-width:720px;line-height:1.7}
+.doc-article ul{margin:0 0 14px;padding-left:20px;color:var(--muted);max-width:720px;line-height:1.7}
+.doc-article li{margin-bottom:7px}
+.doc-article a:not(.btn){color:var(--signal-ink,var(--signal))}
+.doc-article a:not(.btn):hover{text-decoration:underline}
+.doc-callout{padding:18px 20px;border:1px solid var(--line);border-radius:16px;color:var(--muted);font-size:14px;line-height:1.65;margin:0 0 14px}
+.doc-step{display:grid;grid-template-columns:52px 1fr;gap:20px;padding:26px 0;border-bottom:1px solid var(--line);align-items:start}
+.doc-step:last-child{border-bottom:0}
+.doc-step>span{color:var(--signal-ink,var(--signal));font-size:12px;padding-top:4px}
+.doc-step h3{margin:0 0 7px;font-size:22px}
+.doc-step p{margin:0}
+.doc-step p+p{margin-top:13px}
+@media(max-width:980px){
+  .doc-body{grid-template-columns:1fr;gap:34px}
+  .doc-toc{position:static;grid-auto-flow:row}
+}
+@media(max-width:620px){
+  .doc-hero{padding-top:140px}
+  .doc-step{grid-template-columns:40px 1fr;gap:14px}
+}
+
+/* --- footer secondary menu ---------------------------------------------- */
+.footer-nav{grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 22px;margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.footer-nav a{color:var(--muted);font-size:13px;padding:4px 0;transition:color .22s}
+.footer-nav a:hover{color:var(--paper)}
+.footer-nav a.active{color:var(--paper)}
+html[data-theme="light"] .footer-nav a:hover,html[data-theme="light"] .footer-nav a.active{color:#151519}
+.footer-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:5px}

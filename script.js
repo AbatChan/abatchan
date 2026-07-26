@@ -97,11 +97,24 @@ const socialRail=()=>SOCIALS.map(([slug,label,href])=>
   `<a class="social-chip" href="${href}" target="_blank" rel="noreferrer noopener" aria-label="${label}" title="${label}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${ICONS[slug]}"/></svg></a>`
 ).join('');
 
+// Secondary pages live down here as a plain text menu, so the header can stay
+// on the five primary destinations.
+const FOOTER_NAV=[
+  ['/brand','brand'],
+  ['/process','process'],
+  ['/pricing','pricing'],
+  ['/privacy','privacy'],
+  ['/terms','terms']
+];
+const footerNav=()=>FOOTER_NAV.map(([href,label])=>
+  `<a data-page="${href}" href="${href}">${label}</a>`).join('');
+
 qa('footer').forEach(footer=>{
   footer.innerHTML=`<div class="shell compact-footer">
     <a class="footer-mark" href="/" aria-label="abatchan home">${brandMarkup()}</a>
     <div class="social-rail" aria-label="social profiles">${socialRail()}</div>
     <div class="footer-meta"><a href="mailto:abatchan4@gmail.com">abatchan mail</a><span>&copy; 2026</span></div>
+    <nav class="footer-nav" aria-label="More pages">${footerNav()}</nav>
   </div>`;
 });
 
