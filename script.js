@@ -168,7 +168,42 @@ qa('.desktop-nav').forEach(nav=>{
   requestAnimationFrame(settle);
 });
 
+// <details> cannot transition its own height. Wrap the answer so a 0fr -> 1fr
+// grid track can animate it, and hold `open` until the close finishes.
+qa('.faq-list details').forEach(d=>{
+  const summary=q('summary',d);
+  if(!summary||d.querySelector('.faq-body'))return;
+  const body=document.createElement('div');body.className='faq-body';
+  const inner=document.createElement('div');inner.className='faq-inner';
+  while(summary.nextSibling)inner.appendChild(summary.nextSibling);
+  body.appendChild(inner);d.appendChild(body);
+  if(d.open)d.classList.add('is-open');
+  summary.addEventListener('click',e=>{
+    e.preventDefault();
+    if(d.classList.contains('is-open')){
+      d.classList.remove('is-open');
+      const shut=ev=>{
+        if(ev.target!==body||ev.propertyName!=='grid-template-rows')return;
+        body.removeEventListener('transitionend',shut);d.open=false;
+      };
+      body.addEventListener('transitionend',shut);
+      // if the transition is suppressed (reduced motion) it never fires
+      if(matchMedia('(prefers-reduced-motion: reduce)').matches)d.open=false;
+    }else{
+      d.open=true;
+      body.offsetHeight;                 // commit the 0fr start state first
+      d.classList.add('is-open');
+    }
+  });
+});
+
 const transition=q('.page-transition'),navigationKey='abatNavigationPending';
+// A solid indigo sheet sliding up reads as a loading block. Five columns that
+// stagger, with the symbol landing in the middle, reads as a transition.
+if(transition&&!transition.querySelector('i')){
+  transition.innerHTML='<i></i><i></i><i></i><i></i><i></i>'+
+    '<img class="pt-mark" src="/assets/abatchan-symbol-white.svg" alt="" width="504" height="308" aria-hidden="true">';
+}
 if(sessionStorage.getItem(navigationKey)==='1'&&transition){
   transition.classList.add('is-arriving');
   const revealPage=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{transition.classList.add('is-loaded');sessionStorage.removeItem(navigationKey);setTimeout(()=>transition.classList.remove('is-arriving','is-loaded'),600)}));
@@ -190,7 +225,7 @@ const stage=q('.system-stage'),core=q('.system-core');
 if(stage&&core){stage.addEventListener('mousemove',e=>{const r=stage.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;core.style.transform=`rotateY(${x*12}deg) rotateX(${-y*10}deg)`});stage.addEventListener('mouseleave',()=>core.style.transform='')}
 
 const internal=h=>!!h&&h.startsWith('/')&&!h.startsWith('//');
-qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();sessionStorage.setItem(navigationKey,'1');transition?.classList.add('is-leaving');setTimeout(()=>location.assign(href),430)}));
+qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();sessionStorage.setItem(navigationKey,'1');transition?.classList.add('is-leaving');setTimeout(()=>location.assign(href),480)}));
 const path=location.pathname.replace(/\.html$/,'').replace(/\/index$/,'/').replace(/(.)\/$/,'$1')||'/';
 qa('[data-page]').forEach(a=>a.classList.toggle('active',a.dataset.page===path));
 qa('.filter-btn').forEach(btn=>btn.addEventListener('click',()=>{qa('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const f=btn.dataset.filter;qa('.work-card').forEach(card=>card.style.display=(f==='all'||card.dataset.type===f)?'flex':'none')}));

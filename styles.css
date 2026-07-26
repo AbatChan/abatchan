@@ -36,7 +36,12 @@ html[data-theme="light"] .site-header .brand img.brand-lockup[data-ink="black"],
 html[data-theme="light"]{--ink:#f4f4f1;--paper:#151519;--muted:#5f6067;--line:rgba(21,21,25,.22);--edge:rgba(21,21,25,.52);--signal-ink:#4338ca;--panel:#fff;--signal:#4f46e5;color-scheme:light}
 html[data-theme="light"] body{background:#f4f4f1;color:#151519}
 html[data-theme="light"] .grid-bg{opacity:.12}
-html[data-theme="light"] .system-core,html[data-theme="light"] .work-card,html[data-theme="light"] .process-card,html[data-theme="light"] .contact-card,html[data-theme="light"] .price-card,html[data-theme="light"] .quote-step{background:#fff}
+/* Only the two panels whose base fill is translucent white — on a light page
+   those resolve to roughly the page colour and the panel disappears. The cards
+   already reach #fff through --panel, and .quote-step is a bordered row that
+   never had a fill to begin with. */
+html[data-theme="light"] .system-core,html[data-theme="light"] .price-card{background:#fff}
+html[data-theme="light"] .price-card:hover{background:linear-gradient(145deg,rgba(79,70,229,.07),#fff)}
 html[data-theme="light"] .node,html[data-theme="light"] .arch-node{background:#f7f7f4}
 html[data-theme="light"] .card-visual,html[data-theme="light"] .terminal,html[data-theme="light"] .dashboard{background:#ececeb}
 html[data-theme="light"] .terminal pre{color:#4e5057}
@@ -105,10 +110,29 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
 .intro{background:#0c0c0c;overflow:hidden}
 .intro video{position:absolute;left:50%;top:50%;width:min(30vw,460px);height:auto;max-height:30vh;transform:translate(-50%,-50%);object-fit:contain;background:#0c0c0c;display:block}
 .skip{z-index:2}
-.page-transition{transition:none;animation:none;background:var(--signal);transform:scaleY(0);transform-origin:bottom;will-change:transform}
-.page-transition.is-leaving{transform:scaleY(1);transform-origin:bottom;transition:transform .42s var(--ease);pointer-events:auto}
-.page-transition.is-arriving{transform:scaleY(1);transform-origin:top;pointer-events:auto}
-.page-transition.is-loaded{transform:scaleY(0);transform-origin:top;transition:transform .52s var(--ease)}
+/* Five columns wiping in sequence with the symbol landing in the middle, rather
+   than one solid indigo sheet. The element itself no longer transforms; each
+   column does, so they can be staggered. */
+.page-transition{transition:none;animation:none;background:transparent;transform:none;display:grid;grid-template-columns:repeat(5,1fr);overflow:hidden}
+.page-transition>i{display:block;transform:scaleY(0);transform-origin:bottom;will-change:transform;transition:transform .36s var(--ease);background:linear-gradient(180deg,#8184ff,var(--signal) 55%,#4338ca)}
+.page-transition>i:nth-child(2){transition-delay:.025s}
+.page-transition>i:nth-child(3){transition-delay:.05s}
+.page-transition>i:nth-child(4){transition-delay:.075s}
+.page-transition>i:nth-child(5){transition-delay:.1s}
+.page-transition .pt-mark{position:absolute;left:50%;top:50%;width:min(15vw,120px);height:auto;opacity:0;transform:translate(-50%,-50%) scale(.7);transition:opacity .26s linear .12s,transform .42s var(--ease) .12s;pointer-events:none}
+.page-transition.is-leaving,.page-transition.is-arriving{pointer-events:auto}
+.page-transition.is-leaving>i,.page-transition.is-arriving>i{transform:scaleY(1)}
+.page-transition.is-leaving .pt-mark,.page-transition.is-arriving .pt-mark{opacity:1;transform:translate(-50%,-50%) scale(1)}
+/* leaving wipes up from the bottom, arriving retracts upward off the top */
+.page-transition.is-arriving>i{transform-origin:top}
+.page-transition.is-loaded>i{transform:scaleY(0);transform-origin:top;transition:transform .42s var(--ease)}
+/* reverse the stagger on the way out so it reads as one sweep, not a rewind */
+.page-transition.is-loaded>i:nth-child(1){transition-delay:.1s}
+.page-transition.is-loaded>i:nth-child(2){transition-delay:.075s}
+.page-transition.is-loaded>i:nth-child(3){transition-delay:.05s}
+.page-transition.is-loaded>i:nth-child(4){transition-delay:.025s}
+.page-transition.is-loaded>i:nth-child(5){transition-delay:0s}
+.page-transition.is-loaded .pt-mark{opacity:0;transform:translate(-50%,-50%) scale(1.25);transition:opacity .22s linear,transform .34s var(--ease)}
 
 /* --- mobile ------------------------------------------------------------- */
 @media(max-width:900px){
@@ -152,5 +176,27 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
   .glass-edge,.site-header::after,.mobile-tabs::after{display:none}
 }
 @media(prefers-reduced-motion:reduce){
-  .desktop-nav .nav-lens,.page-transition,.page-transition.is-leaving,.page-transition.is-loaded{transition:none}
+  .desktop-nav .nav-lens,.page-transition>i,.page-transition .pt-mark,.page-transition.is-loaded>i{transition:none}
+}
+
+/* --- FAQ accordion ------------------------------------------------------ */
+/* <details> cannot transition its own height, so script.js wraps the answer in
+   .faq-body and the 0fr -> 1fr grid track does the animating. The rules are
+   scoped to .faq-body, which only exists once that has run, so the answers stay
+   readable if the script does not. pricing.html's inline <style> loads after
+   styles.css, hence the extra specificity here. */
+.faq-list details > .faq-body{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .38s var(--ease),opacity .26s linear}
+.faq-list details.is-open > .faq-body{grid-template-rows:1fr;opacity:1}
+.faq-list details > .faq-body > .faq-inner{overflow:hidden;min-height:0}
+.faq-list details > summary{position:relative;padding-right:34px;transition:color .24s}
+.faq-list details > summary:hover{color:var(--signal)}
+.faq-list details > summary:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:6px}
+/* plus that collapses into a minus, rather than swapping the glyph outright */
+.faq-list details > summary::after,.faq-list details > summary::before{content:"";position:absolute;top:50%;float:none;background:var(--signal);transition:transform .34s var(--ease),opacity .34s var(--ease)}
+.faq-list details > summary::after{right:2px;width:14px;height:2px;margin-top:-1px}
+.faq-list details > summary::before{right:8px;width:2px;height:14px;margin-top:-7px}
+.faq-list details.is-open > summary::before{transform:scaleY(0);opacity:0}
+@media(prefers-reduced-motion:reduce){
+  .faq-list details > .faq-body{transition:none}
+  .faq-list details > summary::after,.faq-list details > summary::before{transition:none}
 }
