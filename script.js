@@ -218,6 +218,38 @@ qa('.faq-list details').forEach(d=>{
   });
 });
 
+// Sidebar scrollspy on the document pages. Targets are mixed — <h2> on privacy
+// and terms, .doc-step and <section> on process — so they are resolved by id
+// rather than by selector. The active one is the last target that has passed
+// under the header, which is what "the section you are reading" actually means.
+qa('.doc-toc').forEach(toc=>{
+  const links=qa('a[href^="#"]',toc);
+  const targets=links.map(a=>document.getElementById(decodeURIComponent(a.hash.slice(1))))
+                     .map((el,i)=>el&&{el,link:links[i]}).filter(Boolean);
+  if(!targets.length)return;
+  const OFFSET=140;                       // clears the fixed header
+  let current=null;
+  const settle=()=>{
+    let found=targets[0];
+    for(const t of targets)if(t.el.getBoundingClientRect().top<=OFFSET)found=t;
+    // at the very bottom the last section may never reach the offset
+    if(innerHeight+scrollY>=document.documentElement.scrollHeight-2)found=targets[targets.length-1];
+    if(found===current)return;
+    current=found;
+    for(const t of targets)t.link.classList.toggle('active',t===found);
+  };
+  // a dozen getBoundingClientRect calls is cheap enough to run inline; deferring
+  // to requestAnimationFrame just makes the highlight lag behind the scroll
+  addEventListener('scroll',settle,{passive:true});
+  addEventListener('resize',settle);
+  links.forEach(a=>a.addEventListener('click',()=>{
+    // paint the click straight away rather than waiting for the smooth scroll
+    for(const t of targets)t.link.classList.toggle('active',t.link===a);
+    current=targets.find(t=>t.link===a)||current;
+  }));
+  settle();
+});
+
 const transition=q('.page-transition'),navigationKey='abatNavigationPending';
 // A solid indigo sheet sliding up reads as a loading block. Five columns that
 // stagger, with the symbol landing in the middle, reads as a transition.
