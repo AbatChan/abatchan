@@ -30,37 +30,48 @@ const renderBrand=()=>qa('.site-header .brand,.footer-mark').forEach(el=>{
 document.documentElement.dataset.theme=currentTheme;
 renderBrand();
 
-qa('.desktop-nav').forEach(nav=>{
-  if(!nav.querySelector('[data-page="/pricing"]')){
-    const link=document.createElement('a');
-    link.dataset.page='/pricing';link.href='/pricing';link.textContent='pricing';
-    nav.insertBefore(link,nav.querySelector('[data-page="/contact"]')||null);
-  }
+// ---------------------------------------------------------------- chrome
+// The header, tab bar and overlay layers were byte-identical in nine HTML
+// files, so any nav change meant nine edits that could drift apart. They are
+// built here instead: pages carry empty <header class="site-header">,
+// <nav class="mobile-tabs"> and nothing else. Adding a destination is one row
+// of NAV and it appears in both navigations at once.
+const NAV=[
+  ['/',        'home',    '<path d="M3.5 10.4 12 3.2l8.5 7.2V20a1.4 1.4 0 0 1-1.4 1.4H4.9A1.4 1.4 0 0 1 3.5 20Z"/><path d="M9.4 21.4v-6.6h5.2v6.6"/>'],
+  ['/work',    'work',    '<rect x="2.8" y="7.2" width="18.4" height="13.6" rx="2.4"/><path d="M8.6 7.2V5.4a2.2 2.2 0 0 1 2.2-2.2h2.4a2.2 2.2 0 0 1 2.2 2.2v1.8"/><path d="M2.8 12.4h18.4"/>'],
+  ['/about',   'about',   '<circle cx="12" cy="8" r="3.9"/><path d="M4.9 20.8a7.4 7.4 0 0 1 14.2 0"/>'],
+  ['/pricing', 'pricing', '<path d="M20.5 13.6 13.6 20.5a2.2 2.2 0 0 1-3.1 0L3.6 13.6a2.2 2.2 0 0 1-.6-1.5V5.2A2.2 2.2 0 0 1 5.2 3h6.9a2.2 2.2 0 0 1 1.5.6l6.9 6.9a2.2 2.2 0 0 1 0 3.1Z"/><path d="M7.6 7.6h.01"/>'],
+  ['/contact', 'contact', '<path d="M21.4 2.6 10.9 13.1"/><path d="M21.4 2.6 14.7 21.4l-3.8-8.3-8.3-3.8Z"/>']
+];
+// the one call to action that appears in the header on every page
+const HEADER_CTA={href:'/contact',label:'start a project ↗'};
+
+// fixed decorative layers, previously three copy-pasted divs per page
+['page-transition','grid-bg','cursor-light'].forEach(cls=>{
+  if(q('.'+cls))return;
+  const el=document.createElement('div');el.className=cls;
+  document.body.insertBefore(el,document.body.firstChild);
 });
-// The tab bar used unicode glyphs (⌂ ◫ ◎ ↗), which come from four different
-// blocks and so arrive at different weights, sizes and baselines. These are one
-// set on a 24 grid at a single stroke weight, so they read as siblings.
-const TAB_ICONS={
-  '/':'<path d="M3.5 10.4 12 3.2l8.5 7.2V20a1.4 1.4 0 0 1-1.4 1.4H4.9A1.4 1.4 0 0 1 3.5 20Z"/><path d="M9.4 21.4v-6.6h5.2v6.6"/>',
-  '/work':'<rect x="2.8" y="7.2" width="18.4" height="13.6" rx="2.4"/><path d="M8.6 7.2V5.4a2.2 2.2 0 0 1 2.2-2.2h2.4a2.2 2.2 0 0 1 2.2 2.2v1.8"/><path d="M2.8 12.4h18.4"/>',
-  '/about':'<circle cx="12" cy="8" r="3.9"/><path d="M4.9 20.8a7.4 7.4 0 0 1 14.2 0"/>',
-  '/pricing':'<path d="M20.5 13.6 13.6 20.5a2.2 2.2 0 0 1-3.1 0L3.6 13.6a2.2 2.2 0 0 1-.6-1.5V5.2A2.2 2.2 0 0 1 5.2 3h6.9a2.2 2.2 0 0 1 1.5.6l6.9 6.9a2.2 2.2 0 0 1 0 3.1Z"/><path d="M7.6 7.6h.01"/>',
-  '/contact':'<path d="M21.4 2.6 10.9 13.1"/><path d="M21.4 2.6 14.7 21.4l-3.8-8.3-8.3-3.8Z"/>'
-};
-const tabIcon=page=>TAB_ICONS[page]?`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${TAB_ICONS[page]}</svg>`:'';
+
+qa('.site-header').forEach(header=>{
+  if(header.querySelector('.desktop-nav'))return;      // page supplied its own
+  header.innerHTML=
+    '<a class="brand" href="/" aria-label="abatchan home"></a>'+
+    '<nav class="desktop-nav" aria-label="Primary">'+
+      NAV.map(([href,label])=>`<a data-page="${href}" href="${href}">${label}</a>`).join('')+
+    '</nav>'+
+    `<div class="header-actions"><a class="pill primary" href="${HEADER_CTA.href}">${HEADER_CTA.label}</a></div>`;
+});
+
 qa('.mobile-tabs').forEach(nav=>{
-  if(!nav.querySelector('[data-page="/pricing"]')){
-    const link=document.createElement('a');
-    link.dataset.page='/pricing';link.href='/pricing';link.innerHTML='<b></b>pricing';
-    nav.insertBefore(link,nav.querySelector('[data-page="/contact"]')||null);
-  }
-  qa('a[data-page]',nav).forEach(a=>{
-    const icon=tabIcon(a.dataset.page);
-    if(!icon)return;
-    const label=a.textContent.replace(/[^a-z]/gi,'');
-    a.innerHTML=`${icon}<span>${label}</span>`;
-  });
+  if(nav.querySelector('a'))return;
+  nav.setAttribute('aria-label','Primary');
+  nav.innerHTML=NAV.map(([href,label,icon])=>
+    `<a data-page="${href}" href="${href}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icon}</svg><span>${label}</span></a>`
+  ).join('');
 });
+
+renderBrand();
 
 qa('.header-actions').forEach(actions=>{
   if(actions.querySelector('.theme-toggle'))return;
@@ -274,8 +285,68 @@ if(intro){
 const observer=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.12});
 qa('.reveal').forEach(e=>observer.observe(e));
 document.addEventListener('mousemove',e=>{const light=q('.cursor-light');if(light){light.style.left=e.clientX+'px';light.style.top=e.clientY+'px'}});
-const stage=q('.system-stage'),core=q('.system-core');
-if(stage&&core){stage.addEventListener('mousemove',e=>{const r=stage.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;core.style.transform=`rotateY(${x*12}deg) rotateX(${-y*10}deg)`});stage.addEventListener('mouseleave',()=>core.style.transform='')}
+// System map. Connectors are measured from the real node boxes rather than
+// drawn at fixed angles, so they always terminate on the node edge instead of
+// crossing the middle at random. Redrawn on resize and when fonts settle.
+qa('[data-sysmap]').forEach(map=>{
+  const plane=q('.sysmap-plane',map)||map;
+  const core=q('.sysmap-core',map);
+  const nodes=qa('.sysmap-node',map);
+  if(!core||!nodes.length)return;
+  let svg=q('.sysmap-links',map);
+  if(!svg){
+    svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','sysmap-links');
+    svg.setAttribute('aria-hidden','true');
+    plane.insertBefore(svg,plane.firstChild);
+  }
+  // stop the line short of each box so it meets the edge, not the label
+  const edge=(from,to,box)=>{
+    const dx=to.x-from.x, dy=to.y-from.y;
+    const len=Math.hypot(dx,dy)||1;
+    const inset=Math.min(box.w/2,box.h/2)+8;
+    return {x:from.x+dx/len*inset, y:from.y+dy/len*inset};
+  };
+  const draw=()=>{
+    const r=map.getBoundingClientRect();
+    if(!r.width)return;
+    svg.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`);
+    const centreOf=el=>{const b=el.getBoundingClientRect();
+      return {x:b.left-r.left+b.width/2, y:b.top-r.top+b.height/2, w:b.width, h:b.height}};
+    const c=centreOf(core);
+    svg.textContent='';
+    nodes.forEach(n=>{
+      const p=centreOf(n);
+      const a=edge(p,c,p), z=edge(c,p,c);
+      // bow the line slightly so four links do not read as one X through the middle
+      const mx=(a.x+z.x)/2, my=(a.y+z.y)/2;
+      const nx=-(z.y-a.y), ny=(z.x-a.x);
+      const nl=Math.hypot(nx,ny)||1, bow=Math.min(46,Math.hypot(z.x-a.x,z.y-a.y)*.16);
+      const d=`M ${a.x.toFixed(1)} ${a.y.toFixed(1)} Q ${(mx+nx/nl*bow).toFixed(1)} ${(my+ny/nl*bow).toFixed(1)} ${z.x.toFixed(1)} ${z.y.toFixed(1)}`;
+      const trace=document.createElementNS('http://www.w3.org/2000/svg','path');
+      trace.setAttribute('d',d);trace.setAttribute('class','trace');
+      const flow=document.createElementNS('http://www.w3.org/2000/svg','path');
+      flow.setAttribute('d',d);
+      flow.style.animationDelay=(nodes.indexOf(n)*-.5)+'s';
+      svg.append(trace,flow);
+    });
+  };
+  draw();
+  addEventListener('resize',draw);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(draw);
+  addEventListener('load',draw);
+
+  // parallax tilt, driven through custom properties so CSS owns the transform
+  const host=map.closest('.system-stage')||map;
+  host.addEventListener('pointermove',e=>{
+    const r=host.getBoundingClientRect();
+    plane.style.setProperty('--ry',(((e.clientX-r.left)/r.width-.5)*13).toFixed(2)+'deg');
+    plane.style.setProperty('--rx',(((e.clientY-r.top)/r.height-.5)*-11).toFixed(2)+'deg');
+  });
+  host.addEventListener('pointerleave',()=>{
+    plane.style.removeProperty('--rx');plane.style.removeProperty('--ry');
+  });
+});
 
 const internal=h=>!!h&&h.startsWith('/')&&!h.startsWith('//');
 qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();sessionStorage.setItem(navigationKey,'1');transition?.classList.add('is-leaving');setTimeout(()=>location.assign(href),480)}));

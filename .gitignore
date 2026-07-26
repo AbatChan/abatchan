@@ -10,3 +10,20 @@ dist/
 
 # System files
 .DS_Store
+
+# screenshot / probe harnesses, never part of the site
+seed-*.html
+*-probe.html
+*-spy.html
+*-s.html
+*-t.html
+*-v.html
+frame.html
+measure.html
+contrast.html
+logo.html
+acc*.html
+pt*.html
+cmp.html
+footcheck.html
+faqonly.html
