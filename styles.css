@@ -13,7 +13,10 @@
 .site-header .brand,.footer-mark{display:inline-flex;align-items:center;min-width:0}
 .site-header .brand{width:146px}
 .footer-mark{width:118px}
-.site-header .brand img.brand-lockup,.footer-mark img.brand-lockup{display:block;width:100%;height:auto;object-fit:contain}
+.site-header .brand img.brand-lockup,.footer-mark img.brand-lockup{display:none;width:100%;height:auto;aspect-ratio:1416/286;object-fit:contain}
+.site-header .brand img.brand-lockup[data-ink="white"],.footer-mark img.brand-lockup[data-ink="white"]{display:block}
+html[data-theme="light"] .site-header .brand img.brand-lockup[data-ink="white"],html[data-theme="light"] .footer-mark img.brand-lockup[data-ink="white"]{display:none}
+html[data-theme="light"] .site-header .brand img.brand-lockup[data-ink="black"],html[data-theme="light"] .footer-mark img.brand-lockup[data-ink="black"]{display:block}
 
 /* --edge is the control border in both themes: --line alone measured 1.41:1
    against the page, which is not enough to find a button by its outline.
@@ -49,10 +52,10 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
    hue offset, so whatever scrolls underneath is smeared and colour-split at the
    edge instead of being painted on as a fake gradient. */
 .site-header,.mobile-tabs{
-  --glass-tint:rgba(13,13,13,.20);
-  --glass-blur:14px;
-  --glass-ring:rgba(0,0,0,.5);
-  --glass-spec:rgba(255,255,255,.4);
+  --glass-tint:rgba(13,13,13,.005);
+  --glass-blur:8px;
+  --glass-ring:rgba(0,0,0,.05);
+  --glass-spec:rgba(255,255,255,.05);
   position:fixed;overflow:hidden;isolation:isolate;border:0;
   background:var(--glass-tint);
   backdrop-filter:blur(var(--glass-blur)) saturate(220%) brightness(1.07);
@@ -69,17 +72,15 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
 .glass-edge .r1{top:0;bottom:0;right:0;width:16px;backdrop-filter:blur(3px) saturate(380%) hue-rotate(22deg);-webkit-backdrop-filter:blur(3px) saturate(380%) hue-rotate(22deg)}
 /* specular sheen, and it tracks the pointer via --glass-x/--glass-y */
 .site-header::after,.mobile-tabs::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
-  background:linear-gradient(165deg,rgba(255,255,255,.1),rgba(255,255,255,.02) 26%,transparent 52%),
-             radial-gradient(160px 110px at var(--glass-x,50%) var(--glass-y,-30%),rgba(255,255,255,.1),transparent 70%)}
+  background:radial-gradient(180px 130px at var(--glass-x,50%) var(--glass-y,-35%),rgba(255,255,255,.07),transparent 72%)}
 .site-header>:not(.glass-edge),.mobile-tabs>:not(.glass-edge){position:relative;z-index:2}
 html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{
-  --glass-tint:rgba(255,255,255,.05);
+  --glass-tint:rgba(255,255,255,.005);
   --glass-ring:rgba(21,21,25,.05);
-  --glass-spec:rgba(255,255,255,.5);
+  --glass-spec:rgba(255,255,255,.05);
   box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),0 18px 44px rgba(27,28,34,.16)}
 html[data-theme="light"] .site-header::after,html[data-theme="light"] .mobile-tabs::after{
-  background:linear-gradient(165deg,rgba(255,255,255,.3),rgba(255,255,255,.06) 28%,transparent 55%),
-             radial-gradient(160px 110px at var(--glass-x,50%) var(--glass-y,-30%),rgba(255,255,255,.26),transparent 70%)}
+  background:radial-gradient(180px 130px at var(--glass-x,50%) var(--glass-y,-35%),rgba(255,255,255,.16),transparent 72%)}
 
 /* --- desktop nav lens --------------------------------------------------- */
 .desktop-nav{position:relative}
@@ -119,6 +120,9 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
   .theme-toggle{width:40px;height:40px}
   .intro video{width:min(52vw,320px);max-height:34vh}
   .compact-footer{grid-template-columns:1fr;justify-items:center;text-align:center;gap:16px}
+  /* nine chips just fit eight per row, which strands the ninth on its own.
+     Cap the rail at five so it breaks 5 + 4 and justify-content centres both. */
+  .social-rail{max-width:calc(5 * 38px + 4 * 8px)}
   .footer-meta{white-space:normal;justify-content:center}
   /* self-sizing so the injected pricing tab cannot wrap the row */
   .mobile-tabs{bottom:max(12px,env(safe-area-inset-bottom));width:min(440px,calc(100% - 24px));min-height:66px;padding:7px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}

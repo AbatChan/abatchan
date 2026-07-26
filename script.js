@@ -10,8 +10,19 @@ const systemTheme=matchMedia('(prefers-color-scheme: light)').matches?'light':'d
 let currentTheme=localStorage.getItem(themeKey)||systemTheme;
 // Official horizontal lockups, used as-is. The symbol is #6366f1 indigo in both
 // files; only the wordmark differs, so the mark never changes colour with theme.
-const brandMarkup=()=>`<img class="brand-lockup" src="/assets/abatchan-logo-horizontal-indigo-symbol-${currentTheme==='light'?'black':'white'}-text.svg" alt="abatchan">`;
-const renderBrand=()=>qa('.site-header .brand,.footer-mark').forEach(el=>el.innerHTML=brandMarkup());
+//
+// Both are rendered once and swapped by CSS on [data-theme]. Rebuilding the <img>
+// on every theme change meant a fresh network fetch each flip, and an <img> with
+// no width/height attributes reserves no box until it decodes, so the lockup
+// popped in at the wrong size. The intrinsic 1416x286 is declared up front so the
+// layout box exists before the file arrives.
+const LOCKUP='/assets/abatchan-logo-horizontal-indigo-symbol-';
+const brandMarkup=()=>['white','black'].map(ink=>
+  `<img class="brand-lockup" data-ink="${ink}" width="1416" height="286" decoding="async" fetchpriority="high" src="${LOCKUP}${ink}-text.svg" alt="${ink==='white'?'abatchan':''}"${ink==='black'?' aria-hidden="true"':''}>`
+).join('');
+const renderBrand=()=>qa('.site-header .brand,.footer-mark').forEach(el=>{
+  if(!el.querySelector('.brand-lockup'))el.innerHTML=brandMarkup();
+});
 
 document.documentElement.dataset.theme=currentTheme;
 renderBrand();
