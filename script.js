@@ -60,7 +60,7 @@ qa('.site-header').forEach(header=>{
     '<nav class="desktop-nav" aria-label="Primary">'+
       NAV.map(([href,label])=>`<a data-page="${href}" href="${href}">${label}</a>`).join('')+
     '</nav>'+
-    `<div class="header-actions"><a class="pill primary" href="${HEADER_CTA.href}">${HEADER_CTA.label}</a></div>`;
+    `<div class="header-actions"><a class="btn primary sm header-cta" href="${HEADER_CTA.href}">${HEADER_CTA.label}</a></div>`;
 });
 
 qa('.mobile-tabs').forEach(nav=>{
@@ -69,6 +69,28 @@ qa('.mobile-tabs').forEach(nav=>{
   nav.innerHTML=NAV.map(([href,label,icon])=>
     `<a data-page="${href}" href="${href}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icon}</svg><span>${label}</span></a>`
   ).join('');
+});
+
+// Every button ends up with the same animated arrow whether the page wrote
+// <span class="arrow">, a bare <span>, or just the glyph in the text. Direction
+// is read from the glyph so the arrow leaves the way it points.
+const ARROW_DIR={'\u2197':'up-right','\u2192':'right','\u2193':'down','\u2198':'down'};
+qa('.btn').forEach(btn=>{
+  const existing=q('span',btn);
+  if(existing&&ARROW_DIR[existing.textContent.trim()]){
+    existing.className='arrow';
+    existing.dataset.dir=ARROW_DIR[existing.textContent.trim()];
+    return;
+  }
+  // glyph sitting loose in the text node
+  const last=btn.lastChild;
+  if(!last||last.nodeType!==3)return;
+  const m=last.nodeValue.match(/\s*([\u2197\u2192\u2193\u2198])\s*$/);
+  if(!m)return;
+  last.nodeValue=last.nodeValue.slice(0,m.index);
+  const span=document.createElement('span');
+  span.className='arrow';span.dataset.dir=ARROW_DIR[m[1]];span.textContent=m[1];
+  btn.appendChild(span);
 });
 
 renderBrand();
@@ -352,6 +374,6 @@ const internal=h=>!!h&&h.startsWith('/')&&!h.startsWith('//');
 qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();sessionStorage.setItem(navigationKey,'1');transition?.classList.add('is-leaving');setTimeout(()=>location.assign(href),480)}));
 const path=location.pathname.replace(/\.html$/,'').replace(/\/index$/,'/').replace(/(.)\/$/,'$1')||'/';
 qa('[data-page]').forEach(a=>a.classList.toggle('active',a.dataset.page===path));
-qa('.filter-btn').forEach(btn=>btn.addEventListener('click',()=>{qa('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const f=btn.dataset.filter;qa('.work-card').forEach(card=>card.style.display=(f==='all'||card.dataset.type===f)?'flex':'none')}));
+qa('.btn.chip').forEach(btn=>btn.addEventListener('click',()=>{qa('.btn.chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const f=btn.dataset.filter;qa('.work-card').forEach(card=>card.style.display=(f==='all'||card.dataset.type===f)?'flex':'none')}));
 const form=q('#project-form');
 if(form)form.addEventListener('submit',e=>{e.preventDefault();const d=new FormData(form);const subject=encodeURIComponent(`Project enquiry: ${d.get('name')}`);const body=encodeURIComponent(`Name: ${d.get('name')}\nEmail: ${d.get('email')}\nProject type: ${d.get('type')}\n\n${d.get('message')}`);location.href=`mailto:abatchan4@gmail.com?subject=${subject}&body=${body}`});
