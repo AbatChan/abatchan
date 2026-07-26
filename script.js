@@ -76,6 +76,7 @@ qa('footer').forEach(footer=>{
   </div>`;
 });
 
+if(false){
 const transitionStyles=document.createElement('style');
 transitionStyles.textContent=`
 .site-header .brand,.footer-mark{display:inline-flex;align-items:center}.site-header .brand{min-width:146px}.brand-lockup{display:block!important;width:146px!important;height:auto!important;object-fit:contain!important;aspect-ratio:auto!important}.footer-mark .brand-lockup{width:118px!important}
@@ -113,6 +114,7 @@ html[data-theme="light"] .social-rail a.social-chip{background:rgba(21,21,25,.04
 .social-rail{min-width:0}
 @media(max-width:900px){.social-rail a.social-chip{width:34px;height:34px;border-radius:11px}.social-rail a.social-chip svg{width:15px;height:15px}}`;
 document.head.appendChild(transitionStyles);
+}
 
 const updateThemeUI=()=>{
   document.documentElement.dataset.theme=currentTheme;
