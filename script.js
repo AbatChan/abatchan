@@ -7,9 +7,10 @@ const textNodes=[];
 while(walker.nextNode())textNodes.push(walker.currentNode);
 textNodes.forEach(node=>{if(node.nodeValue.includes('—'))node.nodeValue=node.nodeValue.replaceAll('—',', ')});
 
-// Use the verified horizontal logo in every header.
+// Use the horizontal logo in every header. Vector, so it stays sharp at any
+// density and can't pick up the aspect distortion the old raster export had.
 qa('.site-header .brand').forEach(brand=>{
-  brand.innerHTML='<img src="/assets/abatchan-header-logo-v2.png" alt="abatchan">';
+  brand.innerHTML='<img src="/assets/abatchan-logo-horizontal-indigo-symbol-white-text.svg" alt="abatchan">';
 });
 
 // Inject shared visual and navigation states across every existing page.
