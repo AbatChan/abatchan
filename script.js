@@ -36,7 +36,7 @@ qa('.header-actions').forEach(actions=>{
   const button=document.createElement('button');
   button.type='button';button.className='theme-toggle';
   button.setAttribute('aria-label','Switch color theme');button.setAttribute('title','Switch color theme');
-  button.innerHTML='<span class="theme-icon" aria-hidden="true"></span>';
+  button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.6"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.28 5.28l1.42 1.42M17.3 17.3l1.42 1.42M18.72 5.28 17.3 6.7M6.7 17.3l-1.42 1.42"/></svg>';
   actions.prepend(button);
 });
 
@@ -111,7 +111,15 @@ html[data-theme="light"] .social-rail a.social-chip{background:rgba(21,21,25,.04
 .mobile-tabs a{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* grid children default to min-width:auto, which stops the rail wrapping and overflows it */
 .social-rail{min-width:0}
-@media(max-width:900px){.social-rail a.social-chip{width:34px;height:34px;border-radius:11px}.social-rail a.social-chip svg{width:15px;height:15px}}`;
+@media(max-width:900px){.social-rail a.social-chip{width:34px;height:34px;border-radius:11px}.social-rail a.social-chip svg{width:15px;height:15px}}
+/* Clear Liquid Glass gets its colour and depth from the content beneath it. */
+.site-header,.mobile-tabs{--glass-x:50%;--glass-y:50%;--glass-tint:rgba(13,13,13,.34);--glass-blur:22px;backdrop-filter:blur(var(--glass-blur)) saturate(170%) brightness(1.08)!important;-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(170%) brightness(1.08)!important}
+.site-header::before,.mobile-tabs::before{inset:-34px!important;background:radial-gradient(150px 92px at var(--glass-x) var(--glass-y),rgba(125,110,255,.36),transparent 62%),radial-gradient(210px 120px at calc(var(--glass-x) + 13%) calc(var(--glass-y) - 16%),rgba(76,207,255,.16),transparent 66%),linear-gradient(112deg,rgba(255,255,255,.25),transparent 24% 70%,rgba(121,105,255,.14))!important;filter:blur(13px) saturate(140%);transform:scale(1.06);opacity:.9}
+.site-header::after,.mobile-tabs::after{content:"";position:absolute;z-index:0;inset:1px;border-radius:inherit;pointer-events:none;background:linear-gradient(110deg,rgba(255,255,255,.3),transparent 18% 74%,rgba(255,255,255,.07));mix-blend-mode:screen;opacity:.62}
+.theme-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.theme-toggle:focus-visible,.mobile-tabs a:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+html[data-theme="light"]{--line:rgba(21,21,25,.22)}html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{--glass-tint:rgba(255,255,255,.42);--glass-blur:24px}html[data-theme="light"] .site-header::before,html[data-theme="light"] .mobile-tabs::before{opacity:.62}html[data-theme="light"] .theme-toggle{background:rgba(255,255,255,.35);border-color:rgba(21,21,25,.22)}
+@media(max-width:900px){.mobile-tabs{min-height:76px}.mobile-tabs a.active{background:linear-gradient(145deg,rgba(255,255,255,.19),rgba(255,255,255,.07));box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}footer{padding-bottom:calc(136px + env(safe-area-inset-bottom))!important}}
+@media(prefers-reduced-transparency:reduce){.site-header,.mobile-tabs{--glass-tint:rgba(13,13,13,.96);backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.site-header::before,.site-header::after,.mobile-tabs::before,.mobile-tabs::after{display:none}html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{--glass-tint:rgba(255,255,255,.96)}}`;
 document.head.appendChild(transitionStyles);
 
 const updateThemeUI=()=>{
@@ -119,6 +127,9 @@ const updateThemeUI=()=>{
   renderBrand();
   qa('.theme-toggle').forEach(button=>{
     const next=currentTheme==='dark'?'light':'dark';
+    button.innerHTML=currentTheme==='dark'
+      ?'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.6"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.28 5.28l1.42 1.42M17.3 17.3l1.42 1.42M18.72 5.28 17.3 6.7M6.7 17.3l-1.42 1.42"/></svg>'
+      :'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.1A8.8 8.8 0 0 1 9.9 3.5 8.8 8.8 0 1 0 20.5 14.1Z"/></svg>';
     button.setAttribute('aria-label',`Switch to ${next} mode`);
     button.setAttribute('title',`Switch to ${next} mode`);
   });
@@ -151,6 +162,12 @@ qa('.desktop-nav').forEach(nav=>{
   addEventListener('resize',settle);
   requestAnimationFrame(settle);
 });
+
+qa('.site-header,.mobile-tabs').forEach(glass=>glass.addEventListener('pointermove',event=>{
+  const rect=glass.getBoundingClientRect();
+  glass.style.setProperty('--glass-x',`${((event.clientX-rect.left)/rect.width*100).toFixed(1)}%`);
+  glass.style.setProperty('--glass-y',`${((event.clientY-rect.top)/rect.height*100).toFixed(1)}%`);
+}));
 
 const transition=q('.page-transition'),navigationKey='abatNavigationPending';
 if(sessionStorage.getItem(navigationKey)==='1'&&transition){
