@@ -127,7 +127,7 @@ const SOCIALS=[
   ['upwork','Upwork','https://www.upwork.com/freelancers/abatchan']
 ];
 const socialRail=()=>SOCIALS.map(([slug,label,href])=>
-  `<a class="social-chip" href="${href}" target="_blank" rel="noreferrer noopener" aria-label="${label}" title="${label}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${ICONS[slug]}"/></svg></a>`
+  `<a class="social-chip" href="${href}" target="_blank" rel="noreferrer noopener" aria-label="${label}" data-tip="${label}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${ICONS[slug]}"/></svg></a>`
 ).join('');
 
 // Secondary pages live down here as a plain text menu, so the header can stay
@@ -184,7 +184,7 @@ const updateThemeUI=()=>{
   qa('.theme-toggle').forEach(button=>{
     const next=currentTheme==='dark'?'light':'dark';
     button.setAttribute('aria-label',`Switch to ${next} mode`);
-    button.setAttribute('title',`Switch to ${next} mode`);
+    button.dataset.tip=`Switch to ${next} mode`;
     button.innerHTML=THEME_ICONS[next];
   });
 };
@@ -283,6 +283,169 @@ qa('.doc-toc').forEach(toc=>{
   settle();
 });
 
+// ------------------------------------------------------------------ tooltip
+// Native title= tooltips are slow, unstyled and inconsistent between systems.
+// Anything carrying data-tip gets the site's own instead. One element is
+// reused and lives on <body>, so no container can clip it.
+const tip=document.createElement('div');
+tip.className='tip';tip.setAttribute('role','tooltip');tip.hidden=true;
+document.body.appendChild(tip);
+let tipFor=null;
+const placeTip=el=>{
+  const r=el.getBoundingClientRect();
+  const t=tip.getBoundingClientRect();
+  const below=r.top-t.height-10<8;                 // not enough room above
+  tip.classList.toggle('below',below);
+  let x=r.left+r.width/2;
+  x=Math.min(Math.max(x,t.width/2+8),innerWidth-t.width/2-8);
+  tip.style.left=x+'px';
+  tip.style.top=(below?r.bottom+10:r.top-t.height-10)+'px';
+};
+const showTip=el=>{
+  const text=el.dataset.tip;
+  if(!text)return;
+  tipFor=el;tip.hidden=false;tip.textContent=text;
+  placeTip(el);
+  requestAnimationFrame(()=>{if(tipFor===el){placeTip(el);tip.classList.add('is-on')}});
+};
+const hideTip=()=>{
+  tipFor=null;tip.classList.remove('is-on');
+  setTimeout(()=>{if(!tipFor)tip.hidden=true},180);
+};
+document.addEventListener('pointerover',e=>{
+  const el=e.target.closest('[data-tip]');
+  if(el&&el!==tipFor)showTip(el);
+});
+document.addEventListener('pointerout',e=>{
+  if(tipFor&&!e.relatedTarget?.closest?.('[data-tip]'))hideTip();
+});
+document.addEventListener('focusin',e=>{
+  const el=e.target.closest('[data-tip]');
+  if(el)showTip(el);else hideTip();
+});
+document.addEventListener('focusout',hideTip);
+addEventListener('scroll',()=>{if(tipFor)placeTip(tipFor)},{passive:true});
+addEventListener('keydown',e=>{if(e.key==='Escape')hideTip()});
+
+
+// ---------------------------------------------------------------- assistant
+// Interface only for now. Point ASSISTANT.endpoint at a serverless function
+// that proxies whichever provider you pick and holds the key server-side — the
+// key must never reach this file. Until then it answers from CANNED and says
+// clearly that it is not live, rather than pretending.
+const ASSISTANT={
+  endpoint:null,                      // e.g. '/api/chat'
+  greeting:"Hi. Ask me anything about the work, pricing, or how a project runs.",
+  offline:"I'm not connected to a model yet, so that one needs a human. Email abatchan4@gmail.com and you'll get a reply within a working day.",
+  chips:['What do you build?','How much does it cost?','How long does it take?','Do you take small jobs?']
+};
+const CANNED=[
+  [/price|cost|budget|charge|quote/i,"Websites start at $750, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes — the real number comes from scope. Full breakdown on the pricing page."],
+  [/how long|timeline|deadline|when/i,"It depends on scope, but work is split into milestones so you see something usable at each one. The process page walks through all five stages."],
+  [/what.*(build|do)|services|offer/i,"Connected web and mobile products, automation and workflow systems, APIs and integrations, dashboards, and the infrastructure under them."],
+  [/small|tiny|fix|quick/i,"Yes. Small fixes and consultations are quoted separately, usually from $100, and ongoing work is $30/hour when project pricing does not fit."],
+  [/hire|available|start|book/i,"Currently taking work for the next quarter. Send the problem, the current setup, and the deadline through the contact page."],
+  [/hello|hi|hey|good (morning|afternoon|evening)/i,"Hello. What are you building?"]
+];
+
+(function assistant(){
+  if(q('.assist-launch'))return;
+  const ICON_CHAT='<svg class="chat" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg>';
+  const ICON_CLOSE='<svg class="close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+
+  const launch=document.createElement('button');
+  launch.type='button';launch.className='assist-launch';
+  launch.setAttribute('aria-label','Open the assistant');
+  launch.setAttribute('aria-expanded','false');
+  launch.dataset.tip='Ask about the work';
+  launch.innerHTML=ICON_CHAT+ICON_CLOSE;
+
+  const panel=document.createElement('div');
+  panel.className='assist-panel';panel.setAttribute('role','dialog');
+  panel.setAttribute('aria-label','abatchan assistant');panel.setAttribute('aria-modal','false');
+  panel.innerHTML=
+    '<div class="assist-head">'+
+      '<img src="/assets/abatchan-symbol-indigo-tight.svg" alt="" width="504" height="309">'+
+      '<div><b>abatchan assistant</b><span>usually replies instantly</span></div>'+
+      '<i class="assist-dot" aria-hidden="true"></i>'+
+    '</div>'+
+    '<div class="assist-log" role="log" aria-live="polite"></div>'+
+    '<div class="assist-chips">'+ASSISTANT.chips.map(c=>`<button type="button">${c}</button>`).join('')+'</div>'+
+    '<form class="assist-form">'+
+      '<input type="text" name="q" autocomplete="off" placeholder="Ask a question…" aria-label="Your question">'+
+      '<button class="assist-send" type="submit" aria-label="Send">'+
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 2.6 10.9 13.1"/><path d="M21.4 2.6 14.7 21.4l-3.8-8.3-8.3-3.8Z"/></svg>'+
+      '</button>'+
+    '</form>'+
+    '<p class="assist-note">Answers are guidance, not a quote. For anything binding, use the contact page.</p>';
+
+  document.body.append(launch,panel);
+
+  const log=q('.assist-log',panel), form=q('.assist-form',panel), input=q('input',form);
+  const chips=q('.assist-chips',panel);
+  let greeted=false;
+
+  const add=(text,who)=>{
+    const el=document.createElement('div');
+    el.className='assist-msg '+who;el.textContent=text;
+    log.appendChild(el);log.scrollTop=log.scrollHeight;
+    return el;
+  };
+  const thinking=()=>{
+    const el=document.createElement('div');
+    el.className='assist-typing';el.innerHTML='<i></i><i></i><i></i>';
+    log.appendChild(el);log.scrollTop=log.scrollHeight;
+    return el;
+  };
+  const reply=async text=>{
+    const dots=thinking();
+    let answer;
+    if(ASSISTANT.endpoint){
+      try{
+        const res=await fetch(ASSISTANT.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({message:text})});
+        answer=(await res.json()).reply;
+      }catch{ answer=ASSISTANT.offline; }
+    }else{
+      await new Promise(r=>setTimeout(r,420+Math.random()*380));
+      answer=(CANNED.find(([re])=>re.test(text))||[])[1]||ASSISTANT.offline;
+    }
+    dots.remove();
+    add(answer||ASSISTANT.offline,'bot');
+  };
+
+  const open=on=>{
+    panel.classList.toggle('is-open',on);
+    launch.classList.toggle('is-open',on);
+    launch.setAttribute('aria-expanded',String(on));
+    launch.setAttribute('aria-label',on?'Close the assistant':'Open the assistant');
+    launch.dataset.tip=on?'Close':'Ask about the work';
+    if(on){
+      launch.style.setProperty('animation','none');
+      if(!greeted){greeted=true;add(ASSISTANT.greeting,'bot')}
+      setTimeout(()=>input.focus(),260);
+    }
+  };
+  launch.addEventListener('click',()=>open(!panel.classList.contains('is-open')));
+  addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('is-open')){open(false);launch.focus()}});
+  document.addEventListener('pointerdown',e=>{
+    if(!panel.classList.contains('is-open'))return;
+    if(!panel.contains(e.target)&&!launch.contains(e.target))open(false);
+  });
+
+  const ask=text=>{
+    if(!text.trim())return;
+    add(text.trim(),'me');
+    chips.hidden=true;
+    input.value='';
+    reply(text.trim());
+  };
+  form.addEventListener('submit',e=>{e.preventDefault();ask(input.value)});
+  chips.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(b)ask(b.textContent);
+  });
+})();
+
 const transition=q('.page-transition'),navigationKey='abatNavigationPending';
 // A solid indigo sheet sliding up reads as a loading block. Five columns that
 // stagger, with the symbol landing in the middle, reads as a transition.
@@ -314,6 +477,8 @@ qa('[data-sysmap]').forEach(map=>{
   const plane=q('.sysmap-plane',map)||map;
   const core=q('.sysmap-core',map);
   const nodes=qa('.sysmap-node',map);
+  // a node can opt out of being wired up, which the 404 page uses
+  const linked=nodes.filter(n=>!n.hasAttribute('data-unlinked'));
   if(!core||!nodes.length)return;
   let svg=q('.sysmap-links',map);
   if(!svg){
@@ -337,7 +502,7 @@ qa('[data-sysmap]').forEach(map=>{
       return {x:b.left-r.left+b.width/2, y:b.top-r.top+b.height/2, w:b.width, h:b.height}};
     const c=centreOf(core);
     svg.textContent='';
-    nodes.forEach(n=>{
+    linked.forEach(n=>{
       const p=centreOf(n);
       const a=edge(p,c,p), z=edge(c,p,c);
       // bow the line slightly so four links do not read as one X through the middle
@@ -349,7 +514,7 @@ qa('[data-sysmap]').forEach(map=>{
       trace.setAttribute('d',d);trace.setAttribute('class','trace');
       const flow=document.createElementNS('http://www.w3.org/2000/svg','path');
       flow.setAttribute('d',d);
-      flow.style.animationDelay=(nodes.indexOf(n)*-.5)+'s';
+      flow.style.animationDelay=(linked.indexOf(n)*-.5)+'s';
       svg.append(trace,flow);
     });
   };
