@@ -95,12 +95,57 @@ qa('.btn').forEach(btn=>{
 
 renderBrand();
 
-qa('.header-actions').forEach(actions=>{
-  if(actions.querySelector('.theme-toggle'))return;
-  const button=document.createElement('button');
-  button.type='button';button.className='theme-toggle';
-  actions.prepend(button);
-});
+// ------------------------------------------------------------------- lamp
+// Theme control. Drag the bead down past the threshold and release, or press
+// Enter/Space. Pointer events cover mouse, pen and touch with one path, and
+// touch-action:none on the bead stops the drag turning into a page scroll.
+(function lamp(){
+  if(q('.lamp'))return;
+  const el=document.createElement('div');
+  el.className='lamp';
+  el.innerHTML='<i class="lamp-cord" aria-hidden="true"></i>'+
+    '<button class="lamp-bead" type="button" aria-label="Switch colour theme" data-tip="Pull to switch theme"></button>';
+  document.body.appendChild(el);
+
+  const bead=q('.lamp-bead',el);
+  const MAX=64, TRIP=34;                 // how far it stretches, and what counts as a pull
+  let id=null, startY=0, pull=0;
+
+  const setPull=v=>{pull=v;el.style.setProperty('--pull',v.toFixed(1)+'px')};
+  const release=()=>{
+    el.classList.remove('is-dragging');
+    if(pull>=TRIP)toggleTheme();
+    setPull(0);
+    id=null;
+  };
+  bead.addEventListener('pointerdown',e=>{
+    id=e.pointerId;startY=e.clientY;
+    bead.setPointerCapture(id);
+    el.classList.remove('hint');
+    el.classList.add('is-dragging');
+  });
+  bead.addEventListener('pointermove',e=>{
+    if(e.pointerId!==id)return;
+    // resist past the end so it feels like a cord, not a slider
+    const raw=Math.max(0,e.clientY-startY);
+    setPull(raw<=MAX?raw:MAX+(raw-MAX)*.22);
+  });
+  bead.addEventListener('pointerup',e=>{if(e.pointerId===id)release()});
+  bead.addEventListener('pointercancel',e=>{if(e.pointerId===id)release()});
+  bead.addEventListener('keydown',e=>{
+    if(e.key!==' '&&e.key!=='Enter')return;
+    e.preventDefault();
+    setPull(TRIP+8);
+    setTimeout(()=>{setPull(0);toggleTheme()},150);
+  });
+
+  // nudge it once per visitor so the cord is discovered
+  if(!localStorage.getItem('abatLampSeen')){
+    el.classList.add('hint');
+    localStorage.setItem('abatLampSeen','1');
+    setTimeout(()=>el.classList.remove('hint'),3200);
+  }
+})();
 
 // Brand marks from simple-icons (CC0), inlined so the footer makes no third-party
 // requests. Single path each, uniform 24x24 viewBox.
@@ -173,26 +218,21 @@ qa('.site-header,.mobile-tabs').forEach(glass=>{
   });
 });
 
-// The button shows the theme it switches *to*, so the glyph agrees with its label.
-const THEME_ICONS={
-  light:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M19.07 4.93 17.3 6.7M6.7 17.3l-1.77 1.77"/></svg>',
-  dark:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 14.2A8.7 8.7 0 0 1 9.8 3.6a8.7 8.7 0 1 0 10.6 10.6Z"/></svg>'
-};
 const updateThemeUI=()=>{
   document.documentElement.dataset.theme=currentTheme;
   renderBrand();
-  qa('.theme-toggle').forEach(button=>{
+  qa('.lamp-bead').forEach(bead=>{
     const next=currentTheme==='dark'?'light':'dark';
-    button.setAttribute('aria-label',`Switch to ${next} mode`);
-    button.dataset.tip=`Switch to ${next} mode`;
-    button.innerHTML=THEME_ICONS[next];
+    bead.setAttribute('aria-label',`Switch to ${next} mode`);
+    bead.setAttribute('aria-pressed',String(currentTheme==='light'));
+    bead.dataset.tip=`Pull for ${next} mode`;
   });
 };
-qa('.theme-toggle').forEach(button=>button.addEventListener('click',()=>{
+function toggleTheme(){
   currentTheme=currentTheme==='dark'?'light':'dark';
   localStorage.setItem(themeKey,currentTheme);
   updateThemeUI();
-}));
+}
 themeQuery.addEventListener('change',()=>{
   if(localStorage.getItem(themeKey))return;   // an explicit choice outranks the OS
   currentTheme=systemTheme();

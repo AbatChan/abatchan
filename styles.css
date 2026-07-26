@@ -25,10 +25,7 @@ html[data-theme="light"] .site-header .brand img.brand-lockup[data-ink="black"],
 :root{--edge:rgba(245,245,243,.4);--signal-ink:#8184ff}
 
 /* --- theme toggle ------------------------------------------------------- */
-.theme-toggle{width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;border:1px solid var(--edge);border-radius:13px;background:transparent;color:var(--paper);cursor:pointer;transition:transform .22s,background .22s,border-color .22s}
-.theme-toggle:hover{transform:translateY(-2px);background:rgba(99,102,241,.14);border-color:rgba(99,102,241,.6)}
-.theme-toggle svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.theme-toggle:focus-visible,.social-rail a:focus-visible,.mobile-tabs a:focus-visible,.desktop-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+.social-rail a:focus-visible,.mobile-tabs a:focus-visible,.desktop-nav a:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
 
 /* --- light theme -------------------------------------------------------- */
 /* --line is decorative hairline, --edge is for controls a user has to see and
@@ -145,8 +142,7 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
   .site-header{left:16px;right:16px;width:auto;height:60px;padding:0 12px 0 16px;transform:none;gap:12px}
   .site-header .brand{width:122px}
   .footer-mark{width:108px}
-  .theme-toggle{width:40px;height:40px}
-  .intro video{width:min(52vw,320px);max-height:34vh}
+    .intro video{width:min(52vw,320px);max-height:34vh}
   .compact-footer{grid-template-columns:1fr;justify-items:center;text-align:center;gap:16px}
   /* nine chips just fit eight per row, which strands the ninth on its own.
      Cap the rail at five so it breaks 5 + 4 and justify-content centres both. */
@@ -426,7 +422,8 @@ html[data-theme="light"] .contact-facts dd{color:#151519}
    canned replies and says so. */
 .assist-launch{position:fixed;right:22px;bottom:22px;z-index:300;
   width:56px;height:56px;display:grid;place-items:center;cursor:pointer;
-  border:0;border-radius:50%;color:var(--paper);
+  /* always on the indigo gradient, so the icon is white in both themes */
+  border:0;border-radius:50%;color:#fff;
   background:linear-gradient(150deg,#8184ff,var(--signal) 55%,#4338ca);
   box-shadow:0 0 0 1px rgba(255,255,255,.14),0 16px 34px rgba(79,70,229,.42);
   transition:transform .3s var(--ease),box-shadow .3s}
@@ -507,4 +504,47 @@ html[data-theme="light"] .assist-form input{color:#151519}
 @media(prefers-reduced-motion:reduce){
   .assist-launch,.assist-panel,.assist-msg{transition-duration:.01ms;animation:none}
   .assist-launch::after{animation:none;opacity:0}
+}
+
+/* --- lamp pull switch ---------------------------------------------------- */
+/* The theme control. It hangs from the top of the viewport and is drawn behind
+   the header, so the cord appears to pass under the glass bar and dangle below
+   it. A literal lamp would fight the brand's minimalism, so it is a 1px cord
+   and a small bead — the gesture carries the idea, not the illustration.
+   It is a real <button>: draggable by pointer or touch, and Enter/Space pulls
+   it for anyone not using a pointer. */
+.lamp{position:fixed;top:0;right:clamp(16px,4.5vw,54px);z-index:99;
+  width:34px;display:flex;flex-direction:column;align-items:center;
+  pointer-events:none;--pull:0px}
+.lamp-cord{width:1px;height:calc(96px + var(--pull));
+  background:linear-gradient(180deg,transparent,var(--line) 14px,var(--line));
+  transition:height .5s cubic-bezier(.2,1.5,.4,1)}
+.lamp-bead{pointer-events:auto;position:relative;flex:0 0 auto;
+  width:26px;height:26px;margin-top:-1px;padding:0;cursor:grab;
+  border:0;border-radius:50%;background:transparent;
+  display:grid;place-items:center;touch-action:none;-webkit-tap-highlight-color:transparent}
+.lamp-bead:active{cursor:grabbing}
+.lamp-bead::before{content:"";width:12px;height:12px;border-radius:50%;
+  background:var(--panel);box-shadow:0 0 0 1px var(--edge),0 4px 10px rgba(0,0,0,.4);
+  transition:background .3s,box-shadow .35s,transform .3s var(--ease)}
+.lamp-bead:hover::before{transform:scale(1.14)}
+.lamp-bead:focus-visible{outline:2px solid var(--signal);outline-offset:2px;border-radius:50%}
+/* lit: light mode is the lamp being on */
+html[data-theme="light"] .lamp-bead::before{background:#ffd77a;
+  box-shadow:0 0 0 1px rgba(214,160,40,.5),0 0 16px 3px rgba(255,206,110,.6),0 0 40px 10px rgba(255,206,110,.28)}
+html[data-theme="light"] .lamp-cord{background:linear-gradient(180deg,transparent,var(--line) 14px,var(--line))}
+.lamp.is-dragging .lamp-cord{transition:none}
+.lamp.is-dragging .lamp-bead{cursor:grabbing}
+/* a one-time nudge so the cord is noticed */
+.lamp.hint .lamp-cord{animation:lampHint 1.5s var(--ease) 2}
+@keyframes lampHint{0%,100%{height:96px}45%{height:112px}}
+@media(max-width:900px){
+  .lamp{right:auto;left:clamp(14px,5vw,28px)}
+  .lamp-cord{height:calc(88px + var(--pull))}
+  @keyframes lampHint{0%,100%{height:88px}45%{height:104px}}
+}
+@media(prefers-reduced-motion:reduce){
+  .lamp-cord{transition:none}
+  .lamp.hint .lamp-cord{animation:none}
+  .lamp-bead::before{transition:background .2s}
 }
