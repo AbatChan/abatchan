@@ -39,7 +39,7 @@ const NAV_ICONS={
   '/contact':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>'
 };
 qa('.mobile-tabs a[data-page]').forEach(link=>{
-  const label=link.textContent.trim();
+  const label=link.textContent.trim().replace(/^[^A-Za-z]+/,'');
   const icon=NAV_ICONS[link.dataset.page];
   if(icon)link.innerHTML=`${icon}<span>${label}</span>`;
 });
@@ -132,6 +132,9 @@ html[data-theme="light"] .social-rail a.social-chip{background:rgba(21,21,25,.04
 .site-header::after,.mobile-tabs::after{content:"";position:absolute;z-index:0;inset:1px;border-radius:inherit;pointer-events:none;background:linear-gradient(110deg,rgba(255,255,255,.3),transparent 18% 74%,rgba(255,255,255,.07));mix-blend-mode:screen;opacity:.62}
 .theme-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.theme-toggle:focus-visible,.mobile-tabs a:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
 html[data-theme="light"]{--line:rgba(21,21,25,.22)}html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{--glass-tint:rgba(255,255,255,.42);--glass-blur:24px}html[data-theme="light"] .site-header::before,html[data-theme="light"] .mobile-tabs::before{opacity:.62}html[data-theme="light"] .theme-toggle{background:rgba(255,255,255,.35);border-color:rgba(21,21,25,.22)}
+/* Keep the indigo signature in both themes, with a lighter halo on white. */
+html[data-theme="light"] .social-rail a.social-chip{color:var(--signal);background:rgba(99,102,241,.075);box-shadow:0 0 0 1px rgba(99,102,241,.28),inset 0 1px 0 rgba(255,255,255,.92),0 8px 20px rgba(99,102,241,.12)}html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:rgba(99,102,241,.78);box-shadow:0 0 0 1px rgba(99,102,241,.75),inset 0 1px 0 rgba(255,255,255,.44),0 12px 26px rgba(99,102,241,.28)}
+@media(max-width:900px){.site-header{padding-inline:16px!important}.site-header .brand{min-width:124px}.brand-lockup{width:124px!important}.header-actions{margin-left:14px}.theme-toggle{width:42px;height:42px}}
 @media(max-width:900px){.mobile-tabs{min-height:76px}.mobile-tabs a.active{background:linear-gradient(145deg,rgba(255,255,255,.19),rgba(255,255,255,.07));box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}footer{padding-bottom:calc(136px + env(safe-area-inset-bottom))!important}}
 @media(prefers-reduced-transparency:reduce){.site-header,.mobile-tabs{--glass-tint:rgba(13,13,13,.96);backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.site-header::before,.site-header::after,.mobile-tabs::before,.mobile-tabs::after{display:none}html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{--glass-tint:rgba(255,255,255,.96)}}`;
 document.head.appendChild(transitionStyles);
