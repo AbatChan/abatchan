@@ -1,21 +1,15 @@
 const q=(s,c=document)=>c.querySelector(s),qa=(s,c=document)=>[...c.querySelectorAll(s)];
 
 document.title=document.title.replaceAll('—','|');
-const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-const textNodes=[];
+const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),textNodes=[];
 while(walker.nextNode())textNodes.push(walker.currentNode);
 textNodes.forEach(node=>{if(node.nodeValue.includes('—'))node.nodeValue=node.nodeValue.replaceAll('—',', ')});
 
 const themeKey='abatchanTheme';
 const systemTheme=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
-const savedTheme=localStorage.getItem(themeKey);
-let currentTheme=savedTheme||systemTheme;
-
-const renderBrand=()=>{
-  qa('.site-header .brand').forEach(brand=>{
-    brand.innerHTML='<img class="brand-lockup" src="/assets/abatchan-logo-horizontal-indigo-symbol-white-text.svg" alt="abatchan">';
-  });
-};
+let currentTheme=localStorage.getItem(themeKey)||systemTheme;
+const brandMarkup='<img class="brand-symbol" src="/assets/abatchan-symbol-indigo.svg" alt=""><span>abatchan</span>';
+const renderBrand=()=>qa('.site-header .brand').forEach(brand=>brand.innerHTML=brandMarkup);
 
 document.documentElement.dataset.theme=currentTheme;
 renderBrand();
@@ -23,69 +17,55 @@ renderBrand();
 qa('.desktop-nav').forEach(nav=>{
   if(!nav.querySelector('[data-page="/pricing"]')){
     const link=document.createElement('a');
-    link.dataset.page='/pricing';
-    link.href='/pricing';
-    link.textContent='pricing';
-    const contact=nav.querySelector('[data-page="/contact"]');
-    nav.insertBefore(link,contact||null);
+    link.dataset.page='/pricing';link.href='/pricing';link.textContent='pricing';
+    nav.insertBefore(link,nav.querySelector('[data-page="/contact"]')||null);
   }
 });
 qa('.mobile-tabs').forEach(nav=>{
   if(!nav.querySelector('[data-page="/pricing"]')){
     const link=document.createElement('a');
-    link.dataset.page='/pricing';
-    link.href='/pricing';
-    link.innerHTML='<b>◇</b>pricing';
-    const contact=nav.querySelector('[data-page="/contact"]');
-    nav.insertBefore(link,contact||null);
+    link.dataset.page='/pricing';link.href='/pricing';link.innerHTML='<b>◇</b>pricing';
+    nav.insertBefore(link,nav.querySelector('[data-page="/contact"]')||null);
   }
 });
 
 qa('.header-actions').forEach(actions=>{
   if(actions.querySelector('.theme-toggle'))return;
   const button=document.createElement('button');
-  button.type='button';
-  button.className='theme-toggle';
-  button.setAttribute('aria-label','Switch color theme');
-  button.setAttribute('title','Switch color theme');
+  button.type='button';button.className='theme-toggle';
+  button.setAttribute('aria-label','Switch color theme');button.setAttribute('title','Switch color theme');
   button.innerHTML='<span class="theme-icon" aria-hidden="true"></span>';
   actions.prepend(button);
 });
 
 const socialLinks={github:'https://github.com/AbatChan'};
 qa('footer').forEach(footer=>{
-  footer.innerHTML=`
-    <div class="shell compact-footer">
-      <a class="footer-mark" href="/" aria-label="abatchan home">
-        <img src="/assets/abatchan-logo-horizontal-indigo-symbol-white-text.svg" alt="abatchan">
-      </a>
-      <div class="social-rail" aria-label="social profiles">
-        <a href="${socialLinks.github}" target="_blank" rel="noreferrer" aria-label="GitHub">GH</a>
-        <button type="button" data-social="x" aria-label="X link pending">X</button>
-        <button type="button" data-social="instagram" aria-label="Instagram link pending">IG</button>
-        <button type="button" data-social="facebook" aria-label="Facebook link pending">FB</button>
-        <button type="button" data-social="behance" aria-label="Behance link pending">BE</button>
-        <button type="button" data-social="dribbble" aria-label="Dribbble link pending">DR</button>
-        <button type="button" data-social="upwork" aria-label="Upwork link pending">UP</button>
-        <button type="button" data-social="fiverr" aria-label="Fiverr link pending">FI</button>
-        <button type="button" data-social="whatsapp" aria-label="WhatsApp link pending">WA</button>
-      </div>
-      <div class="footer-meta">
-        <a href="mailto:abatchan4@gmail.com">abatchan mail</a>
-        <span>© 2026</span>
-      </div>
-    </div>`;
+  footer.innerHTML=`<div class="shell compact-footer">
+    <a class="footer-mark" href="/" aria-label="abatchan home">${brandMarkup}</a>
+    <div class="social-rail" aria-label="social profiles">
+      <a href="${socialLinks.github}" target="_blank" rel="noreferrer" aria-label="GitHub">GH</a>
+      <button type="button" data-social="x" aria-label="X link pending">X</button>
+      <button type="button" data-social="instagram" aria-label="Instagram link pending">IG</button>
+      <button type="button" data-social="facebook" aria-label="Facebook link pending">FB</button>
+      <button type="button" data-social="behance" aria-label="Behance link pending">BE</button>
+      <button type="button" data-social="dribbble" aria-label="Dribbble link pending">DR</button>
+      <button type="button" data-social="upwork" aria-label="Upwork link pending">UP</button>
+      <button type="button" data-social="fiverr" aria-label="Fiverr link pending">FI</button>
+      <button type="button" data-social="whatsapp" aria-label="WhatsApp link pending">WA</button>
+    </div>
+    <div class="footer-meta"><a href="mailto:abatchan4@gmail.com">abatchan mail</a><span>© 2026</span></div>
+  </div>`;
 });
 
 const transitionStyles=document.createElement('style');
 transitionStyles.textContent=`
-.site-header .brand{min-width:146px}.site-header .brand-lockup{width:146px!important;height:auto!important;display:block!important;object-fit:contain!important;aspect-ratio:auto!important}
+.site-header .brand,.footer-mark{display:inline-flex;align-items:center;gap:9px;min-width:146px}.site-header .brand-symbol{width:31px!important;height:31px!important;display:block!important;object-fit:contain!important}.site-header .brand span,.footer-mark span{font-weight:650;font-size:22px;letter-spacing:-.045em;color:var(--paper)}.footer-mark .brand-symbol{width:25px;height:25px}.footer-mark span{font-size:18px}
 .theme-toggle{width:42px;height:42px;border-radius:13px;border:1px solid var(--line);background:transparent;color:var(--paper);display:grid;place-items:center;cursor:pointer;transition:transform .22s,background .22s,border-color .22s}.theme-toggle:hover{transform:translateY(-2px);background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.55)}.theme-icon{width:17px;height:17px;border-radius:50%;display:block;background:currentColor;box-shadow:-6px -5px 0 -4px var(--ink),6px -5px 0 -4px var(--ink),0 7px 0 -4px var(--ink)}
-html[data-theme="light"]{--ink:#f4f4f1;--paper:#151519;--muted:#66676d;--line:rgba(21,21,25,.14);--panel:#ffffff;color-scheme:light}html[data-theme="light"] body{background:#f4f4f1;color:#151519}html[data-theme="light"] .grid-bg{opacity:.12}html[data-theme="light"] .site-header{background:rgba(244,244,241,.78);box-shadow:0 18px 60px rgba(27,28,34,.1)}html[data-theme="light"] .desktop-nav a:hover,html[data-theme="light"] .desktop-nav a.active{background:rgba(21,21,25,.08)}html[data-theme="light"] .system-core,html[data-theme="light"] .work-card,html[data-theme="light"] .process-card,html[data-theme="light"] .contact-card,html[data-theme="light"] .pricing-card,html[data-theme="light"] .quote-step,html[data-theme="light"] .faq-item{background:#fff}html[data-theme="light"] .node,html[data-theme="light"] .arch-node{background:#f7f7f4}html[data-theme="light"] .card-visual,html[data-theme="light"] .terminal,html[data-theme="light"] .dashboard{background:#ededeb}html[data-theme="light"] .terminal pre{color:#55575d}html[data-theme="light"] .site-header .brand-lockup,html[data-theme="light"] .footer-mark img{filter:brightness(0)}html[data-theme="light"] .social-rail a,html[data-theme="light"] .social-rail button{background:rgba(21,21,25,.025)}html[data-theme="light"] .theme-icon{background:transparent;border:2px solid currentColor;box-shadow:none}html[data-theme="light"] .theme-icon:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:currentColor;transform:translate(4px,-5px)}
+html[data-theme="light"]{--ink:#f4f4f1;--paper:#151519;--muted:#66676d;--line:rgba(21,21,25,.14);--panel:#ffffff;color-scheme:light}html[data-theme="light"] body{background:#f4f4f1;color:#151519}html[data-theme="light"] .grid-bg{opacity:.12}html[data-theme="light"] .site-header{background:rgba(244,244,241,.78);box-shadow:0 18px 60px rgba(27,28,34,.1)}html[data-theme="light"] .desktop-nav a:hover,html[data-theme="light"] .desktop-nav a.active{background:rgba(21,21,25,.08)}html[data-theme="light"] .system-core,html[data-theme="light"] .work-card,html[data-theme="light"] .process-card,html[data-theme="light"] .contact-card,html[data-theme="light"] .pricing-card,html[data-theme="light"] .quote-step,html[data-theme="light"] .faq-item{background:#fff}html[data-theme="light"] .node,html[data-theme="light"] .arch-node{background:#f7f7f4}html[data-theme="light"] .card-visual,html[data-theme="light"] .terminal,html[data-theme="light"] .dashboard{background:#ededeb}html[data-theme="light"] .terminal pre{color:#55575d}html[data-theme="light"] .social-rail a,html[data-theme="light"] .social-rail button{background:rgba(21,21,25,.025)}html[data-theme="light"] .theme-icon{background:transparent;border:2px solid currentColor;box-shadow:none}html[data-theme="light"] .theme-icon:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:currentColor;transform:translate(4px,-5px)}
 .intro{background:#0c0c0c!important;overflow:hidden!important}.intro video{position:absolute!important;left:50%!important;top:50%!important;width:min(30vw,460px)!important;height:auto!important;max-width:460px!important;max-height:30vh!important;transform:translate(-50%,-50%)!important;object-fit:contain!important;background:#0c0c0c!important;display:block!important}.skip{z-index:2}
-footer{padding:22px 0 28px!important;border-top:1px solid var(--line)!important}.compact-footer{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px}.footer-mark{display:inline-flex;align-items:center}.footer-mark img{display:block;width:118px;height:auto}.social-rail{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}.social-rail a,.social-rail button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:rgba(245,245,243,.025);color:var(--muted);display:grid;place-items:center;font:600 10px/1 Geist,Inter,sans-serif;letter-spacing:.03em;transition:transform .22s,background .22s,color .22s,border-color .22s}.social-rail a:hover{transform:translateY(-3px);background:rgba(99,102,241,.14);border-color:rgba(99,102,241,.6);color:var(--paper)}.social-rail button{cursor:not-allowed;opacity:.48}.footer-meta{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:12px;white-space:nowrap}.footer-meta a:hover{color:var(--paper)}
+footer{padding:22px 0 28px!important;border-top:1px solid var(--line)!important}.compact-footer{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px}.social-rail{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}.social-rail a,.social-rail button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:rgba(245,245,243,.025);color:var(--muted);display:grid;place-items:center;font:600 10px/1 Geist,Inter,sans-serif;letter-spacing:.03em;transition:transform .22s,background .22s,color .22s,border-color .22s}.social-rail a:hover{transform:translateY(-3px);background:rgba(99,102,241,.14);border-color:rgba(99,102,241,.6);color:var(--paper)}.social-rail button{cursor:not-allowed;opacity:.48}.footer-meta{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:12px;white-space:nowrap}.footer-meta a:hover{color:var(--paper)}
 .page-transition{transition:none!important;animation:none!important;background:#6366f1!important;transform:scaleY(0);transform-origin:bottom;will-change:transform}.page-transition.is-leaving{transform:scaleY(1);transition:transform .42s cubic-bezier(.2,.75,.2,1)!important;transform-origin:bottom;pointer-events:auto}.page-transition.is-arriving{transform:scaleY(1);transform-origin:top;pointer-events:auto}.page-transition.is-loaded{transform:scaleY(0);transition:transform .52s cubic-bezier(.2,.75,.2,1)!important;transform-origin:top}
-@media(max-width:900px){.site-header .brand{min-width:118px}.site-header .brand-lockup{width:118px!important}.theme-toggle{width:38px;height:38px}.intro video{width:min(52vw,320px)!important;max-height:34vh!important}.compact-footer{grid-template-columns:1fr;text-align:center;justify-items:center;gap:16px}.footer-meta{white-space:normal}.mobile-tabs a{font-size:9px}}
+@media(max-width:900px){.site-header .brand{min-width:118px}.site-header .brand-symbol{width:28px!important;height:28px!important}.site-header .brand span{font-size:19px}.theme-toggle{width:38px;height:38px}.intro video{width:min(52vw,320px)!important;max-height:34vh!important}.compact-footer{grid-template-columns:1fr;text-align:center;justify-items:center;gap:16px}.footer-meta{white-space:normal}.mobile-tabs a{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.page-transition{transition:none!important}.page-transition.is-loaded{transform:scaleY(0)}}`;
 document.head.appendChild(transitionStyles);
 
@@ -98,7 +78,6 @@ const updateThemeUI=()=>{
     button.setAttribute('title',`Switch to ${next} mode`);
   });
 };
-
 qa('.theme-toggle').forEach(button=>button.addEventListener('click',()=>{
   currentTheme=currentTheme==='dark'?'light':'dark';
   localStorage.setItem(themeKey,currentTheme);
@@ -106,11 +85,10 @@ qa('.theme-toggle').forEach(button=>button.addEventListener('click',()=>{
 }));
 updateThemeUI();
 
-const transition=q('.page-transition');
-const navigationKey='abatNavigationPending';
+const transition=q('.page-transition'),navigationKey='abatNavigationPending';
 if(sessionStorage.getItem(navigationKey)==='1'&&transition){
   transition.classList.add('is-arriving');
-  const revealPage=()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{transition.classList.add('is-loaded');sessionStorage.removeItem(navigationKey);setTimeout(()=>transition.classList.remove('is-arriving','is-loaded'),600)}))};
+  const revealPage=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{transition.classList.add('is-loaded');sessionStorage.removeItem(navigationKey);setTimeout(()=>transition.classList.remove('is-arriving','is-loaded'),600)}));
   if(document.readyState==='complete')revealPage();else window.addEventListener('load',revealPage,{once:true});
 }
 
