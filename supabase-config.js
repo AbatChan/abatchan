@@ -169,12 +169,13 @@ window.SUPABASE = {
   };
 })();
 
-// Preview assistant upgrade. The existing site script creates the panel first;
-// these modules then replace only its form handlers and refine its presentation.
+// Preview upgrades. The existing site script creates the UI first; these modules
+// then refine transport, presentation, and real-device viewport behavior.
 addEventListener('DOMContentLoaded', () => {
   [
     ['/assistant-v2.js?v=4','stream-markdown'],
-    ['/assistant-polish.js?v=1','visual-polish']
+    ['/assistant-polish.js?v=1','visual-polish'],
+    ['/mobile-viewport-fix.js?v=1','mobile-viewport-fix']
   ].forEach(([src,label]) => {
     const script = document.createElement('script');
     script.src = src;
