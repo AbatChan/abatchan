@@ -32,13 +32,67 @@ window.SUPABASE = {
     return h;
   };
 
-  async function req(path, opts = {}) {
-    const res = await fetch(cfg.url + path, { ...opts, headers: { ...headers(opts.auth !== false), ...(opts.headers || {}) } });
+  async function parse(res) {
     if (res.status === 204) return null;
     const text = await res.text();
-    const data = text ? JSON.parse(text) : null;
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
     if (!res.ok) throw Object.assign(new Error(data?.message || data?.error_description || res.statusText), { status: res.status, data });
     return data;
+  }
+
+  async function raw(path, opts = {}) {
+    const res = await fetch(cfg.url + path, { ...opts, headers: { ...headers(opts.auth !== false), ...(opts.headers || {}) } });
+    return parse(res);
+  }
+
+  async function refresh() {
+    const s = session.get();
+    if (!s?.refresh_token) return null;
+    try {
+      const data = await raw('/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST', auth: false, body: JSON.stringify({ refresh_token: s.refresh_token })
+      });
+      session.set(data);
+      return data;
+    } catch { session.set(null); return null; }
+  }
+
+  // One expired-token recovery for every authenticated request. A second 401
+  // is final so a bad session can never fall into a refresh loop.
+  async function req(path, opts = {}, retried = false) {
+    try { return await raw(path, opts); }
+    catch (err) {
+      if (err.status === 401 && opts.auth !== false && !retried && await refresh()) {
+        return req(path, opts, true);
+      }
+      throw err;
+    }
+  }
+
+  async function storageRequest(method, bucket, path, body, onProgress, retried = false) {
+    const url = `${cfg.url}/storage/v1/object/${bucket}/${encodeURI(path)}`;
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, url);
+      xhr.setRequestHeader('apikey', cfg.anonKey);
+      xhr.setRequestHeader('Authorization', `Bearer ${session.token || cfg.anonKey}`);
+      if (method === 'POST') xhr.setRequestHeader('x-upsert', 'true');
+      if (xhr.upload && onProgress) xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      });
+      xhr.onload = () => xhr.status >= 200 && xhr.status < 300
+        ? resolve(path)
+        : reject(Object.assign(new Error(xhr.responseText || 'storage request failed'), { status: xhr.status }));
+      xhr.onerror = () => reject(new Error('storage request failed'));
+      xhr.send(body || null);
+    }).catch(async err => {
+      if (err.status === 401 && !retried && await refresh()) {
+        return storageRequest(method, bucket, path, body, onProgress, true);
+      }
+      throw err;
+    });
+    return result;
   }
 
   window.sb = {
@@ -46,7 +100,7 @@ window.SUPABASE = {
     session,
 
     async signIn(email, password) {
-      const data = await req('/auth/v1/token?grant_type=password', {
+      const data = await raw('/auth/v1/token?grant_type=password', {
         method: 'POST', auth: false, body: JSON.stringify({ email, password })
       });
       session.set(data);
@@ -56,17 +110,8 @@ window.SUPABASE = {
       try { await req('/auth/v1/logout', { method: 'POST' }); } catch { /* token may already be dead */ }
       session.set(null);
     },
-    async refresh() {
-      const s = session.get();
-      if (!s?.refresh_token) return null;
-      try {
-        const data = await req('/auth/v1/token?grant_type=refresh_token', {
-          method: 'POST', auth: false, body: JSON.stringify({ refresh_token: s.refresh_token })
-        });
-        session.set(data);
-        return data;
-      } catch { session.set(null); return null; }
-    },
+    refresh,
+    user: () => req('/auth/v1/user'),
 
     // ---- data -------------------------------------------------------------
     select: (table, query = '') => req(`/rest/v1/${table}?${query}`),
@@ -82,18 +127,8 @@ window.SUPABASE = {
     remove: (table, query) => req(`/rest/v1/${table}?${query}`, { method: 'DELETE' }),
 
     // ---- storage ----------------------------------------------------------
-    async upload(bucket, path, file) {
-      const res = await fetch(`${cfg.url}/storage/v1/object/${bucket}/${encodeURI(path)}`, {
-        method: 'POST',
-        headers: { apikey: cfg.anonKey, Authorization: `Bearer ${session.token}`, 'x-upsert': 'true' },
-        body: file
-      });
-      if (!res.ok) throw new Error((await res.text()) || 'upload failed');
-      return path;
-    },
+    upload: (bucket, path, file, onProgress) => storageRequest('POST', bucket, path, file, onProgress),
     publicUrl: (bucket, path) => `${cfg.url}/storage/v1/object/public/${bucket}/${encodeURI(path)}`,
-    removeFile: (bucket, path) => fetch(`${cfg.url}/storage/v1/object/${bucket}/${encodeURI(path)}`, {
-      method: 'DELETE', headers: { apikey: cfg.anonKey, Authorization: `Bearer ${session.token}` }
-    })
+    removeFile: (bucket, path) => storageRequest('DELETE', bucket, path)
   };
 })();

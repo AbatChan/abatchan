@@ -512,14 +512,59 @@ document.addEventListener('focusout',hideTip);
 addEventListener('scroll',()=>{if(tipFor)placeTip(tipFor)},{passive:true});
 addEventListener('keydown',e=>{if(e.key==='Escape')hideTip()});
 
+// One public settings request feeds copy, the assistant and announcements.
+// A failed request returns null so the complete HTML fallback stays visible.
+let publicSettingsPromise;
+const loadPublicSettings=()=>{
+  if(publicSettingsPromise)return publicSettingsPromise;
+  if(!window.sb?.configured?.())return Promise.resolve(null);
+  publicSettingsPromise=sb.select('settings','is_public=eq.true&select=key,value')
+    .then(rows=>Object.fromEntries((rows||[]).map(row=>[row.key,row.value])))
+    .catch(()=>null);
+  return publicSettingsPromise;
+};
+
+(async function applyPublicCopy(){
+  const settings=await loadPublicSettings();
+  if(!settings)return;
+  const targets={
+    'copy.home.h1':q('.hero h1'),
+    'copy.home.sub':q('.hero-copy'),
+    'copy.pricing.website':q('.price-card:nth-child(1) .price'),
+    'copy.pricing.platform':q('.price-card:nth-child(2) .price'),
+    'copy.pricing.system':q('.price-card:nth-child(3) .price'),
+    'copy.contact.email':q('.contact-mail')
+  };
+  const eyebrow=q('.hero .eyebrow');
+  if(eyebrow&&typeof settings['copy.home.eyebrow']==='string'){
+    const text=[...eyebrow.childNodes].find(node=>node.nodeType===Node.TEXT_NODE);
+    if(text)text.nodeValue=settings['copy.home.eyebrow'];
+  }
+  Object.entries(targets).forEach(([key,el])=>{
+    const value=settings[key];
+    if(!el||typeof value!=='string')return;
+    const small=el.querySelector?.('small');
+    if(small){
+      const text=[...el.childNodes].find(node=>node.nodeType===Node.TEXT_NODE);
+      if(text)text.nodeValue=`${value} `;
+    }else{
+      el.textContent=value;
+    }
+    if(key==='copy.contact.email')el.href=`mailto:${value}`;
+  });
+  qa('[data-copy]').forEach(el=>{
+    const value=settings[el.dataset.copy];
+    if(typeof value!=='string')return;
+    el.textContent=value;
+    if(el.dataset.copy==='copy.contact.email'&&el.tagName==='A')el.href=`mailto:${value}`;
+  });
+})();
 
 // ---------------------------------------------------------------- assistant
-// Interface only for now. Point ASSISTANT.endpoint at a serverless function
-// that proxies whichever provider you pick and holds the key server-side — the
-// key must never reach this file. Until then it answers from CANNED and says
-// clearly that it is not live, rather than pretending.
+// The endpoint is server-side so the provider key never reaches the browser.
+// Canned answers remain a useful fallback if the endpoint is unavailable.
 const ASSISTANT={
-  endpoint:null,                      // e.g. '/api/chat'
+  endpoint:'/api/chat',
   greeting:"Hi. Ask me anything about the work, pricing, or how a project runs.",
   offline:"I'm not connected to a model yet, so that one needs a human. Email abatchan4@gmail.com and you'll get a reply within a working day.",
   chips:['What do you build?','How much does it cost?','How long does it take?','Do you take small jobs?']
@@ -533,8 +578,11 @@ const CANNED=[
   [/hello|hi|hey|good (morning|afternoon|evening)/i,"Hello. What are you building?"]
 ];
 
-(function assistant(){
+(async function assistant(){
   if(q('.assist-launch'))return;
+  const settings=await loadPublicSettings();
+  if(settings?.['assistant.enabled']===false)return;
+  if(typeof settings?.['assistant.greeting']==='string')ASSISTANT.greeting=settings['assistant.greeting'];
   const ICON_CHAT='<svg class="chat" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg>';
   const ICON_CLOSE='<svg class="close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
@@ -589,7 +637,9 @@ const CANNED=[
       try{
         const res=await fetch(ASSISTANT.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({message:text})});
-        answer=(await res.json()).reply;
+        const data=await res.json();
+        if(!res.ok)throw new Error(data.error||'assistant unavailable');
+        answer=data.reply;
       }catch{ answer=ASSISTANT.offline; }
     }else{
       await new Promise(r=>setTimeout(r,420+Math.random()*380));
@@ -631,6 +681,79 @@ const CANNED=[
   });
 })();
 
+// ------------------------------------------------------------- managed work
+// A successful empty result means there are no published projects. A network
+// failure leaves the authored HTML cards in place as the resilient fallback.
+(async function managedWork(){
+  const grid=q('body[data-page="work"] .work-grid')||(
+    /\/work(?:\.html)?$/.test(location.pathname.replace(/\/+$/,''))?q('.work-grid'):null
+  );
+  if(!grid)return;
+  const filters=qa('[data-filter]');
+  filters.forEach(button=>button.addEventListener('click',()=>{
+    filters.forEach(other=>other.classList.toggle('active',other===button));
+    qa('.work-card',grid).forEach(card=>{
+      card.hidden=button.dataset.filter!=='all'&&card.dataset.type!==button.dataset.filter;
+    });
+  }));
+  if(!window.sb?.configured?.())return;
+  let rows;
+  try{
+    rows=await sb.select('work_items','published=eq.true&select=*&order=position.asc,created_at.asc');
+  }catch{return}
+  grid.replaceChildren();
+  if(!rows.length){
+    const empty=document.createElement('p');
+    empty.className='work-empty';
+    empty.textContent='New work is being prepared. Check back soon.';
+    grid.append(empty);
+    return;
+  }
+  rows.forEach(item=>{
+    const card=document.createElement('article');
+    card.className='work-card reveal visible'+(item.featured?' is-featured':'');
+    card.dataset.type=item.category||'product';
+    if(item.featured){
+      card.style.gridColumn='span 12';
+      card.style.minHeight='570px';
+    }
+    const visual=document.createElement('div');
+    visual.className='card-visual managed';
+    if(item.image_path){
+      const img=document.createElement('img');
+      img.src=sb.publicUrl('work',item.image_path);
+      img.alt=item.image_alt||'';
+      img.loading='lazy';
+      img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
+      visual.append(img);
+    }
+    const info=document.createElement('div');
+    info.className='card-info';
+    const meta=document.createElement('div');
+    meta.className='card-meta';
+    const kicker=document.createElement('span');
+    kicker.textContent=item.kicker||item.category||'project';
+    const status=document.createElement('span');
+    status.textContent=item.status||'selected work';
+    meta.append(kicker,status);
+    const title=document.createElement('h3');
+    title.textContent=item.title;
+    const summary=document.createElement('p');
+    summary.textContent=item.summary||'';
+    info.append(meta,title,summary);
+    if(item.link_url&&/^(https:\/\/|\/)/.test(item.link_url)){
+      const link=document.createElement('a');
+      link.className='btn sm';
+      link.textContent='view project ↗';
+      link.href=item.link_url;
+      if(/^https:\/\//.test(item.link_url)){link.target='_blank';link.rel='noopener noreferrer'}
+      info.append(link);
+    }
+    card.append(visual,info);
+    grid.append(card);
+  });
+})();
+
 // ------------------------------------------------------------- what's new
 // Announcements come from the dashboard (settings key "news.items"), with this
 // list as the fallback so the site still works before Supabase is connected.
@@ -648,12 +771,10 @@ const NEWS_FALLBACK=[
 ];
 
 async function loadNews(){
-  if(!window.sb?.configured?.())return NEWS_FALLBACK;
-  try{
-    const rows=await sb.select('settings','key=eq.news.items&select=value');
-    const list=rows?.[0]?.value;
-    return Array.isArray(list)&&list.length?list:NEWS_FALLBACK;
-  }catch{ return NEWS_FALLBACK; }
+  const settings=await loadPublicSettings();
+  if(!settings)return NEWS_FALLBACK;
+  const list=settings['news.items'];
+  return Array.isArray(list)?list:NEWS_FALLBACK;
 }
 
 (async function news(){
@@ -663,6 +784,7 @@ async function loadNews(){
 
   const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const el=document.createElement('aside');
+  const href=typeof item.href==='string'&&/^(https:\/\/|\/)/.test(item.href)?item.href:'';
   el.className='news'+(item.soon?' soon':'');
   el.setAttribute('role','status');
   el.setAttribute('aria-label',"What's new");
@@ -671,7 +793,7 @@ async function loadNews(){
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'+
     `<span class="news-tag">${esc(item.tag||(item.soon?'coming soon':"what's new"))}</span>`+
     `<h3>${esc(item.title)}</h3><p>${esc(item.body)}</p>`+
-    (item.href?`<div class="news-foot"><a class="btn primary" href="${esc(item.href)}">${esc(item.cta||'take a look')} <span class="arrow">↗</span></a></div>`:'');
+    (href?`<div class="news-foot"><a class="btn primary" href="${esc(href)}">${esc(item.cta||'take a look')} <span class="arrow">↗</span></a></div>`:'');
   document.body.appendChild(el);
 
   const dismiss=()=>{
