@@ -119,7 +119,7 @@ renderBrand();
   const el=document.createElement('div');
   el.className='lamp';
   el.innerHTML='<svg aria-hidden="true"><path/></svg>'+
-    '<button class="lamp-bead" type="button" aria-label="Switch colour theme" data-tip="Pull the cord"></button>'+
+    '<button class="lamp-bead" type="button" aria-label="Switch colour theme"></button>'+
     '<span class="lamp-label" aria-hidden="true"></span>';
   document.body.appendChild(el);
   const svg=q('svg',el), path=q('path',el), bead=q('.lamp-bead',el), label=q('.lamp-label',el);
@@ -197,7 +197,6 @@ renderBrand();
     grabId=e.pointerId; dragging=true; armed=false;
     lastY=e.clientY; lastT=performance.now(); vy=0; peak=0;
     bead.setPointerCapture(grabId);
-    document.dispatchEvent(new Event('tip:lock'));   // no tooltip mid-pull
     target={x:e.clientX,y:e.clientY}; wake();
   });
 
@@ -241,7 +240,6 @@ renderBrand();
     if(fire){tail.px=tail.x;tail.py=tail.y-18}      // kick it up so it snaps back
     letGo();
     if(fire)toggleTheme();
-    document.dispatchEvent(new Event('tip:unlock'));
   };
   bead.addEventListener('pointerup',release);
   bead.addEventListener('pointercancel',release);
@@ -346,7 +344,6 @@ const updateThemeUI=()=>{
     const next=currentTheme==='dark'?'light':'dark';
     bead.setAttribute('aria-label',`Switch to ${next} mode`);
     bead.setAttribute('aria-pressed',String(currentTheme==='light'));
-    bead.dataset.tip=`Pull for ${next} mode`;
     const label=bead.parentElement&&bead.parentElement.querySelector('.lamp-label');
     if(label)label.textContent=`pull for ${next}`;
   });
@@ -453,7 +450,7 @@ qa('.doc-toc').forEach(toc=>{
 const tip=document.createElement('div');
 tip.className='tip';tip.setAttribute('role','tooltip');tip.hidden=true;
 document.body.appendChild(tip);
-let tipFor=null,tipLocked=false;
+let tipFor=null;
 const placeTip=el=>{
   const r=el.getBoundingClientRect();
   const t=tip.getBoundingClientRect();
@@ -466,7 +463,7 @@ const placeTip=el=>{
 };
 const showTip=el=>{
   const text=el.dataset.tip;
-  if(!text||tipLocked)return;
+  if(!text)return;
   tipFor=el;tip.hidden=false;tip.textContent=text;
   placeTip(el);
   requestAnimationFrame(()=>{if(tipFor===el){placeTip(el);tip.classList.add('is-on')}});
@@ -489,9 +486,6 @@ document.addEventListener('focusin',e=>{
 document.addEventListener('focusout',hideTip);
 addEventListener('scroll',()=>{if(tipFor)placeTip(tipFor)},{passive:true});
 addEventListener('keydown',e=>{if(e.key==='Escape')hideTip()});
-// dragging something should not be narrated by a tooltip sitting under the finger
-document.addEventListener('tip:lock',()=>{tipLocked=true;hideTip()});
-document.addEventListener('tip:unlock',()=>{tipLocked=false});
 
 
 // ---------------------------------------------------------------- assistant
