@@ -16,17 +16,40 @@
     html[data-theme="light"] .adm-news-preview h3{color:#151519}
     html[data-theme="light"] .adm-news-preview p{color:#62636d}
     html[data-theme="light"] .adm-news-preview>span{color:#4f46e5}
-    #saveItem,#saveCopy,#saveAssistant,#saveAnnouncements{margin-left:auto}
+    .adm-form-save{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;max-width:720px}
+    .adm-form-save .btn{margin-left:0!important}
+    #view-announcements>.adm-form-save{max-width:820px;margin-top:18px}
     #admSmartSave{display:none!important}
     @media(max-width:820px){
-      .adm-actions{width:100%}
-      #saveItem,#saveCopy,#saveAssistant,#saveAnnouncements{margin-left:auto}
+      .adm-form-save{width:100%}
+      .adm-form-save .btn{width:auto}
     }
   `;
   document.head.appendChild(style);
 
   function removeLegacySmartSave(){
     q('#admSmartSave')?.remove();
+  }
+
+  function moveSaveButton(buttonSelector,anchorSelector,position='afterend'){
+    const button=q(buttonSelector),anchor=q(anchorSelector);
+    if(!button||!anchor||button.closest('.adm-form-save'))return;
+    let actions=document.createElement('div');
+    actions.className='adm-form-save';
+    if(position==='append')anchor.append(actions);
+    else anchor.insertAdjacentElement(position,actions);
+    actions.append(button);
+  }
+
+  function relocateSettingsSaves(){
+    moveSaveButton('#saveCopy','#copyForm','afterend');
+    moveSaveButton('#saveAssistant','#assistantForm','append');
+    const announcementActions=q('#view-announcements .adm-announcement-actions');
+    const saveAnnouncements=q('#saveAnnouncements');
+    if(announcementActions&&saveAnnouncements&&!saveAnnouncements.closest('.adm-form-save')){
+      announcementActions.classList.add('adm-form-save');
+      announcementActions.append(saveAnnouncements);
+    }
   }
 
   function enhanceCoverUpload(){
@@ -106,6 +129,7 @@
 
   function initialEnhance(){
     removeLegacySmartSave();
+    relocateSettingsSaves();
     enhanceCoverUpload();
     enhanceFeatured();
     enhanceAnnouncements();
@@ -115,7 +139,7 @@
     initialEnhance();
     const list=q('#announcementList');
     if(list)new MutationObserver(enhanceAnnouncements).observe(list,{childList:true});
-    new MutationObserver(removeLegacySmartSave).observe(document.body,{childList:true});
+    new MutationObserver(()=>{removeLegacySmartSave();relocateSettingsSaves()}).observe(document.body,{childList:true,subtree:true});
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
