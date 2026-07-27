@@ -29,8 +29,6 @@ window.SUPABASE = {
     const h = { apikey: cfg.anonKey, 'Content-Type': 'application/json' };
     const t = auth && session.token;
     if (t) h.Authorization = `Bearer ${t}`;
-    // Legacy anon keys are JWTs and were commonly repeated as Bearer tokens.
-    // New sb_publishable keys are opaque and belong in apikey only.
     else if (!cfg.anonKey.startsWith('sb_publishable_')) h.Authorization = `Bearer ${cfg.anonKey}`;
     return h;
   };
@@ -61,8 +59,6 @@ window.SUPABASE = {
     } catch { session.set(null); return null; }
   }
 
-  // One expired-token recovery for every authenticated request. A second 401
-  // is final so a bad session can never fall into a refresh loop.
   async function req(path, opts = {}, retried = false) {
     try { return await raw(path, opts); }
     catch (err) {
@@ -80,9 +76,7 @@ window.SUPABASE = {
       xhr.open(method, url);
       xhr.setRequestHeader('apikey', cfg.anonKey);
       if (session.token) xhr.setRequestHeader('Authorization', `Bearer ${session.token}`);
-      else if (!cfg.anonKey.startsWith('sb_publishable_')) {
-        xhr.setRequestHeader('Authorization', `Bearer ${cfg.anonKey}`);
-      }
+      else if (!cfg.anonKey.startsWith('sb_publishable_')) xhr.setRequestHeader('Authorization', `Bearer ${cfg.anonKey}`);
       if (method === 'POST') xhr.setRequestHeader('x-upsert', 'true');
       if (xhr.upload && onProgress) xhr.upload.addEventListener('progress', e => {
         if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
@@ -93,9 +87,7 @@ window.SUPABASE = {
       xhr.onerror = () => reject(new Error('storage request failed'));
       xhr.send(body || null);
     }).catch(async err => {
-      if (err.status === 401 && !retried && await refresh()) {
-        return storageRequest(method, bucket, path, body, onProgress, true);
-      }
+      if (err.status === 401 && !retried && await refresh()) return storageRequest(method, bucket, path, body, onProgress, true);
       throw err;
     });
     return result;
@@ -104,22 +96,16 @@ window.SUPABASE = {
   window.sb = {
     configured,
     session,
-
     consumeRecoveryUrl() {
       const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
       const query = new URLSearchParams(location.search);
       const params = hash.size ? hash : query;
       const error = params.get('error_description') || params.get('error');
-      if (error) {
-        history.replaceState(null, '', location.pathname);
-        return { error };
-      }
-
+      if (error) { history.replaceState(null, '', location.pathname); return { error }; }
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
       const type = params.get('type');
       if (type !== 'recovery' || !accessToken || !refreshToken) return null;
-
       const expiresIn = Number(params.get('expires_in')) || 3600;
       session.set({
         access_token: accessToken,
@@ -131,7 +117,6 @@ window.SUPABASE = {
       history.replaceState(null, '', location.pathname);
       return { recovery: true };
     },
-
     async signIn(email, password) {
       const data = await raw('/auth/v1/token?grant_type=password', {
         method: 'POST', auth: false, body: JSON.stringify({ email, password })
@@ -140,16 +125,12 @@ window.SUPABASE = {
       return data;
     },
     async signOut() {
-      try { await req('/auth/v1/logout', { method: 'POST' }); } catch { /* token may already be dead */ }
+      try { await req('/auth/v1/logout', { method: 'POST' }); } catch {}
       session.set(null);
     },
     refresh,
     user: () => req('/auth/v1/user'),
-    updatePassword: password => req('/auth/v1/user', {
-      method: 'PUT', body: JSON.stringify({ password })
-    }),
-
-    // ---- data -------------------------------------------------------------
+    updatePassword: password => req('/auth/v1/user', { method: 'PUT', body: JSON.stringify({ password }) }),
     select: (table, query = '') => req(`/rest/v1/${table}?${query}`),
     insert: (table, row) => req(`/rest/v1/${table}`, {
       method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(row)
@@ -161,24 +142,21 @@ window.SUPABASE = {
       method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(rows)
     }),
     remove: (table, query) => req(`/rest/v1/${table}?${query}`, { method: 'DELETE' }),
-
-    // ---- storage ----------------------------------------------------------
     upload: (bucket, path, file, onProgress) => storageRequest('POST', bucket, path, file, onProgress),
     publicUrl: (bucket, path) => `${cfg.url}/storage/v1/object/public/${bucket}/${encodeURI(path)}`,
     removeFile: (bucket, path) => storageRequest('DELETE', bucket, path)
   };
 })();
 
-// Preview upgrades. The existing site script creates the UI first; these modules
-// then refine transport, presentation, viewport behavior, and managed portfolio content.
 addEventListener('DOMContentLoaded', () => {
   [
     ['/assistant-v2.js?v=4','stream-markdown'],
     ['/assistant-polish.js?v=1','visual-polish'],
     ['/mobile-viewport-fix.js?v=2','mobile-viewport-fix'],
-    ['/responsive-lamp.js?v=2','responsive-lamp'],
+    ['/responsive-lamp.js?v=3','responsive-lamp'],
     ['/dynamic-work.js?v=1','dynamic-work'],
-    ['/admin-work-enhancements.js?v=1','admin-work-enhancements']
+    ['/admin-work-enhancements.js?v=1','admin-work-enhancements'],
+    ['/admin-guided-controls.js?v=1','admin-guided-controls']
   ].forEach(([src,label]) => {
     const script = document.createElement('script');
     script.src = src;
