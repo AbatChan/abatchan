@@ -13,6 +13,7 @@ body{min-height:100svh}
 .adm-gate p{color:var(--muted);font-size:14px;margin:0 0 24px}
 .adm-gate .field{margin-bottom:14px}
 .adm-gate .btn{width:100%;margin-top:8px}
+.adm-gate-note{line-height:1.55}
 
 /* ---- shell ---- */
 .adm{display:grid;grid-template-columns:232px 1fr;min-height:100svh}
@@ -172,6 +173,21 @@ html[data-theme="light"] .adm-note b{color:#151519}
     </div>
     <button class="btn primary" type="submit" id="loginBtn">sign in <span class="arrow">↗</span></button>
     <p id="gateMsg" style="margin:16px 0 0;min-height:18px"></p>
+  </form>
+  <form id="resetPassword" class="adm-hide" autocomplete="on">
+    <img src="/assets/abatchan-logo-horizontal-indigo-symbol-white-text.svg" alt="abatchan" width="1416" height="286">
+    <h1>Choose a new password</h1>
+    <p class="adm-gate-note">Use a unique password you can keep in a password manager.</p>
+    <div class="field">
+      <label for="newPassword">new password</label>
+      <input id="newPassword" name="new-password" type="password" required minlength="12" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="confirmPassword">confirm password</label>
+      <input id="confirmPassword" name="confirm-password" type="password" required minlength="12" autocomplete="new-password">
+    </div>
+    <button class="btn primary" type="submit" id="resetBtn">update password <span class="arrow">↗</span></button>
+    <p id="resetMsg" style="margin:16px 0 0;min-height:18px" role="status" aria-live="polite"></p>
   </form>
 </div>
 

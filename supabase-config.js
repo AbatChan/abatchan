@@ -105,6 +105,33 @@ window.SUPABASE = {
     configured,
     session,
 
+    consumeRecoveryUrl() {
+      const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+      const query = new URLSearchParams(location.search);
+      const params = hash.size ? hash : query;
+      const error = params.get('error_description') || params.get('error');
+      if (error) {
+        history.replaceState(null, '', location.pathname);
+        return { error };
+      }
+
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      const type = params.get('type');
+      if (type !== 'recovery' || !accessToken || !refreshToken) return null;
+
+      const expiresIn = Number(params.get('expires_in')) || 3600;
+      session.set({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_type: params.get('token_type') || 'bearer',
+        expires_in: expiresIn,
+        expires_at: Math.floor(Date.now() / 1000) + expiresIn
+      });
+      history.replaceState(null, '', location.pathname);
+      return { recovery: true };
+    },
+
     async signIn(email, password) {
       const data = await raw('/auth/v1/token?grant_type=password', {
         method: 'POST', auth: false, body: JSON.stringify({ email, password })
@@ -118,6 +145,9 @@ window.SUPABASE = {
     },
     refresh,
     user: () => req('/auth/v1/user'),
+    updatePassword: password => req('/auth/v1/user', {
+      method: 'PUT', body: JSON.stringify({ password })
+    }),
 
     // ---- data -------------------------------------------------------------
     select: (table, query = '') => req(`/rest/v1/${table}?${query}`),

@@ -8,6 +8,9 @@
   const login = q('#login');
   const loginBtn = q('#loginBtn');
   const gateMsg = q('#gateMsg');
+  const resetPassword = q('#resetPassword');
+  const resetBtn = q('#resetBtn');
+  const resetMsg = q('#resetMsg');
   const toastEl = q('#toast');
   const dirty = new Set();
   let activeView = 'work';
@@ -43,7 +46,17 @@
   function showGate() {
     app.classList.add('adm-hide');
     gate.classList.remove('adm-hide');
+    login.classList.remove('adm-hide');
+    resetPassword.classList.add('adm-hide');
     q('#password').value = '';
+  }
+
+  function showRecovery() {
+    app.classList.add('adm-hide');
+    gate.classList.remove('adm-hide');
+    login.classList.add('adm-hide');
+    resetPassword.classList.remove('adm-hide');
+    q('#newPassword').focus();
   }
 
   async function showApp(user) {
@@ -66,6 +79,34 @@
       q('#password').focus();
     } finally {
       pending(loginBtn, false);
+    }
+  });
+
+  resetPassword.addEventListener('submit', async e => {
+    e.preventDefault();
+    const password = q('#newPassword');
+    const confirmation = q('#confirmPassword');
+    resetMsg.textContent = '';
+    if (password.value !== confirmation.value) {
+      resetMsg.textContent = 'Those passwords do not match.';
+      confirmation.focus();
+      return;
+    }
+    pending(resetBtn, true, 'updating');
+    try {
+      await sb.updatePassword(password.value);
+      await sb.signOut();
+      password.value = '';
+      confirmation.value = '';
+      showGate();
+      gateMsg.textContent = 'Password updated. Sign in with your new password.';
+      q('#email').focus();
+    } catch (err) {
+      resetMsg.textContent = err.status === 401
+        ? 'That recovery link has expired. Request a new one and use only the newest email.'
+        : `The password could not be updated. ${err.message}`;
+    } finally {
+      pending(resetBtn, false);
     }
   });
 
@@ -633,6 +674,16 @@
     if (!window.sb?.configured?.()) {
       gateMsg.textContent = 'Connect Supabase in supabase-config.js before signing in.';
       loginBtn.disabled = true;
+      return;
+    }
+    const recovery = sb.consumeRecoveryUrl();
+    if (recovery?.error) {
+      sb.session.set(null);
+      gateMsg.textContent = 'That recovery link is invalid or expired. Request a new one and use only the newest email.';
+      return;
+    }
+    if (recovery?.recovery) {
+      showRecovery();
       return;
     }
     if (!sb.session.get()) return;
