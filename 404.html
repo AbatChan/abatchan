@@ -1,27 +1,69 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0D0D0D" />
-  <title>Page not found — abatchan</title>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body { align-items: center; background: #0D0D0D; color: #F5F5F3; display: grid; font-family: Arial, sans-serif; margin: 0; min-height: 100svh; padding: 32px; }
-    main { max-width: 540px; }
-    p { color: rgba(245, 245, 243, .68); font-size: 18px; line-height: 1.55; }
-    a { color: #F5F5F3; display: inline-block; margin-top: 14px; text-decoration-color: #6366F1; text-underline-offset: 6px; }
-    .mark { color: #6366F1; font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: lowercase; }
-    h1 { font-size: clamp(42px, 9vw, 80px); line-height: .96; margin: 24px 0; }
-  </style>
-</head>
-<body>
-  <main>
-    <div class="mark">abatchan / 404</div>
-    <h1>This route is not connected.</h1>
-    <p>The page may have moved, or it has not been built yet.</p>
-    <a href="/">Return home</a>
-  </main>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0D0D0D"><meta name="robots" content="noindex,follow"><meta name="description" content="That route is not connected."><title>not found | abatchan</title><link rel="stylesheet" href="/styles.css"><link rel="icon" href="/assets/abatchan-symbol-indigo-tight.svg"><link rel="alternate icon" href="/assets/abatchan-favicon.ico" sizes="any"><link rel="apple-touch-icon" href="/assets/abatchan-favicon-192.png">
+<style>
+/* page-scoped, .nf- prefixed so it cannot collide with styles.css */
+.nf{min-height:100svh;display:grid;align-items:center;padding:150px 0 90px}
+.nf-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:64px;align-items:center}
+.nf-code{color:var(--signal-ink,var(--signal));font-size:13px;letter-spacing:.08em}
+.nf h1{font-size:clamp(52px,7.4vw,104px);line-height:.9;letter-spacing:-.07em;margin:22px 0 26px}
+.nf p{color:var(--muted);font-size:clamp(17px,1.5vw,20px);max-width:520px;margin:0}
+.nf .actions{margin-top:34px}
+.nf-links{margin-top:44px;padding-top:26px;border-top:1px solid var(--line)}
+.nf-links h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 14px;font-weight:400}
+.nf-links ul{display:flex;flex-wrap:wrap;gap:8px 10px;margin:0;padding:0;list-style:none}
+.nf-links a{display:inline-block;padding:9px 14px;border:1px solid var(--line);border-radius:999px;
+  color:var(--muted);font-size:14px;transition:color .22s,border-color .22s,background .22s}
+.nf-links a:hover{color:var(--paper);border-color:rgba(99,102,241,.55);background:rgba(99,102,241,.1)}
+html[data-theme="light"] .nf-links a:hover{color:#151519}
+.nf-links a:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+.nf-stage{position:relative;min-height:430px;border:1px solid var(--line);border-radius:32px;
+  background:linear-gradient(145deg,rgba(245,245,243,.05),rgba(245,245,243,.015));overflow:hidden}
+html[data-theme="light"] .nf-stage{background:#fff}
+/* the one node that is not connected, which is the whole joke */
+.nf-stage .sysmap-node.is-lost{border-color:rgba(224,86,74,.5);color:#e0564a}
+@media(max-width:980px){.nf-grid{grid-template-columns:1fr;gap:34px}.nf-stage{order:-1;min-height:340px}}
+@media(max-width:620px){.nf{padding-top:120px}}
+</style>
+</head><body>
+
+<header class="site-header"></header>
+
+<main class="shell nf">
+  <div class="nf-grid">
+    <div>
+      <div class="nf-code">error 404 · route not connected</div>
+      <h1>This one doesn’t plug in.</h1>
+      <p>The page has moved, or it was never built. Everything else is still wired up.</p>
+      <div class="actions">
+        <a class="btn primary" href="/">back to home <span class="arrow">↗</span></a>
+        <a class="btn" href="/work">view systems <span class="arrow">→</span></a>
+      </div>
+      <div class="nf-links">
+        <h2>Or jump straight to</h2>
+        <ul>
+          <li><a href="/work">work</a></li>
+          <li><a href="/pricing">pricing</a></li>
+          <li><a href="/process">process</a></li>
+          <li><a href="/about">about</a></li>
+          <li><a href="/brand">brand</a></li>
+          <li><a href="/contact">contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="nf-stage">
+      <div class="sysmap" data-sysmap>
+        <div class="sysmap-plane">
+          <span class="sysmap-ring r3"></span><span class="sysmap-ring r1"></span><span class="sysmap-ring r2"></span>
+          <div class="sysmap-core"><img class="core-logo" src="/assets/abatchan-symbol-indigo-tight.svg" alt="" width="504" height="309"></div>
+          <div class="sysmap-node" style="--x:18%;--y:18%">home</div>
+          <div class="sysmap-node" style="--x:83%;--y:28%">work</div>
+          <div class="sysmap-node" style="--x:17%;--y:81%">pricing</div>
+          <div class="sysmap-node is-lost" data-unlinked style="--x:84%;--y:83%">404</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer></footer>
+<nav class="mobile-tabs"></nav>
+<script src="/supabase-config.js"></script><script src="/script.js"></script></body></html>
