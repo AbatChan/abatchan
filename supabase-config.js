@@ -170,13 +170,16 @@ window.SUPABASE = {
 })();
 
 // Preview assistant upgrade. The existing site script creates the panel first;
-// this module then replaces only its form handlers with streamed Markdown.
-// Keeping the loader here wires it into every public page without duplicating
-// another script tag across all HTML files.
+// these modules then replace only its form handlers and refine its presentation.
 addEventListener('DOMContentLoaded', () => {
-  const script = document.createElement('script');
-  script.src = '/assistant-v2.js?v=3';
-  script.defer = true;
-  script.dataset.assistantUpgrade = 'stream-markdown';
-  document.head.appendChild(script);
+  [
+    ['/assistant-v2.js?v=4','stream-markdown'],
+    ['/assistant-polish.js?v=1','visual-polish']
+  ].forEach(([src,label]) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.defer = true;
+    script.dataset.assistantUpgrade = label;
+    document.head.appendChild(script);
+  });
 }, { once: true });
