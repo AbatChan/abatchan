@@ -69,11 +69,11 @@ which fought the shared accordion marker and drew two glyphs.
 `script.js` rewrites every `—` to `", "` across all text nodes. A heading
 written as `01 — the name` renders as `01 , the name`. Use `·` or a colon.
 
-### 2.5 Never merge to `main` without an explicit launch decision
+### 2.5 `main` is production
 
-`main` serves the Coming Soon page with `noindex,nofollow`. Merging `dev` into
-`main` **is the launch**, not a bug-fix deploy. All work goes on
-`dev/nextjs-liquid-glass` and is reviewed on the Vercel preview.
+The full site launched from PR #2 on 27 July 2026. `main` now serves production
+at `abatchan.com`. Continue feature work on `dev/nextjs-liquid-glass`, review it
+on the Vercel preview, and merge intentionally when it is ready for visitors.
 
 ---
 
@@ -137,15 +137,16 @@ balanced. Assert file size too.
   scrollspy sidebar on the document pages.
 - SEO: unique titles/descriptions/canonicals, JSON-LD on indexable pages,
   sitemap, `noindex` on privacy/terms/404.
+- Production launch on `main`, with the Coming Soon redirects removed.
+- `DEEPSEEK_API_KEY` stored as a Sensitive Vercel variable for Production and
+  Preview. The live assistant was verified against `/api/chat`.
+- Three published Work rows currently load from Supabase.
 
 ## 6. What is NOT done
 
-1. **DeepSeek is not live until `DEEPSEEK_API_KEY` is added to Vercel** for the
-   Preview environment and the branch is redeployed.
-2. **The Work table currently has no published rows.** The public page correctly
-   shows its empty state until portfolio items are added in `/admin`.
-3. **PayPal is not connected.** Pricing CTAs still lead to the contact flow.
-4. Work-card hover parallax, scroll-velocity glass, idle drift on the system
+1. **PayPal is not connected.** Pricing CTAs lead to the contact flow so each
+   project can be scoped and invoiced accurately.
+2. Work-card hover parallax, scroll-velocity glass, idle drift on the system
    map, and the chromatic-metal concept are suggested, not built.
 
 ---
