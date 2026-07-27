@@ -88,9 +88,7 @@
   };
 
   const loadUpgrade=(src,label)=>{
-    const previous=document.querySelector(`script[data-site-upgrade="${label}"]`);
-    if(previous&&!label.startsWith('faq-')&&label!=='admin-work-list')return;
-    previous?.remove();
+    document.querySelectorAll(`script[data-site-upgrade="${label}"]`).forEach(node=>node.remove());
     const script=document.createElement('script');
     script.src=src;
     script.defer=true;
@@ -98,15 +96,25 @@
     document.head.appendChild(script);
   };
 
+  const resetFaqRuntime=()=>{
+    window.__ABATCHAN_FAQ_SYSTEM_VERSION__=0;
+    window.__ABATCHAN_FAQ_CLEANUP_VERSION__=0;
+    document.querySelectorAll('style[data-faq-styles],style[data-faq-runtime-cleanup]').forEach(node=>node.remove());
+  };
+
   const start=()=>{
     removeHomepageFallbacks();
     preventGalleryCarryover();
+    resetFaqRuntime();
     loadUpgrade('/work-grid-layout-fix.js?v=3','work-grid-layout');
-    loadUpgrade('/faq-system.js?v=5','faq-system');
+    loadUpgrade('/faq-system.js?v=6','faq-system');
     loadUpgrade('/commercial-positioning.js?v=3','commercial-positioning');
+    loadUpgrade('/faq-runtime-cleanup.js?v=1','faq-runtime-cleanup');
     if(/\/admin(?:\.html)?$/.test(location.pathname)){
-      loadUpgrade('/faq-admin.js?v=4','faq-admin');
-      loadUpgrade('/admin-work-list.js?v=1','admin-work-list');
+      window.__ABATCHAN_FAQ_ADMIN_VERSION__=0;
+      window.__ABATCHAN_WORK_LIST_VERSION__=0;
+      loadUpgrade('/faq-admin.js?v=5','faq-admin');
+      loadUpgrade('/admin-work-list.js?v=2','admin-work-list');
     }
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
