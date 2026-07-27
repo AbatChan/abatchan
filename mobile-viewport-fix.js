@@ -29,9 +29,8 @@
     // now beyond the document's new maximum and briefly reveal empty page space.
     clearTimeout(settleTimer);
     settleTimer=setTimeout(()=>{
-      const scrolling=root;
-      const max=Math.max(0,scrolling.scrollHeight-height);
-      if(scrollY>max+2)scrollTo({top:max,left:0,behavior:'instant'});
+      const max=Math.max(0,root.scrollHeight-height);
+      if(scrollY>max+2)scrollTo(0,max);
     },80);
   };
 
