@@ -4,7 +4,7 @@
 // step, and the three endpoints needed here (auth, REST, storage) are plain
 // HTTP. That also means nothing third-party executes on your visitors' pages.
 //
-// The anon key below is meant to be public. It is not a secret — every request
+// The anon key below is meant to be public. It is not a secret. Every request
 // it makes is filtered by the row level security policies in
 // supabase/schema.sql. The service key must NEVER appear in this file.
 window.SUPABASE = {
@@ -168,3 +168,15 @@ window.SUPABASE = {
     removeFile: (bucket, path) => storageRequest('DELETE', bucket, path)
   };
 })();
+
+// Preview assistant upgrade. The existing site script creates the panel first;
+// this module then replaces only its form handlers with streamed Markdown.
+// Keeping the loader here wires it into every public page without duplicating
+// another script tag across all HTML files.
+addEventListener('DOMContentLoaded', () => {
+  const script = document.createElement('script');
+  script.src = '/assistant-v2.js?v=3';
+  script.defer = true;
+  script.dataset.assistantUpgrade = 'stream-markdown';
+  document.head.appendChild(script);
+}, { once: true });
