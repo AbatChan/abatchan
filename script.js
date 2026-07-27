@@ -197,27 +197,31 @@ renderBrand();
     target={x:e.clientX,y:e.clientY}; wake();
   });
 
+  // How far from the anchor a pointer event is, and where the bead may sit for it.
+  const reach=e=>{
+    const dx=e.clientX-anchor.x, dy=e.clientY-anchor.y;
+    const dist=Math.hypot(dx,dy)||1e-4;
+    const k=dist>=MAXLEN?MAXLEN/dist:1;
+    return {dist, x:anchor.x+dx*k, y:anchor.y+dy*k};
+  };
+
   bead.addEventListener('pointermove',e=>{
     if(e.pointerId!==grabId)return;
-    let dx=e.clientX-anchor.x, dy=e.clientY-anchor.y;
-    const dist=Math.hypot(dx,dy)||1e-4;
-    if(dist>=MAXLEN){
-      // The rope has run out. Hold the bead at the limit rather than snapping
-      // out from under a finger that is still pulling — the cord simply refuses
-      // to stretch further, and the click happens when they let go.
-      armed=true;
-      const k=MAXLEN/dist;
-      target={x:anchor.x+dx*k, y:anchor.y+dy*k};
-    }else{
-      armed=false;
-      target={x:e.clientX,y:e.clientY};
-    }
-    setTaut(dist>MAXLEN-18);
+    const r=reach(e);
+    // Once the rope has run out it stays armed for the rest of the drag. Easing
+    // off after hitting the end should not quietly disarm it, and a fast flick
+    // out and back should still count.
+    if(r.dist>=MAXLEN)armed=true;
+    target={x:r.x,y:r.y};      // the bead can never go past the rope's length
+    setTaut(armed||r.dist>MAXLEN-18);
     wake();
   });
 
   const release=e=>{
     if(e.pointerId!==grabId)return;
+    // A flick can release without a move event in between, so check the release
+    // point too rather than trusting that pointermove ran.
+    if(reach(e).dist>=MAXLEN)armed=true;
     const fire=armed;
     if(fire){tail.px=tail.x;tail.py=tail.y-11}      // kick it up so it rebounds
     letGo();
