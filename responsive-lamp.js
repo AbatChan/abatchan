@@ -25,17 +25,18 @@
 
   const style=document.createElement('style');
   style.textContent=`
+    .lamp>svg path{stroke:var(--muted)!important}
     .lamp-label.is-icon{
-      width:22px;height:22px;display:grid;place-items:center;padding:0;border:0;
-      border-radius:7px;background:transparent;color:rgba(245,245,243,.94);
-      translate:8px 0;opacity:1
+      width:20px;height:20px;display:grid;place-items:center;padding:0;border:0;
+      border-radius:0;background:transparent!important;box-shadow:none!important;
+      color:#f5f5f3;filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));
     }
-    .lamp-label.is-icon svg{
-      width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;
-      stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 3px rgba(0,0,0,.55))
+    .lamp-label.is-icon svg{width:18px;height:18px;overflow:visible}
+    .lamp-label.is-icon svg circle,.lamp-label.is-icon svg path{
+      fill:none!important;stroke:currentColor!important;stroke-width:2!important;
+      stroke-linecap:round;stroke-linejoin:round;
     }
-    html[data-theme="light"] .lamp-label.is-icon{color:rgba(45,45,52,.62)}
-    html[data-theme="light"] .lamp-label.is-icon svg{filter:none}
+    html[data-theme="light"] .lamp-label.is-icon{color:#57575f;filter:none}
   `;
   document.head.appendChild(style);
 
