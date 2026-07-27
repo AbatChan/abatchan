@@ -113,8 +113,10 @@
     if(/\/admin(?:\.html)?$/.test(location.pathname)){
       window.__ABATCHAN_FAQ_ADMIN_VERSION__=0;
       window.__ABATCHAN_WORK_LIST_VERSION__=0;
+      window.__ABATCHAN_WORK_ACTION_POLISH__=0;
       loadUpgrade('/faq-admin.js?v=5','faq-admin');
       loadUpgrade('/admin-work-list.js?v=2','admin-work-list');
+      loadUpgrade('/admin-work-action-polish.js?v=1','admin-work-action-polish');
     }
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
