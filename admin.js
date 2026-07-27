@@ -584,12 +584,17 @@
       const strong = document.createElement('strong');
       strong.textContent = item.title || `Announcement ${index + 1}`;
       const soonLabel = document.createElement('label');
-      soonLabel.className = 'adm-check';
+      soonLabel.className = 'adm-switch';
       const soon = document.createElement('input');
       soon.type = 'checkbox';
       soon.checked = !!item.soon;
       soon.addEventListener('change', () => { announcements[index].soon = soon.checked; dirty.add('announcements'); renderNewsPreview(index); });
-      soonLabel.append(soon, document.createTextNode(' coming soon'));
+      const soonTrack = document.createElement('span');
+      soonTrack.className = 'adm-switch-track';
+      soonTrack.setAttribute('aria-hidden', 'true');
+      const soonText = document.createElement('span');
+      soonText.textContent = 'coming soon';
+      soonLabel.append(soon, soonTrack, soonText);
       const remove = iconButton(`Remove ${strong.textContent}`, icons.trash, () => {
         announcements.splice(index, 1);
         dirty.add('announcements');
