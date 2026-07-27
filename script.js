@@ -277,11 +277,7 @@ renderBrand();
     wake(); toggleTheme();
   });
 
-  // the label stands out until the visitor has actually pulled it once
-  if(!localStorage.getItem('abatLampUsed'))el.classList.add('show-label');
   bead.addEventListener('pointerdown',()=>{
-    localStorage.setItem('abatLampUsed','1');
-    el.classList.remove('show-label');
     el.classList.add('is-dragging');
   });
   ['pointerup','pointercancel','lostpointercapture'].forEach(t=>
