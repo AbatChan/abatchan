@@ -3,8 +3,31 @@
 // expands and collapses, often without a matching layout viewport resize.
 (function mobileViewportFix(){
   const root=document.documentElement;
+  const scroller=document.scrollingElement||root;
   const viewport=window.visualViewport;
   let frame=0,settleTimer=0,lastWidth=0,lastHeight=0;
+
+  const realPageEnd=()=>{
+    const footer=document.querySelector('footer');
+    if(!footer)return scroller.scrollHeight;
+    const rect=footer.getBoundingClientRect();
+    return Math.max(0,Math.round(rect.bottom+scroller.scrollTop));
+  };
+
+  const clampToContent=()=>{
+    if(innerWidth>900||document.body.classList.contains('assist-sheet-open'))return;
+    const height=Math.round(viewport?.height||root.clientHeight||innerHeight);
+    const max=Math.max(0,realPageEnd()-height);
+    if(scroller.scrollTop>max+2){
+      scroller.scrollTop=max;
+      window.scrollTo(0,max);
+    }
+  };
+
+  const queueClamp=(delay=90)=>{
+    clearTimeout(settleTimer);
+    settleTimer=setTimeout(()=>requestAnimationFrame(clampToContent),delay);
+  };
 
   const measure=()=>{
     frame=0;
@@ -25,13 +48,10 @@
       dispatchEvent(new Event('resize'));
     }
 
-    // When browser chrome expands, WebKit can preserve a scroll position that is
-    // now beyond the document's new maximum and briefly reveal empty page space.
-    clearTimeout(settleTimer);
-    settleTimer=setTimeout(()=>{
-      const max=Math.max(0,root.scrollHeight-height);
-      if(scrollY>max+2)scrollTo(0,max);
-    },80);
+    // WebKit can inflate the root scroll extent while its dynamic toolbar moves.
+    // The footer is the final in-flow element, so its measured bottom is a more
+    // dependable page boundary than document.scrollHeight on affected iPhones.
+    queueClamp();
   };
 
   const schedule=()=>{
@@ -52,6 +72,8 @@
   addEventListener('resize',schedule,{passive:true});
   addEventListener('orientationchange',()=>setTimeout(schedule,80),{passive:true});
   addEventListener('pageshow',schedule,{passive:true});
+  addEventListener('touchend',()=>queueClamp(40),{passive:true});
+  addEventListener('scrollend',()=>queueClamp(20),{passive:true});
   viewport?.addEventListener('resize',schedule,{passive:true});
   viewport?.addEventListener('scroll',schedule,{passive:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule()});
