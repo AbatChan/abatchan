@@ -18,10 +18,10 @@
     .managed-gallery-count{padding:7px 9px;border-radius:999px;background:rgba(10,10,14,.62);color:#fff;font-size:11px;line-height:1;backdrop-filter:blur(12px)}
     .home-managed-card .card-info{display:flex;flex-direction:column;align-items:flex-start}
     .home-managed-card .card-info .btn{margin-top:14px}
-    .work-grid>.home-slot-card:nth-child(1){grid-column:span 12;min-height:570px}
-    .work-grid>.home-slot-card:nth-child(2),.work-grid>.home-slot-card:nth-child(3){grid-column:span 6}
-    @media(max-width:900px){.work-grid>.home-slot-card:nth-child(n){grid-column:span 12;min-height:500px}}
-    @media(max-width:620px){.managed-gallery{min-height:240px}.work-grid>.home-slot-card:nth-child(n){min-height:430px}}
+    .work-grid.home-dynamic-grid>.home-slot-card:nth-child(1){grid-column:span 12;min-height:570px}
+    .work-grid.home-dynamic-grid>.home-slot-card:nth-child(2),.work-grid.home-dynamic-grid>.home-slot-card:nth-child(3){grid-column:span 6}
+    @media(max-width:900px){.work-grid.home-dynamic-grid>.home-slot-card:nth-child(n){grid-column:span 12;min-height:500px}}
+    @media(max-width:620px){.managed-gallery{min-height:240px}.work-grid.home-dynamic-grid>.home-slot-card:nth-child(n){min-height:430px}}
   `;
   document.head.appendChild(style);
 
@@ -31,12 +31,14 @@
       return rows?.[0]?.value&&typeof rows[0].value==='object'?rows[0].value:{};
     }catch{return {}}
   };
+
   const imageUrls=(item,extra)=>{
     const paths=[];
     if(item.image_path)paths.push(item.image_path);
     if(Array.isArray(extra?.gallery_paths))extra.gallery_paths.forEach(path=>{if(path&&!paths.includes(path))paths.push(path)});
     return paths.map(path=>sb.publicUrl('work',path));
   };
+
   const makeGallery=(item,extra)=>{
     const urls=imageUrls(item,extra);
     if(!urls.length)return null;
@@ -62,10 +64,15 @@
     }
     return wrap;
   };
-  const createCard=(item,extra)=>{
-    const card=document.createElement('article');card.className='work-card reveal visible home-managed-card home-slot-card';card.dataset.type=item.category||'product';
-    const visual=document.createElement('div');visual.className='card-visual managed';
-    const gallery=makeGallery(item,extra);if(gallery)visual.append(gallery);
+
+  const createCard=(item,extra,fallbackVisual)=>{
+    const card=document.createElement('article');
+    card.className='work-card reveal visible home-managed-card home-slot-card';
+    card.dataset.type=item.category||'product';
+    let visual=document.createElement('div');visual.className='card-visual managed';
+    const gallery=makeGallery(item,extra);
+    if(gallery)visual.append(gallery);
+    else if(fallbackVisual)visual=fallbackVisual.cloneNode(true);
     const info=document.createElement('div');info.className='card-info';
     info.innerHTML=`<div class="card-meta"><span>${esc(item.kicker||item.category||'project')}</span><span>${esc(item.status||'selected work')}</span></div><h3>${esc(item.title)}</h3><p>${esc(extra?.homepage_summary||item.summary||'')}</p>`;
     if(validLink(item.link_url)){
@@ -88,16 +95,20 @@
     const heading=qa('.section-index').find(el=>/selected systems/i.test(el.textContent));
     const grid=heading?.closest('section')?.querySelector('.work-grid');
     if(!grid)return;
-    const fallback=normalizeFallbacks([...grid.children]);
+    const original=[...grid.children];
+    const fallback=normalizeFallbacks(original);
     if(!fallback.length)return;
+    grid.classList.add('home-dynamic-grid');
     try{
       const [rows,extras]=await Promise.all([
         sb.select('work_items','published=eq.true&featured=eq.true&select=*&order=position.asc,created_at.asc&limit=3'),
         loadSettings()
       ]);
-      const cards=(rows||[]).slice(0,3).map(item=>createCard(item,extras[item.slug]||{}));
+      const cards=(rows||[]).slice(0,3).map((item,index)=>{
+        const fallbackVisual=q('.card-visual',original[index]||original[0]);
+        return createCard(item,extras[item.slug]||{},fallbackVisual);
+      });
       while(cards.length<3&&fallback.length)cards.push(fallback.shift());
-      if(!cards.length)return;
       grid.replaceChildren(...cards.slice(0,3));
     }catch{
       grid.replaceChildren(...fallback.slice(0,3));
@@ -121,7 +132,9 @@
           visual.replaceChildren(gallery);visual.dataset.galleryReady='1';
         });
       };
-      apply();new MutationObserver(apply).observe(document.body,{childList:true,subtree:true});
+      apply();
+      const grid=q('.work-grid');
+      if(grid)new MutationObserver(apply).observe(grid,{childList:true});
     }catch{}
   };
 
