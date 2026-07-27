@@ -165,6 +165,12 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
 }
 
 /* --- accessibility ------------------------------------------------------ */
+.skip-link{position:fixed;left:18px;top:14px;z-index:1200;padding:11px 15px;border-radius:12px;
+  background:var(--paper);color:var(--ink);font-size:13px;font-weight:650;
+  transform:translateY(-180%);transition:transform .2s var(--ease)}
+.skip-link:focus{transform:none}
+@media(max-width:1120px) and (min-width:901px){.header-actions .header-cta{display:none}}
+@media(pointer:coarse){.cursor-light{display:none}}
 @media(prefers-contrast:more){
   .site-header,.mobile-tabs{--glass-tint:rgba(13,13,13,.9);--glass-blur:8px}
   html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{--glass-tint:rgba(255,255,255,.94)}

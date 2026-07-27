@@ -97,9 +97,9 @@ create policy "signed in uploads work images"
 -- Anything on the site tagged data-copy="<key>" is replaced by these values.
 -- Add a row here and tag an element; no deploy needed.
 insert into public.settings (key, value, is_public) values
-  ('copy.home.eyebrow',   '"digital engineering studio"', true),
+  ('copy.home.eyebrow',   '"independent digital engineering studio"', true),
   ('copy.home.h1',        '"Build connected systems."',   true),
-  ('copy.home.sub',       '"We design and engineer the interfaces, infrastructure, and integrations behind modern digital products."', true),
+  ('copy.home.sub',       '"I design and build the interface, backend, integrations, and automation as one working product."', true),
   ('copy.contact.email',  '"abatchan4@gmail.com"',        true),
   ('copy.pricing.website','"$750"',                       true),
   ('copy.pricing.platform','"$1,500"',                    true),
@@ -107,6 +107,6 @@ insert into public.settings (key, value, is_public) values
   ('assistant.enabled',   'true',                         true),
   ('assistant.greeting',  '"Hi. Ask me anything about the work, pricing, or how a project runs."', true),
   ('assistant.model',     '"deepseek-v4-flash"',          false),
-  ('assistant.system',    '"You are the assistant on abatchan.com, a digital engineering studio. Answer briefly and concretely about services, pricing and process. Websites start at $750, platforms at $1,500, connected systems at $3,500 — always say these are starting points, not quotes. Never invent a firm quote or a delivery date. If you do not know, say so and point to the contact page."', false),
+  ('assistant.system',    '"You are the assistant on abatchan.com, an independent digital engineering studio. Answer briefly and concretely about services, pricing, work, and process. Websites start at $750, platforms at $1,500, and connected systems at $3,500. Always say these are starting points, not quotes. Never invent a firm quote, delivery date, client, or result. If you do not know, say so and point to the contact page."', false),
   ('news.items',          '[{"id":"2026-07-brand-and-assistant","tag":"what''s new","title":"Brand page, process, and an assistant","body":"The full brand system with downloadable lockups is up, along with how projects actually run. There is also a chat bubble now if you would rather ask than read.","href":"/brand","cta":"see the brand page","soon":false}]', true)
 on conflict (key) do nothing;

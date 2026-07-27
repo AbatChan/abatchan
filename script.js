@@ -5,6 +5,18 @@ const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),textN
 while(walker.nextNode())textNodes.push(walker.currentNode);
 textNodes.forEach(node=>{if(node.nodeValue.includes('—'))node.nodeValue=node.nodeValue.replaceAll('—',', ')});
 
+// The header is injected later, so create the keyboard escape hatch here while
+// the document structure is still simple. Every public page has one <main>.
+const main=q('main');
+if(main&&!q('.skip-link')){
+  main.id=main.id||'main-content';
+  const skipLink=document.createElement('a');
+  skipLink.className='skip-link';
+  skipLink.href='#'+main.id;
+  skipLink.textContent='skip to content';
+  document.body.insertBefore(skipLink,document.body.firstChild);
+}
+
 const themeKey='abatchanTheme';
 // No stored value means the OS decides, and keeps deciding — the toggle only
 // pins a theme once the visitor has actually chosen one.
@@ -306,7 +318,6 @@ const SOCIALS=[
   ['instagram','Instagram','https://www.instagram.com/realabatchan/'],
   ['tiktok','TikTok','https://www.tiktok.com/@realabatchan'],
   ['facebook','Facebook','https://www.facebook.com/abat.chan.2025'],
-  ['whatsapp','WhatsApp','https://wa.me/abatchan'],
   ['behance','Behance','https://www.behance.net/abatchan'],
   ['dribbble','Dribbble','https://dribbble.com/abatchan'],
   ['upwork','Upwork','https://www.upwork.com/freelancers/abatchan']
@@ -523,6 +534,13 @@ const loadPublicSettings=()=>{
 (async function applyPublicCopy(){
   const settings=await loadPublicSettings();
   if(!settings)return;
+  // These two values were the original schema seeds. Treat them as an
+  // uncustomised placeholder so the stronger launch copy in the HTML wins.
+  // Any real dashboard edit still applies immediately.
+  const legacyCopy={
+    'copy.home.eyebrow':'digital engineering studio',
+    'copy.home.sub':'We design and engineer the interfaces, infrastructure, and integrations behind modern digital products.'
+  };
   const targets={
     'copy.home.h1':q('.hero h1'),
     'copy.home.sub':q('.hero-copy'),
@@ -532,13 +550,13 @@ const loadPublicSettings=()=>{
     'copy.contact.email':q('.contact-mail')
   };
   const eyebrow=q('.hero .eyebrow');
-  if(eyebrow&&typeof settings['copy.home.eyebrow']==='string'){
+  if(eyebrow&&typeof settings['copy.home.eyebrow']==='string'&&settings['copy.home.eyebrow']!==legacyCopy['copy.home.eyebrow']){
     const text=[...eyebrow.childNodes].find(node=>node.nodeType===Node.TEXT_NODE);
     if(text)text.nodeValue=settings['copy.home.eyebrow'];
   }
   Object.entries(targets).forEach(([key,el])=>{
     const value=settings[key];
-    if(!el||typeof value!=='string')return;
+    if(!el||typeof value!=='string'||value===legacyCopy[key])return;
     const small=el.querySelector?.('small');
     if(small){
       const text=[...el.childNodes].find(node=>node.nodeType===Node.TEXT_NODE);
@@ -566,11 +584,11 @@ const ASSISTANT={
   chips:['What do you build?','How much does it cost?','How long does it take?','Do you take small jobs?']
 };
 const CANNED=[
-  [/price|cost|budget|charge|quote/i,"Websites start at $750, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes — the real number comes from scope. Full breakdown on the pricing page."],
+  [/price|cost|budget|charge|quote/i,"Websites start at $750, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes. The real number comes from scope, with the full breakdown on the pricing page."],
   [/how long|timeline|deadline|when/i,"It depends on scope, but work is split into milestones so you see something usable at each one. The process page walks through all five stages."],
   [/what.*(build|do)|services|offer/i,"Connected web and mobile products, automation and workflow systems, APIs and integrations, dashboards, and the infrastructure under them."],
   [/small|tiny|fix|quick/i,"Yes. Small fixes and consultations are quoted separately, usually from $100, and ongoing work is $30/hour when project pricing does not fit."],
-  [/hire|available|start|book/i,"Currently taking work for the next quarter. Send the problem, the current setup, and the deadline through the contact page."],
+  [/hire|available|start|book/i,"I am taking on new projects. Send the problem, the current setup, and the deadline through the contact page."],
   [/hello|hi|hey|good (morning|afternoon|evening)/i,"Hello. What are you building?"]
 ];
 
@@ -691,7 +709,16 @@ const CANNED=[
     /\/work(?:\.html)?$/.test(location.pathname.replace(/\/+$/,''))?q('.work-grid'):null
   );
   if(!grid)return;
+  const fallbackVisuals=new Map(qa('.work-card',grid).map(card=>[
+    q('.card-info h3',card)?.textContent.trim().toLowerCase(),
+    q('.card-visual',card)?.cloneNode(true)
+  ]).filter(([title,visual])=>title&&visual));
   const filters=qa('[data-filter]');
+  const syncFilterAvailability=()=>{
+    const categories=new Set(qa('.work-card',grid).map(card=>card.dataset.type));
+    filters.forEach(button=>{button.hidden=button.dataset.filter!=='all'&&!categories.has(button.dataset.filter)});
+  };
+  syncFilterAvailability();
   filters.forEach(button=>button.addEventListener('click',()=>{
     filters.forEach(other=>other.classList.toggle('active',other===button));
     qa('.work-card',grid).forEach(card=>{
@@ -705,6 +732,7 @@ const CANNED=[
   }catch{return}
   grid.replaceChildren();
   if(!rows.length){
+    filters.forEach(button=>{button.hidden=button.dataset.filter!=='all'});
     const empty=document.createElement('p');
     empty.className='work-empty';
     empty.textContent='New work is being prepared. Check back soon.';
@@ -719,8 +747,9 @@ const CANNED=[
       card.style.gridColumn='span 12';
       card.style.minHeight='570px';
     }
-    const visual=document.createElement('div');
-    visual.className='card-visual managed';
+    const fallbackVisual=fallbackVisuals.get(String(item.title||'').trim().toLowerCase());
+    const visual=fallbackVisual||document.createElement('div');
+    if(!fallbackVisual)visual.className='card-visual managed';
     if(item.image_path){
       const img=document.createElement('img');
       img.src=sb.publicUrl('work',item.image_path);
@@ -754,6 +783,7 @@ const CANNED=[
     card.append(visual,info);
     grid.append(card);
   });
+  syncFilterAvailability();
 })();
 
 // ------------------------------------------------------------- what's new
@@ -826,8 +856,8 @@ const intro=q('.intro');
 if(intro){
   const video=q('video',intro),skip=q('.skip',intro);
   const close=()=>{intro.classList.add('hidden');sessionStorage.setItem('abatIntro','1');setTimeout(()=>intro.remove(),800)};
-  if(sessionStorage.getItem('abatIntro'))close();
-  else{video?.play().catch(()=>{});video?.addEventListener('ended',close);skip?.addEventListener('click',close);setTimeout(close,6500)}
+  if(sessionStorage.getItem('abatIntro')||matchMedia('(prefers-reduced-motion: reduce)').matches)close();
+  else{video?.play().catch(close);video?.addEventListener('ended',close,{once:true});skip?.addEventListener('click',close,{once:true});setTimeout(close,2800)}
 }
 
 const observer=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.12});
@@ -901,7 +931,19 @@ qa('[data-sysmap]').forEach(map=>{
 const internal=h=>!!h&&h.startsWith('/')&&!h.startsWith('//');
 qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();sessionStorage.setItem(navigationKey,'1');transition?.classList.add('is-leaving');setTimeout(()=>location.assign(href),480)}));
 const path=location.pathname.replace(/\.html$/,'').replace(/\/index$/,'/').replace(/(.)\/$/,'$1')||'/';
-qa('[data-page]').forEach(a=>a.classList.toggle('active',a.dataset.page===path));
-qa('.btn.chip').forEach(btn=>btn.addEventListener('click',()=>{qa('.btn.chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const f=btn.dataset.filter;qa('.work-card').forEach(card=>card.style.display=(f==='all'||card.dataset.type===f)?'flex':'none')}));
+qa('[data-page]').forEach(a=>{
+  const active=a.dataset.page===path;
+  a.classList.toggle('active',active);
+  if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+});
+qa('.btn.chip').forEach(btn=>{
+  btn.setAttribute('aria-pressed',String(btn.classList.contains('active')));
+  btn.addEventListener('click',()=>{
+    qa('.btn.chip').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-pressed','false')});
+    btn.classList.add('active');btn.setAttribute('aria-pressed','true');
+    const f=btn.dataset.filter;
+    qa('.work-card').forEach(card=>card.style.display=(f==='all'||card.dataset.type===f)?'flex':'none');
+  });
+});
 const form=q('#project-form');
 if(form)form.addEventListener('submit',e=>{e.preventDefault();const d=new FormData(form);const subject=encodeURIComponent(`Project enquiry: ${d.get('name')}`);const body=encodeURIComponent(`Name: ${d.get('name')}\nEmail: ${d.get('email')}\nProject type: ${d.get('type')}\n\n${d.get('message')}`);location.href=`mailto:abatchan4@gmail.com?subject=${subject}&body=${body}`});
