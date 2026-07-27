@@ -28,7 +28,13 @@
   const queueClamp=(delay=90)=>{
     if(isAdmin)return;
     clearTimeout(settleTimer);
-    settleTimer=setTimeout(()=>requestAnimationFrame(clampToContent),delay);
+    settleTimer=setTimeout(()=>requestAnimationFrame(()=>requestAnimationFrame(clampToContent)),delay);
+  };
+
+  const settleClamp=()=>{
+    queueClamp(30);
+    setTimeout(()=>queueClamp(80),140);
+    setTimeout(()=>queueClamp(80),420);
   };
 
   const measure=()=>{
@@ -64,13 +70,13 @@
   document.head.appendChild(style);
 
   addEventListener('resize',schedule,{passive:true});
-  addEventListener('orientationchange',()=>setTimeout(schedule,80),{passive:true});
-  addEventListener('pageshow',schedule,{passive:true});
-  addEventListener('touchend',()=>queueClamp(40),{passive:true});
-  addEventListener('scrollend',()=>queueClamp(20),{passive:true});
-  viewport?.addEventListener('resize',schedule,{passive:true});
+  addEventListener('orientationchange',()=>setTimeout(()=>{schedule();settleClamp()},80),{passive:true});
+  addEventListener('pageshow',()=>{schedule();settleClamp()},{passive:true});
+  addEventListener('touchend',settleClamp,{passive:true});
+  addEventListener('scrollend',settleClamp,{passive:true});
+  viewport?.addEventListener('resize',()=>{schedule();settleClamp()},{passive:true});
   viewport?.addEventListener('scroll',schedule,{passive:true});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule()});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){schedule();settleClamp()}});
   schedule();
 })();
 
