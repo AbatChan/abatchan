@@ -8,8 +8,8 @@
 // it makes is filtered by the row level security policies in
 // supabase/schema.sql. The service key must NEVER appear in this file.
 window.SUPABASE = {
-  url: 'https://YOUR-PROJECT.supabase.co',   // Settings -> API -> Project URL
-  anonKey: 'YOUR-ANON-KEY'                   // Settings -> API -> anon public
+  url: 'https://fdubcelrwfpzjjnqipku.supabase.co',
+  anonKey: 'sb_publishable_b_pSIsSTOHTrYj87LJrY1A_WDFm_dF6'
 };
 
 (function () {
