@@ -17,6 +17,7 @@
 
   const styles=document.createElement('style');
   styles.textContent=`
+  .news{max-width:330px!important}
   .assist-msg.bot{white-space:normal}
   .assist-msg.bot>*:first-child{margin-top:0}.assist-msg.bot>*:last-child{margin-bottom:0}
   .assist-msg.bot p{margin:0 0 .82em;line-height:1.58}
@@ -80,6 +81,15 @@
       log.appendChild(el);log.scrollTop=log.scrollHeight;return el;
     };
 
+    const thinking=()=>{
+      const el=document.createElement('div');
+      el.className='assist-typing';el.setAttribute('role','status');
+      el.setAttribute('aria-label','abatchan is thinking');
+      el.innerHTML='<i></i><i></i><i></i>';
+      log.appendChild(el);log.scrollTop=log.scrollHeight;
+      return el;
+    };
+
     const fail=(message,question)=>{
       const el=document.createElement('div');el.className='assist-msg bot assist-error';el.setAttribute('role','alert');
       const title=document.createElement('b');title.textContent='The guide lost its connection.';
@@ -93,9 +103,15 @@
     const reply=async text=>{
       if(pending||!text)return;
       pending=true;input.disabled=true;send.disabled=true;log.setAttribute('aria-busy','true');
-      const bubble=add('','bot');bubble.classList.add('is-streaming');
-      let answer='';let frame=0;
-      const paint=()=>{frame=0;render(bubble,answer);log.scrollTop=log.scrollHeight};
+      const loader=thinking();
+      let bubble=null,answer='',frame=0;
+      const ensureBubble=()=>{
+        if(bubble)return bubble;
+        loader.remove();
+        bubble=add('','bot');bubble.classList.add('is-streaming');
+        return bubble;
+      };
+      const paint=()=>{frame=0;if(!answer)return;render(ensureBubble(),answer);log.scrollTop=log.scrollHeight};
       try{
         const res=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:history.slice(-6),page:location.pathname})});
         const type=res.headers.get('content-type')||'';
@@ -110,14 +126,17 @@
         while(true){
           const {done,value}=await reader.read();if(done)break;
           answer+=decoder.decode(value,{stream:true});
-          if(!frame)frame=requestAnimationFrame(paint);
+          if(answer&&!frame)frame=requestAnimationFrame(paint);
         }
-        answer+=decoder.decode();if(frame)cancelAnimationFrame(frame);paint();
-        bubble.classList.remove('is-streaming');
+        answer+=decoder.decode();if(frame)cancelAnimationFrame(frame);
+        if(answer)paint();
+        else throw new Error('The guide returned an empty response.');
+        bubble?.classList.remove('is-streaming');
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
       }catch(err){
-        if(frame)cancelAnimationFrame(frame);bubble.remove();fail(err.message,text);
+        if(frame)cancelAnimationFrame(frame);
+        loader.remove();bubble?.remove();fail(err.message,text);
       }finally{
         pending=false;input.disabled=false;send.disabled=false;log.setAttribute('aria-busy','false');input.focus();
       }
