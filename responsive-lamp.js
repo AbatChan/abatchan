@@ -25,8 +25,17 @@
 
   const style=document.createElement('style');
   style.textContent=`
-    .lamp-label.is-icon{width:30px;height:30px;display:grid;place-items:center;padding:0;border-radius:10px}
-    .lamp-label.is-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .lamp-label.is-icon{
+      width:22px;height:22px;display:grid;place-items:center;padding:0;border:0;
+      border-radius:7px;background:transparent;color:rgba(245,245,243,.94);
+      translate:8px 0;opacity:1
+    }
+    .lamp-label.is-icon svg{
+      width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;
+      stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 3px rgba(0,0,0,.55))
+    }
+    html[data-theme="light"] .lamp-label.is-icon{color:rgba(45,45,52,.62)}
+    html[data-theme="light"] .lamp-label.is-icon svg{filter:none}
   `;
   document.head.appendChild(style);
 
