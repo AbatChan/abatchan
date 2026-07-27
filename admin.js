@@ -414,7 +414,7 @@
         const value = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
         const field = value.length > 80 ? document.createElement('textarea') : document.createElement('input');
         field.id = `copy-${row.key}`;
-        field.type = 'text';
+        if (field instanceof HTMLInputElement) field.type = 'text';
         field.value = value;
         field.dataset.key = row.key;
         field.dataset.original = value;
