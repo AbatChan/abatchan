@@ -90,7 +90,7 @@
   const loadWorkGridLayout=()=>{
     if(document.querySelector('script[data-site-upgrade="work-grid-layout"]'))return;
     const script=document.createElement('script');
-    script.src='/work-grid-layout-fix.js?v=1';
+    script.src='/work-grid-layout-fix.js?v=2';
     script.defer=true;
     script.dataset.siteUpgrade='work-grid-layout';
     document.head.appendChild(script);
