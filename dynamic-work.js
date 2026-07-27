@@ -20,6 +20,7 @@
     .home-managed-card .card-info .btn{margin-top:14px}
     .work-grid.home-dynamic-grid>.home-slot-card:nth-child(1){grid-column:span 12;min-height:570px}
     .work-grid.home-dynamic-grid>.home-slot-card:nth-child(2),.work-grid.home-dynamic-grid>.home-slot-card:nth-child(3){grid-column:span 6}
+    .work-grid.home-dynamic-grid>.home-slot-card.reveal{opacity:1;transform:none}
     @media(max-width:900px){.work-grid.home-dynamic-grid>.home-slot-card:nth-child(n){grid-column:span 12;min-height:500px}}
     @media(max-width:620px){.managed-gallery{min-height:240px}.work-grid.home-dynamic-grid>.home-slot-card:nth-child(n){min-height:430px}}
   `;
@@ -85,7 +86,9 @@
 
   const normalizeFallbacks=nodes=>nodes.map(node=>{
     const clone=node.cloneNode(true);
-    clone.classList.add('home-slot-card');
+    clone.classList.add('home-slot-card','visible');
+    clone.style.opacity='1';
+    clone.style.transform='none';
     return clone;
   });
 
