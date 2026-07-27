@@ -32,7 +32,7 @@
   .assist-msg.bot pre code{padding:0;background:none;color:inherit}
   .assist-msg.bot blockquote{margin:.7em 0;padding:.2em 0 .2em .9em;border-left:3px solid var(--signal);color:var(--muted)}
   .assist-msg.bot h1,.assist-msg.bot h2,.assist-msg.bot h3{margin:.85em 0 .4em;font-size:1em;line-height:1.35;letter-spacing:-.015em}
-  .assist-msg.is-streaming::after{content:"";display:inline-block;width:7px;height:1.05em;margin-left:4px;vertical-align:-.16em;border-radius:2px;background:var(--signal);animation:assist-caret .75s steps(1) infinite}
+  .assist-msg.is-streaming::after{content:"";display:inline-block;width:2px;height:.88em;margin-left:3px;vertical-align:-.08em;border-radius:1px;background:var(--signal);animation:assist-caret .75s steps(1) infinite}
   @keyframes assist-caret{50%{opacity:0}}
   @media(prefers-reduced-motion:reduce){.assist-msg.is-streaming::after{animation:none}}
   `;
