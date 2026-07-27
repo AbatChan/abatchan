@@ -33,8 +33,18 @@
   .assist-msg.bot blockquote{margin:.7em 0;padding:.2em 0 .2em .9em;border-left:3px solid var(--signal);color:var(--muted)}
   .assist-msg.bot h1,.assist-msg.bot h2,.assist-msg.bot h3{margin:.85em 0 .4em;font-size:1em;line-height:1.35;letter-spacing:-.015em}
   .assist-msg.is-streaming::after{content:"";display:inline-block;width:2px;height:.88em;margin-left:3px;vertical-align:-.08em;border-radius:1px;background:var(--signal);animation:assist-caret .75s steps(1) infinite}
+  .assist-error-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .assist-error-actions .btn{min-height:42px;padding:10px 15px;text-decoration:none}
+  .assist-unread-dot{position:absolute;right:2px;top:2px;width:11px;height:11px;border:2px solid var(--ink);border-radius:50%;background:#34d399;box-shadow:0 0 0 4px rgba(52,211,153,.14);pointer-events:none}
+  html[data-theme="light"] .assist-unread-dot{border-color:#f5f5f3}
+  .assist-reply-peek{position:fixed;right:24px;bottom:104px;z-index:460;width:min(270px,calc(100vw - 34px));padding:13px 42px 13px 15px;border:1px solid rgba(99,102,241,.42);border-radius:16px;background:rgba(18,18,22,.94);color:var(--paper);box-shadow:0 18px 48px rgba(0,0,0,.36);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;transform:translateY(10px) scale(.98);pointer-events:none;transition:opacity .24s,transform .28s var(--ease)}
+  html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);color:#151519;box-shadow:0 18px 48px rgba(20,20,28,.16)}
+  .assist-reply-peek.is-on{opacity:1;transform:none;pointer-events:auto}
+  .assist-reply-peek b{display:block;font-size:13px;margin-bottom:3px}.assist-reply-peek span{display:block;color:var(--muted);font-size:12px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .assist-reply-peek button{position:absolute;right:8px;top:8px;width:30px;height:30px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:18px/1 inherit;cursor:pointer}
   @keyframes assist-caret{50%{opacity:0}}
-  @media(prefers-reduced-motion:reduce){.assist-msg.is-streaming::after{animation:none}}
+  @media(max-width:640px){.assist-reply-peek{right:14px;bottom:96px}}
+  @media(prefers-reduced-motion:reduce){.assist-msg.is-streaming::after{animation:none}.assist-reply-peek{transition:none}}
   `;
   document.head.appendChild(styles);
 
@@ -68,12 +78,13 @@
     const log=panel.querySelector('.assist-log');
     const oldForm=panel.querySelector('.assist-form');
     const oldChips=panel.querySelector('.assist-chips');
-    if(!log||!oldForm)return;
+    const launch=document.querySelector('.assist-launch');
+    if(!log||!oldForm||!launch)return;
 
     const form=oldForm.cloneNode(true);oldForm.replaceWith(form);
     const chips=oldChips?.cloneNode(true);if(oldChips&&chips)oldChips.replaceWith(chips);
     const input=form.querySelector('input');const send=form.querySelector('.assist-send');
-    const history=[];let pending=false;
+    const history=[];let pending=false,audioCtx=null,peekTimer=0;
 
     const add=(text,who)=>{
       const el=document.createElement('div');el.className='assist-msg '+who;
@@ -90,13 +101,57 @@
       return el;
     };
 
+    const ensureAudio=()=>{
+      if(audioCtx)return audioCtx;
+      const AudioContext=window.AudioContext||window.webkitAudioContext;
+      if(!AudioContext)return null;
+      try{audioCtx=new AudioContext()}catch{return null}
+      return audioCtx;
+    };
+    const chime=()=>{
+      const ctx=ensureAudio();if(!ctx)return;
+      if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+      const now=ctx.currentTime;
+      [660,880].forEach((freq,i)=>{
+        const osc=ctx.createOscillator(),gain=ctx.createGain();
+        osc.type='sine';osc.frequency.value=freq;
+        gain.gain.setValueAtTime(0,now+i*.07);
+        gain.gain.linearRampToValueAtTime(.045,now+i*.07+.015);
+        gain.gain.exponentialRampToValueAtTime(.001,now+i*.07+.2);
+        osc.connect(gain).connect(ctx.destination);osc.start(now+i*.07);osc.stop(now+i*.07+.22);
+      });
+    };
+
+    const clearUnread=()=>{
+      launch.querySelector('.assist-unread-dot')?.remove();
+      document.querySelector('.assist-reply-peek')?.remove();
+      clearTimeout(peekTimer);
+    };
+    const notifyClosed=answer=>{
+      if(panel.classList.contains('is-open'))return;
+      if(!launch.querySelector('.assist-unread-dot')){
+        const dot=document.createElement('i');dot.className='assist-unread-dot';dot.setAttribute('aria-hidden','true');launch.appendChild(dot);
+      }
+      document.querySelector('.assist-reply-peek')?.remove();
+      const peek=document.createElement('button');peek.type='button';peek.className='assist-reply-peek';
+      const clean=String(answer).replace(/[#*_`>\[\]()]/g,' ').replace(/\s+/g,' ').trim();
+      peek.innerHTML='<b>New reply from the guide</b><span>'+escapeText(clean.slice(0,92))+'</span><button type="button" aria-label="Dismiss">×</button>';
+      const close=peek.lastElementChild;
+      close.addEventListener('click',e=>{e.stopPropagation();peek.remove()});
+      peek.addEventListener('click',()=>{clearUnread();launch.click()});
+      document.body.appendChild(peek);requestAnimationFrame(()=>peek.classList.add('is-on'));
+      peekTimer=setTimeout(()=>peek.remove(),7000);chime();
+    };
+
+    launch.addEventListener('click',()=>{if(panel.classList.contains('is-open'))clearUnread()});
+
     const fail=(message,question)=>{
       const el=document.createElement('div');el.className='assist-msg bot assist-error';el.setAttribute('role','alert');
       const title=document.createElement('b');title.textContent='The guide lost its connection.';
       const body=document.createElement('span');body.textContent=message||'Try again, or contact Abat directly.';
       const actions=document.createElement('div');actions.className='assist-error-actions';
-      const retry=document.createElement('button');retry.type='button';retry.textContent='Try again';retry.onclick=()=>reply(question);
-      const contact=document.createElement('a');contact.href='/contact';contact.textContent='Contact Abat';
+      const retry=document.createElement('button');retry.type='button';retry.className='btn sm';retry.textContent='Try again';retry.onclick=()=>reply(question);
+      const contact=document.createElement('a');contact.href='/contact';contact.className='btn primary sm';contact.textContent='Contact Abat ↗';
       actions.append(retry,contact);el.append(title,body,actions);log.appendChild(el);log.scrollTop=log.scrollHeight;
     };
 
@@ -134,16 +189,19 @@
         bubble?.classList.remove('is-streaming');
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
+        notifyClosed(answer);
       }catch(err){
         if(frame)cancelAnimationFrame(frame);
         loader.remove();bubble?.remove();fail(err.message,text);
       }finally{
-        pending=false;input.disabled=false;send.disabled=false;log.setAttribute('aria-busy','false');input.focus();
+        pending=false;input.disabled=false;send.disabled=false;log.setAttribute('aria-busy','false');
+        if(panel.classList.contains('is-open'))input.focus();
       }
     };
 
     const ask=text=>{
       const clean=String(text||'').trim();if(!clean||pending)return;
+      ensureAudio()?.resume().catch(()=>{});
       add(clean,'me');if(chips)chips.hidden=true;input.value='';reply(clean);
     };
     form.addEventListener('submit',e=>{e.preventDefault();ask(input.value)});
