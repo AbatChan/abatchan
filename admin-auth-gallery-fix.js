@@ -87,9 +87,19 @@
     document.querySelector('#cancelItem')?.addEventListener('click',()=>{creating=false});
   };
 
+  const loadWorkGridLayout=()=>{
+    if(document.querySelector('script[data-site-upgrade="work-grid-layout"]'))return;
+    const script=document.createElement('script');
+    script.src='/work-grid-layout-fix.js?v=1';
+    script.defer=true;
+    script.dataset.siteUpgrade='work-grid-layout';
+    document.head.appendChild(script);
+  };
+
   const start=()=>{
     removeHomepageFallbacks();
     preventGalleryCarryover();
+    loadWorkGridLayout();
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
