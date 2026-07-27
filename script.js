@@ -579,9 +579,16 @@ const loadPublicSettings=()=>{
 // Canned answers remain a useful fallback if the endpoint is unavailable.
 const ASSISTANT={
   endpoint:'/api/chat',
-  greeting:"Hi. Ask me anything about the work, pricing, or how a project runs.",
-  offline:"I'm not connected to a model yet, so that one needs a human. Email abatchan4@gmail.com and you'll get a reply within a working day.",
-  chips:['What do you build?','How much does it cost?','How long does it take?','Do you take small jobs?']
+  greeting:"Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?",
+  chips:['What do you build?','How much does it cost?','How long does it take?','What can you help with?']
+};
+const LEGACY_ASSISTANT_GREETING="Hi. Ask me anything about the work, pricing, or how a project runs.";
+const ASSISTANT_FALLBACK_ERROR={
+  code:'network',
+  title:'I lost the connection.',
+  message:'Try the question once more. If it keeps happening, Abat is still reachable directly.',
+  retryable:true,
+  contact:{label:'Contact support',href:'/contact'}
 };
 const CANNED=[
   [/price|cost|budget|charge|quote/i,"Websites start at $750, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes. The real number comes from scope, with the full breakdown on the pricing page."],
@@ -589,6 +596,7 @@ const CANNED=[
   [/what.*(build|do)|services|offer/i,"Connected web and mobile products, automation and workflow systems, APIs and integrations, dashboards, and the infrastructure under them."],
   [/small|tiny|fix|quick/i,"Yes. Small fixes and consultations are quoted separately, usually from $100, and ongoing work is $30/hour when project pricing does not fit."],
   [/hire|available|start|book/i,"I am taking on new projects. Send the problem, the current setup, and the deadline through the contact page."],
+  [/what can you help|can you do|your limits|do.?s|don.?ts/i,"I can explain the site, work, pricing, process, and how to start a project. I cannot access accounts, take payments, send messages, write code for visitors, or make binding promises."],
   [/hello|hi|hey|good (morning|afternoon|evening)/i,"Hello. What are you building?"]
 ];
 
@@ -596,7 +604,9 @@ const CANNED=[
   if(q('.assist-launch'))return;
   const settings=await loadPublicSettings();
   if(settings?.['assistant.enabled']===false)return;
-  if(typeof settings?.['assistant.greeting']==='string')ASSISTANT.greeting=settings['assistant.greeting'];
+  if(typeof settings?.['assistant.greeting']==='string'&&settings['assistant.greeting']!==LEGACY_ASSISTANT_GREETING){
+    ASSISTANT.greeting=settings['assistant.greeting'];
+  }
   const ICON_CHAT='<svg class="chat" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg>';
   const ICON_CLOSE='<svg class="close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
@@ -613,25 +623,25 @@ const CANNED=[
   panel.innerHTML=
     '<div class="assist-head">'+
       '<img src="/assets/abatchan-symbol-indigo-tight.svg" alt="" width="504" height="309">'+
-      '<div><b>abatchan assistant</b><span>usually replies instantly</span></div>'+
+      '<div><b>abatchan guide</b><span>site answers, with a human fallback</span></div>'+
       '<i class="assist-dot" aria-hidden="true"></i>'+
     '</div>'+
     '<div class="assist-log" role="log" aria-live="polite"></div>'+
     '<div class="assist-chips">'+ASSISTANT.chips.map(c=>`<button type="button">${c}</button>`).join('')+'</div>'+
     '<form class="assist-form">'+
-      '<input type="text" name="q" autocomplete="off" placeholder="Ask a question…" aria-label="Your question">'+
+      '<input type="text" name="q" autocomplete="off" maxlength="1000" placeholder="Ask a question…" aria-label="Your question">'+
       '<button class="assist-send" type="submit" aria-label="Send">'+
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 2.6 10.9 13.1"/><path d="M21.4 2.6 14.7 21.4l-3.8-8.3-8.3-3.8Z"/></svg>'+
       '</button>'+
     '</form>'+
-    '<p class="assist-note">Answers are guidance, not a quote. For anything binding, use the contact page.</p>';
+    '<p class="assist-note">I can explain the site and projects. I cannot access accounts, take payments, or make binding promises.</p>';
 
   document.body.append(launch,panel);
 
   const log=q('.assist-log',panel), form=q('.assist-form',panel), input=q('input',form);
   const chips=q('.assist-chips',panel);
   const history=[];
-  let greeted=false;
+  let greeted=false,pending=false,lastQuestion='';
 
   const add=(text,who)=>{
     const el=document.createElement('div');
@@ -639,34 +649,76 @@ const CANNED=[
     log.appendChild(el);log.scrollTop=log.scrollHeight;
     return el;
   };
+  const addError=(issue,question)=>{
+    const safe=issue&&typeof issue==='object'?issue:ASSISTANT_FALLBACK_ERROR;
+    const el=document.createElement('div');
+    el.className='assist-msg bot assist-error';
+    el.setAttribute('role','alert');
+    const title=document.createElement('b');
+    title.textContent=safe.title||ASSISTANT_FALLBACK_ERROR.title;
+    const message=document.createElement('span');
+    message.textContent=safe.message||ASSISTANT_FALLBACK_ERROR.message;
+    const actions=document.createElement('div');
+    actions.className='assist-error-actions';
+    if(safe.retryable!==false){
+      const retry=document.createElement('button');
+      retry.type='button';retry.textContent='Try again';
+      retry.addEventListener('click',()=>reply(question||lastQuestion));
+      actions.appendChild(retry);
+    }
+    const contact=document.createElement('a');
+    contact.href=safe.contact?.href||'/contact';
+    contact.textContent=safe.contact?.label||'Contact support';
+    actions.appendChild(contact);
+    el.append(title,message,actions);
+    log.appendChild(el);log.scrollTop=log.scrollHeight;
+    return el;
+  };
   const thinking=()=>{
     const el=document.createElement('div');
-    el.className='assist-typing';el.innerHTML='<i></i><i></i><i></i>';
+    el.className='assist-typing';el.setAttribute('role','status');
+    el.setAttribute('aria-label','abatchan is thinking');
+    el.innerHTML='<i></i><i></i><i></i>';
     log.appendChild(el);log.scrollTop=log.scrollHeight;
     return el;
   };
   const reply=async text=>{
+    if(pending||!text)return;
+    pending=true;lastQuestion=text;
+    input.disabled=true;
+    q('.assist-send',form).disabled=true;
+    log.setAttribute('aria-busy','true');
     const dots=thinking();
-    let answer;
+    let answer,issue;
     if(ASSISTANT.endpoint){
       try{
         const res=await fetch(ASSISTANT.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({message:text,history:history.slice(-6),page:location.pathname})});
-        const data=await res.json();
-        if(!res.ok)throw new Error(data.error||'assistant unavailable');
-        answer=data.reply;
-      }catch{ answer=ASSISTANT.offline; }
+        let data={};
+        try{data=await res.json()}catch{}
+        if(!res.ok||data.error){issue=data.error||ASSISTANT_FALLBACK_ERROR}
+        else answer=data.reply;
+      }catch{issue=ASSISTANT_FALLBACK_ERROR}
     }else{
       await new Promise(r=>setTimeout(r,420+Math.random()*380));
-      answer=(CANNED.find(([re])=>re.test(text))||[])[1]||ASSISTANT.offline;
+      answer=(CANNED.find(([re])=>re.test(text))||[])[1];
+      if(!answer)issue=ASSISTANT_FALLBACK_ERROR;
     }
     dots.remove();
-    add(answer||ASSISTANT.offline,'bot');
-    history.push(
-      {role:'user',content:text},
-      {role:'assistant',content:answer||ASSISTANT.offline}
-    );
-    if(history.length>8)history.splice(0,history.length-8);
+    if(answer){
+      add(answer,'bot');
+      history.push(
+        {role:'user',content:text},
+        {role:'assistant',content:answer}
+      );
+      if(history.length>8)history.splice(0,history.length-8);
+    }else{
+      addError(issue,text);
+    }
+    pending=false;input.disabled=false;
+    q('.assist-send',form).disabled=false;
+    log.setAttribute('aria-busy','false');
+    input.focus();
   };
 
   const open=on=>{
@@ -689,7 +741,7 @@ const CANNED=[
   });
 
   const ask=text=>{
-    if(!text.trim())return;
+    if(!text.trim()||pending)return;
     add(text.trim(),'me');
     chips.hidden=true;
     input.value='';

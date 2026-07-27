@@ -532,7 +532,11 @@
     try {
       const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'The assistant did not reply.');
+      if (!res.ok || data.error) {
+        const issue = data.error && typeof data.error === 'object' ? data.error : {};
+        q('#a-test-output').textContent = [issue.title, issue.message].filter(Boolean).join(' ') || 'The assistant could not reply just now.';
+        return;
+      }
       q('#a-test-output').textContent = data.reply || 'No reply returned.';
     } catch (err) {
       q('#a-test-output').textContent = err.message;

@@ -105,8 +105,8 @@ insert into public.settings (key, value, is_public) values
   ('copy.pricing.platform','"$1,500"',                    true),
   ('copy.pricing.system', '"$3,500"',                     true),
   ('assistant.enabled',   'true',                         true),
-  ('assistant.greeting',  '"Hi. Ask me anything about the work, pricing, or how a project runs."', true),
+  ('assistant.greeting',  '"Hey, I''m the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?"', true),
   ('assistant.model',     '"deepseek-v4-flash"',          false),
-  ('assistant.system',    '"You are the assistant on abatchan.com, an independent digital engineering studio. Answer briefly and concretely about services, pricing, work, and process. Websites start at $750, platforms at $1,500, and connected systems at $3,500. Always say these are starting points, not quotes. Never invent a firm quote, delivery date, client, or result. If you do not know, say so and point to the contact page."', false),
+  ('assistant.system',    '"Sound like a warm, practical studio guide rather than a support script. Lead with the answer, keep it concise, and give one useful next step. Refer to the owner as Abat. Prices are starting points, never quotes. If a visitor needs a human decision or a fact you do not have, say so plainly and point them to the contact page."', false),
   ('news.items',          '[{"id":"2026-07-brand-and-assistant","tag":"what''s new","title":"Brand page, process, and an assistant","body":"The full brand system with downloadable lockups is up, along with how projects actually run. There is also a chat bubble now if you would rather ask than read.","href":"/brand","cta":"see the brand page","soon":false}]', true)
 on conflict (key) do nothing;
