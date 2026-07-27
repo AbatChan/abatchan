@@ -529,6 +529,10 @@ html[data-theme="light"] .assist-form input{color:#151519}
 }
 
 /* --- lamp pull switch ---------------------------------------------------- */
+.work-art{width:100%;height:100%;display:block;object-fit:cover;object-position:center;
+  transform:scale(1.002);transition:transform .6s var(--ease),filter .6s var(--ease)}
+.work-card:hover .work-art{transform:scale(1.035);filter:saturate(1.06)}
+
 /* The cord spans the whole viewport rather than living in a 120x250 box, so the
    bead cannot stick against a container edge. What limits it is the rope's own
    length, checked radially from the anchor. A deliberate short pull clicks and

@@ -141,7 +141,9 @@ renderBrand();
 
   const anchor={x:0,y:-6};
   const place=()=>{
-    anchor.x=innerWidth>900?innerWidth-44:26;
+    // The theme control stays on the right at every breakpoint. Mobile uses a
+    // smaller inset while preserving the bead's 44px touch target.
+    anchor.x=innerWidth-(innerWidth>900?44:26);
     svg.setAttribute('viewBox',`0 0 ${innerWidth} ${innerHeight}`);
   };
   place();
@@ -803,11 +805,15 @@ const CANNED=[
     const visual=fallbackVisual||document.createElement('div');
     if(!fallbackVisual)visual.className='card-visual managed';
     if(item.image_path){
+      // A database upload owns the visual. Clear any authored fallback image
+      // first so matching titles never render two full-height images at once.
+      visual.replaceChildren();
+      visual.className='card-visual managed';
       const img=document.createElement('img');
       img.src=sb.publicUrl('work',item.image_path);
       img.alt=item.image_alt||'';
       img.loading='lazy';
-      img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
+      img.className='work-art';
       visual.append(img);
     }
     const info=document.createElement('div');
