@@ -170,17 +170,20 @@ window.SUPABASE = {
 })();
 
 // Preview upgrades. The existing site script creates the UI first; these modules
-// then refine transport, presentation, and real-device viewport behavior.
+// then refine transport, presentation, viewport behavior, and managed portfolio content.
 addEventListener('DOMContentLoaded', () => {
   [
     ['/assistant-v2.js?v=4','stream-markdown'],
     ['/assistant-polish.js?v=1','visual-polish'],
-    ['/mobile-viewport-fix.js?v=1','mobile-viewport-fix']
+    ['/mobile-viewport-fix.js?v=2','mobile-viewport-fix'],
+    ['/responsive-lamp.js?v=2','responsive-lamp'],
+    ['/dynamic-work.js?v=1','dynamic-work'],
+    ['/admin-work-enhancements.js?v=1','admin-work-enhancements']
   ].forEach(([src,label]) => {
     const script = document.createElement('script');
     script.src = src;
     script.defer = true;
-    script.dataset.assistantUpgrade = label;
+    script.dataset.siteUpgrade = label;
     document.head.appendChild(script);
   });
 }, { once: true });
