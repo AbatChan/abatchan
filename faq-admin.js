@@ -1,8 +1,12 @@
-// Polished Admin CRUD for the shared faq.items setting.
+// Compact accordion editor for the pricing-page FAQs stored in faq.items.
 (function faqAdmin(){
   'use strict';
-  if(!/\/admin(?:\.html)?$/.test(location.pathname)||window.__ABATCHAN_FAQ_ADMIN__)return;
-  window.__ABATCHAN_FAQ_ADMIN__=true;
+
+  const VERSION=3;
+  if((window.__ABATCHAN_FAQ_ADMIN_VERSION__||0)>=VERSION)return;
+  window.__ABATCHAN_FAQ_ADMIN_VERSION__=VERSION;
+
+  if(!/\/admin(?:\.html)?$/.test(location.pathname))return;
 
   const q=(selector,context=document)=>context.querySelector(selector);
   const tabs=q('#tabs');
@@ -14,58 +18,70 @@
   let loadingPromise=null;
   let dirty=false;
   let saveTimer=null;
+  let expandedId=null;
+  let draggedId=null;
+  let dropTarget=null;
 
   const makeId=()=>`faq-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
   const clone=value=>JSON.parse(JSON.stringify(value));
-  const pageLabel=page=>({"/pricing":"pricing","/":"home","/contact":"contact","/work":"work"}[page]||page||'pricing');
-  const icons={
-    up:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg>',
-    down:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 10 6 6 6-6"/></svg>',
-    trash:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 3h6l1 4H8l1-4ZM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>'
-  };
+  const dragIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7" r="1"/><circle cx="16" cy="7" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="17" r="1"/><circle cx="16" cy="17" r="1"/></svg>';
+  const trashIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 3h6l1 4H8l1-4ZM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>';
+  const chevronIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>';
 
   const style=document.createElement('style');
-  style.dataset.faqAdminStyles='2';
+  style.dataset.faqAdminStyles=String(VERSION);
   style.textContent=`
     .faq-admin-shell{max-width:940px}
     .faq-admin-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-10px 0 22px}
     .faq-admin-count{margin-right:auto;color:var(--muted);font-size:13px}
-    .faq-admin-list{display:grid;gap:14px}
-    .faq-admin-card{position:relative;display:grid;gap:16px;padding:20px;border:1px solid var(--line);border-radius:22px;background:var(--panel);background:linear-gradient(145deg,rgba(245,245,243,.045),rgba(245,245,243,.015));transition:border-color .22s,opacity .22s,transform .22s var(--ease)}
-    .faq-admin-card:focus-within{border-color:rgba(99,102,241,.62)}
-    .faq-admin-card.is-draft{opacity:.72}
-    .faq-admin-card.is-draft::after{content:"draft";position:absolute;right:18px;top:-8px;padding:4px 8px;border:1px solid rgba(224,162,74,.42);border-radius:999px;background:var(--ink);color:#e0a24a;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
-    .faq-admin-top{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:14px;align-items:center}
-    .faq-admin-number{width:46px;height:46px;display:grid;place-items:center;border:1px solid var(--line);border-radius:14px;color:var(--signal);font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em;background:rgba(99,102,241,.07)}
-    .faq-admin-heading{min-width:0}
-    .faq-admin-heading h3{overflow:hidden;margin:0 0 4px;font-size:17px;letter-spacing:-.025em;text-overflow:ellipsis;white-space:nowrap}
-    .faq-admin-meta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
-    .faq-admin-meta i{width:3px;height:3px;border-radius:50%;background:currentColor}
-    .faq-admin-actions{display:flex;gap:6px}
-    .faq-admin-actions .adm-icon{width:40px;height:40px}
-    .faq-admin-fields{display:grid;gap:14px;padding-top:2px}
-    .faq-admin-field label{display:block;margin:0 0 7px;color:var(--muted);font-size:12px}
-    .faq-admin-field input,.faq-admin-field textarea,.faq-admin-field select{width:100%;padding:13px 14px;border:1px solid var(--edge,var(--line));border-radius:13px;background:transparent;color:var(--paper);font:inherit;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s}
-    .faq-admin-field textarea{min-height:120px;resize:vertical;line-height:1.65}
-    .faq-admin-field select{appearance:none;cursor:pointer}
-    .faq-admin-field input:focus,.faq-admin-field textarea:focus,.faq-admin-field select:focus{border-color:var(--signal);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
-    .faq-admin-bottom{display:grid;grid-template-columns:minmax(180px,260px) 1fr;gap:16px;align-items:end}
-    .faq-admin-publish{display:flex;justify-content:flex-end;padding-bottom:1px}
-    .faq-admin-empty{padding:48px 24px;border:1px dashed var(--line);border-radius:22px;text-align:center;color:var(--muted)}
-    .faq-admin-empty b{display:block;margin-bottom:5px;color:var(--paper);font-size:17px}
-    .faq-admin-status{min-height:20px;color:var(--muted);font-size:12px}
+    .faq-admin-status{min-height:20px;margin:-8px 0 12px;color:var(--muted);font-size:12px}
     .faq-admin-status.bad{color:#ff8f85}
-    html[data-theme="light"] .faq-admin-card{background:linear-gradient(145deg,rgba(21,21,25,.03),rgba(21,21,25,.01))}
-    html[data-theme="light"] .faq-admin-card.is-draft::after{background:var(--ink)}
-    html[data-theme="light"] .faq-admin-field input,html[data-theme="light"] .faq-admin-field textarea,html[data-theme="light"] .faq-admin-field select{color:#151519}
+    .faq-admin-list{display:grid;gap:10px}
+    .faq-admin-item{position:relative;border:1px solid var(--line);border-radius:18px;background:var(--panel);overflow:hidden;transition:border-color .22s,background .22s,opacity .22s,transform .22s var(--ease)}
+    .faq-admin-item:hover{border-color:rgba(99,102,241,.38)}
+    .faq-admin-item.is-open{border-color:rgba(99,102,241,.58);background:linear-gradient(145deg,rgba(99,102,241,.075),rgba(245,245,243,.018))}
+    .faq-admin-item.is-draft{opacity:.72}
+    .faq-admin-head{display:grid;grid-template-columns:minmax(0,1fr) 48px;align-items:stretch}
+    .faq-admin-toggle{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:13px;align-items:center;width:100%;min-width:0;padding:15px 10px 15px 16px;border:0;background:transparent;color:var(--paper);text-align:left;cursor:pointer}
+    .faq-admin-index{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line);border-radius:11px;color:var(--signal);background:rgba(99,102,241,.07);font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em}
+    .faq-admin-copy{min-width:0}
+    .faq-admin-title{display:block;overflow:hidden;color:var(--paper);font-size:15px;font-weight:600;letter-spacing:-.02em;text-overflow:ellipsis;white-space:nowrap}
+    .faq-admin-meta{display:block;margin-top:3px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+    .faq-admin-chevron{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;color:var(--muted);transition:transform .25s var(--ease),color .2s,border-color .2s}
+    .faq-admin-chevron svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .faq-admin-item.is-open .faq-admin-chevron{transform:rotate(180deg);color:var(--paper);border-color:rgba(99,102,241,.5)}
+    .faq-admin-drag{width:48px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);cursor:grab;touch-action:none}
+    .faq-admin-drag:active{cursor:grabbing}
+    .faq-admin-drag:hover,.faq-admin-drag:focus-visible{color:var(--paper);background:rgba(99,102,241,.08);outline:0}
+    .faq-admin-drag svg{width:22px;height:22px;fill:currentColor}
+    .faq-admin-panel{padding:18px;border-top:1px solid var(--line)}
+    .faq-admin-fields{display:grid;gap:14px}
+    .faq-admin-field label{display:block;margin:0 0 7px;color:var(--muted);font-size:12px}
+    .faq-admin-field input,.faq-admin-field textarea{width:100%;padding:13px 14px;border:1px solid var(--edge,var(--line));border-radius:13px;background:transparent;color:var(--paper);font:inherit;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s}
+    .faq-admin-field textarea{min-height:120px;resize:vertical;line-height:1.65}
+    .faq-admin-field input:focus,.faq-admin-field textarea:focus{border-color:var(--signal);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+    .faq-admin-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px}
+    .faq-admin-delete{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid rgba(224,86,74,.34);border-radius:11px;background:transparent;color:#ff8f85;cursor:pointer}
+    .faq-admin-delete:hover{border-color:#e0564a;background:rgba(224,86,74,.09)}
+    .faq-admin-delete svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    .faq-admin-empty{padding:42px 22px;border:1px dashed var(--line);border-radius:18px;text-align:center;color:var(--muted)}
+    .faq-admin-empty b{display:block;margin-bottom:5px;color:var(--paper);font-size:16px}
+    .faq-admin-item.is-dragging{opacity:.35;transform:scale(.985)}
+    .faq-admin-item.drop-before::before,.faq-admin-item.drop-after::after{content:"";position:absolute;z-index:5;left:12px;right:12px;height:3px;border-radius:999px;background:var(--signal);box-shadow:0 0 16px rgba(99,102,241,.55)}
+    .faq-admin-item.drop-before::before{top:-2px}
+    .faq-admin-item.drop-after::after{bottom:-2px}
+    html[data-theme="light"] .faq-admin-item{background:rgba(21,21,25,.018)}
+    html[data-theme="light"] .faq-admin-item.is-open{background:linear-gradient(145deg,rgba(99,102,241,.08),rgba(21,21,25,.012))}
+    html[data-theme="light"] .faq-admin-toggle,html[data-theme="light"] .faq-admin-field input,html[data-theme="light"] .faq-admin-field textarea{color:#151519}
     @media(max-width:820px){.adm-nav{grid-template-columns:repeat(5,minmax(0,1fr))!important}.faq-admin-shell{padding-bottom:12px}}
-    @media(max-width:650px){
-      .faq-admin-card{padding:16px;border-radius:18px}
-      .faq-admin-top{grid-template-columns:38px minmax(0,1fr)}
-      .faq-admin-number{width:38px;height:38px;border-radius:12px}
-      .faq-admin-actions{grid-column:1/-1;justify-content:flex-end;padding-top:2px}
-      .faq-admin-bottom{grid-template-columns:1fr}
-      .faq-admin-publish{justify-content:flex-start}
+    @media(max-width:560px){
+      .faq-admin-head{grid-template-columns:minmax(0,1fr) 44px}
+      .faq-admin-toggle{grid-template-columns:34px minmax(0,1fr) 30px;gap:10px;padding:13px 8px 13px 13px}
+      .faq-admin-index{width:34px;height:34px}
+      .faq-admin-chevron{width:30px;height:30px}
+      .faq-admin-drag{width:44px}
+      .faq-admin-panel{padding:15px}
+      .faq-admin-footer{align-items:flex-start;flex-direction:column}
     }
   `;
   document.head.appendChild(style);
@@ -79,25 +95,23 @@
     tabs.append(tab);
   }
 
-  let section=q('#view-faqs');
-  if(!section){
-    section=document.createElement('section');
-    section.id='view-faqs';
-    section.className='adm-hide faq-admin-shell';
-    section.innerHTML=`
-      <div class="adm-head">
-        <h2>FAQs</h2>
-        <button class="btn primary sm" id="saveFaqs" type="button">save <span class="arrow">↗</span></button>
-      </div>
-      <p class="adm-sub">Manage the questions shown across the public site. Changes stay local here until you press save.</p>
-      <div class="faq-admin-toolbar">
-        <span class="faq-admin-count" id="faqAdminCount">0 FAQs</span>
-        <button class="btn sm" id="addFaq" type="button">add FAQ <span class="arrow">↗</span></button>
-      </div>
-      <div class="faq-admin-status" id="faqAdminStatus" role="status" aria-live="polite"></div>
-      <div class="faq-admin-list" id="faqAdminList"></div>`;
-    main.append(section);
-  }
+  q('#view-faqs')?.remove();
+  const section=document.createElement('section');
+  section.id='view-faqs';
+  section.className='adm-hide faq-admin-shell';
+  section.innerHTML=`
+    <div class="adm-head">
+      <h2>FAQs</h2>
+      <button class="btn primary sm" id="saveFaqs" type="button">save <span class="arrow">↗</span></button>
+    </div>
+    <p class="adm-sub">Pricing-page questions. Open a row to edit it, then drag the handle on the right to change the order.</p>
+    <div class="faq-admin-toolbar">
+      <span class="faq-admin-count" id="faqAdminCount">0 FAQs</span>
+      <button class="btn sm" id="addFaq" type="button">add FAQ <span class="arrow">↗</span></button>
+    </div>
+    <div class="faq-admin-status" id="faqAdminStatus" role="status" aria-live="polite"></div>
+    <div class="faq-admin-list" id="faqAdminList"></div>`;
+  main.append(section);
 
   const list=q('#faqAdminList');
   const count=q('#faqAdminCount');
@@ -109,143 +123,249 @@
     status.textContent=message;
     status.classList.toggle('bad',bad);
   };
+
   const setDirty=value=>{
     dirty=value;
     section.dataset.dirty=String(value);
     if(value)setStatus('Unsaved changes');
     else if(status.textContent==='Unsaved changes')setStatus('');
   };
+
   const setSaveState=(label,disabled)=>{
     saveButton.disabled=disabled;
     saveButton.innerHTML=`${label}${disabled?'':' <span class="arrow">↗</span>'}`;
   };
 
-  const iconButton=(label,icon,handler,{disabled=false,danger=false}={})=>{
-    const button=document.createElement('button');
-    button.type='button';
-    button.className=`adm-icon${danger?' danger':''}`;
-    button.setAttribute('aria-label',label);
-    button.innerHTML=icon;
-    button.disabled=disabled;
-    button.addEventListener('click',handler);
-    return button;
+  const clearDropState=()=>{
+    list.querySelectorAll('.is-dragging,.drop-before,.drop-after').forEach(node=>{
+      node.classList.remove('is-dragging','drop-before','drop-after');
+    });
+    dropTarget=null;
   };
 
-  const move=(from,to)=>{
-    if(to<0||to>=items.length)return;
-    [items[from],items[to]]=[items[to],items[from]];
+  const reorder=(movingId,targetId,after=false)=>{
+    const from=items.findIndex(item=>item.id===movingId);
+    if(from<0)return;
+    const [moving]=items.splice(from,1);
+    let to=items.findIndex(item=>item.id===targetId);
+    if(to<0)to=items.length;
+    else if(after)to+=1;
+    items.splice(to,0,moving);
     setDirty(true);
     render();
-    list.children[to]?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+
+  const markDrop=(card,targetId,clientY)=>{
+    if(!draggedId||draggedId===targetId)return;
+    list.querySelectorAll('.drop-before,.drop-after').forEach(node=>node.classList.remove('drop-before','drop-after'));
+    const rect=card.getBoundingClientRect();
+    const after=clientY>rect.top+rect.height/2;
+    card.classList.add(after?'drop-after':'drop-before');
+    dropTarget={id:targetId,after};
   };
 
   const render=()=>{
     count.textContent=`${items.length} FAQ${items.length===1?'':'s'}`;
+
     if(!items.length){
       const empty=document.createElement('div');
       empty.className='faq-admin-empty';
-      empty.innerHTML='<b>No FAQs yet</b>Add the first question, choose its page, then save.';
+      empty.innerHTML='<b>No FAQs yet</b>Add the first pricing question, then save.';
       list.replaceChildren(empty);
       return;
     }
 
     const cards=items.map((item,index)=>{
+      item.id=item.id||makeId();
+      const isOpen=expandedId===item.id;
       const card=document.createElement('article');
-      card.className=`faq-admin-card${item.published===false?' is-draft':''}`;
+      card.className=`faq-admin-item${isOpen?' is-open':''}${item.published===false?' is-draft':''}`;
+      card.dataset.faqId=item.id;
 
-      const top=document.createElement('div');
-      top.className='faq-admin-top';
+      const head=document.createElement('div');
+      head.className='faq-admin-head';
+
+      const toggle=document.createElement('button');
+      toggle.type='button';
+      toggle.className='faq-admin-toggle';
+      toggle.setAttribute('aria-expanded',String(isOpen));
+      const panelId=`${item.id}-editor`;
+      toggle.setAttribute('aria-controls',panelId);
+
       const number=document.createElement('span');
-      number.className='faq-admin-number';
+      number.className='faq-admin-index';
       number.textContent=String(index+1).padStart(2,'0');
-      const heading=document.createElement('div');
-      heading.className='faq-admin-heading';
-      const title=document.createElement('h3');
+
+      const copy=document.createElement('span');
+      copy.className='faq-admin-copy';
+      const title=document.createElement('span');
+      title.className='faq-admin-title';
       title.textContent=item.question?.trim()||'Untitled FAQ';
-      const meta=document.createElement('div');
+      const meta=document.createElement('span');
       meta.className='faq-admin-meta';
-      meta.innerHTML=`<span>${pageLabel(item.page)}</span><i></i><span>${item.published===false?'draft':'published'}</span>`;
-      heading.append(title,meta);
-      const actions=document.createElement('div');
-      actions.className='faq-admin-actions';
-      actions.append(
-        iconButton('Move FAQ up',icons.up,()=>move(index,index-1),{disabled:index===0}),
-        iconButton('Move FAQ down',icons.down,()=>move(index,index+1),{disabled:index===items.length-1}),
-        iconButton('Delete FAQ',icons.trash,()=>{
+      meta.textContent=item.published===false?'draft':'published';
+      copy.append(title,meta);
+
+      const chevron=document.createElement('span');
+      chevron.className='faq-admin-chevron';
+      chevron.setAttribute('aria-hidden','true');
+      chevron.innerHTML=chevronIcon;
+      toggle.append(number,copy,chevron);
+      toggle.addEventListener('click',()=>{
+        expandedId=isOpen?null:item.id;
+        render();
+        if(!isOpen)requestAnimationFrame(()=>list.querySelector(`[data-faq-id="${CSS.escape(item.id)}"] input`)?.focus());
+      });
+
+      const drag=document.createElement('button');
+      drag.type='button';
+      drag.className='faq-admin-drag';
+      drag.draggable=true;
+      drag.innerHTML=dragIcon;
+      drag.setAttribute('aria-label',`Drag to reorder: ${item.question?.trim()||'Untitled FAQ'}`);
+      drag.title='Drag to reorder';
+
+      drag.addEventListener('dragstart',event=>{
+        draggedId=item.id;
+        dropTarget=null;
+        event.dataTransfer.effectAllowed='move';
+        event.dataTransfer.setData('text/plain',item.id);
+        requestAnimationFrame(()=>card.classList.add('is-dragging'));
+      });
+      drag.addEventListener('dragend',()=>{
+        draggedId=null;
+        clearDropState();
+      });
+      drag.addEventListener('keydown',event=>{
+        if(event.key!=='ArrowUp'&&event.key!=='ArrowDown')return;
+        event.preventDefault();
+        const to=index+(event.key==='ArrowUp'?-1:1);
+        if(to<0||to>=items.length)return;
+        const targetId=items[to].id;
+        reorder(item.id,targetId,event.key==='ArrowDown');
+        requestAnimationFrame(()=>list.querySelector(`[data-faq-id="${CSS.escape(item.id)}"] .faq-admin-drag`)?.focus());
+      });
+
+      let touchMoved=false;
+      drag.addEventListener('pointerdown',event=>{
+        if(event.pointerType==='mouse')return;
+        draggedId=item.id;
+        touchMoved=false;
+        drag.setPointerCapture?.(event.pointerId);
+        card.classList.add('is-dragging');
+      });
+      drag.addEventListener('pointermove',event=>{
+        if(event.pointerType==='mouse'||draggedId!==item.id)return;
+        touchMoved=true;
+        event.preventDefault();
+        const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.faq-admin-item');
+        if(target)markDrop(target,target.dataset.faqId,event.clientY);
+      });
+      const finishTouch=event=>{
+        if(event.pointerType==='mouse'||draggedId!==item.id)return;
+        if(touchMoved&&dropTarget)reorder(item.id,dropTarget.id,dropTarget.after);
+        draggedId=null;
+        clearDropState();
+      };
+      drag.addEventListener('pointerup',finishTouch);
+      drag.addEventListener('pointercancel',finishTouch);
+
+      head.append(toggle,drag);
+
+      const panel=document.createElement('div');
+      panel.id=panelId;
+      panel.className='faq-admin-panel';
+      panel.hidden=!isOpen;
+
+      if(isOpen){
+        const fields=document.createElement('div');
+        fields.className='faq-admin-fields';
+
+        const questionField=document.createElement('div');
+        questionField.className='faq-admin-field';
+        questionField.innerHTML='<label>FAQ title</label>';
+        const question=document.createElement('input');
+        question.type='text';
+        question.value=item.question||'';
+        question.placeholder='What would a client ask?';
+        question.addEventListener('input',()=>{
+          item.question=question.value;
+          title.textContent=question.value.trim()||'Untitled FAQ';
+          drag.setAttribute('aria-label',`Drag to reorder: ${title.textContent}`);
+          setDirty(true);
+        });
+        questionField.append(question);
+
+        const answerField=document.createElement('div');
+        answerField.className='faq-admin-field';
+        answerField.innerHTML='<label>Answer</label>';
+        const answer=document.createElement('textarea');
+        answer.value=item.answer||'';
+        answer.placeholder='Write a clear and useful answer.';
+        answer.addEventListener('input',()=>{
+          item.answer=answer.value;
+          setDirty(true);
+        });
+        answerField.append(answer);
+        fields.append(questionField,answerField);
+
+        const footer=document.createElement('div');
+        footer.className='faq-admin-footer';
+
+        const publishLabel=document.createElement('label');
+        publishLabel.className='adm-switch';
+        const published=document.createElement('input');
+        published.type='checkbox';
+        published.checked=item.published!==false;
+        const track=document.createElement('span');
+        track.className='adm-switch-track';
+        track.setAttribute('aria-hidden','true');
+        const publishText=document.createElement('span');
+        publishText.textContent='published';
+        published.addEventListener('change',()=>{
+          item.published=published.checked;
+          card.classList.toggle('is-draft',!published.checked);
+          meta.textContent=published.checked?'published':'draft';
+          setDirty(true);
+        });
+        publishLabel.append(published,track,publishText);
+
+        const remove=document.createElement('button');
+        remove.type='button';
+        remove.className='faq-admin-delete';
+        remove.innerHTML=`${trashIcon}<span>delete FAQ</span>`;
+        remove.addEventListener('click',()=>{
           if(!confirm(`Delete “${item.question?.trim()||'this FAQ'}”?`))return;
           items.splice(index,1);
+          if(expandedId===item.id)expandedId=null;
           setDirty(true);
           render();
-        },{danger:true})
-      );
-      top.append(number,heading,actions);
+        });
 
-      const fields=document.createElement('div');
-      fields.className='faq-admin-fields';
-      const questionField=document.createElement('div');
-      questionField.className='faq-admin-field';
-      questionField.innerHTML='<label>question</label>';
-      const question=document.createElement('input');
-      question.type='text';
-      question.value=item.question||'';
-      question.placeholder='What would a client ask?';
-      question.addEventListener('input',()=>{
-        item.question=question.value;
-        title.textContent=question.value.trim()||'Untitled FAQ';
-        setDirty(true);
+        footer.append(publishLabel,remove);
+        panel.append(fields,footer);
+      }
+
+      card.addEventListener('dragover',event=>{
+        if(!draggedId||draggedId===item.id)return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect='move';
+        markDrop(card,item.id,event.clientY);
       });
-      questionField.append(question);
-
-      const answerField=document.createElement('div');
-      answerField.className='faq-admin-field';
-      answerField.innerHTML='<label>answer</label>';
-      const answer=document.createElement('textarea');
-      answer.value=item.answer||'';
-      answer.placeholder='Give a clear, useful answer.';
-      answer.addEventListener('input',()=>{item.answer=answer.value;setDirty(true)});
-      answerField.append(answer);
-      fields.append(questionField,answerField);
-
-      const bottom=document.createElement('div');
-      bottom.className='faq-admin-bottom';
-      const pageField=document.createElement('div');
-      pageField.className='faq-admin-field';
-      pageField.innerHTML='<label>show on page</label>';
-      const select=document.createElement('select');
-      [['/pricing','pricing'],['/','home'],['/contact','contact'],['/work','work']].forEach(([value,label])=>{
-        const option=document.createElement('option');
-        option.value=value;option.textContent=label;option.selected=item.page===value;
-        select.append(option);
+      card.addEventListener('drop',event=>{
+        if(!draggedId||draggedId===item.id)return;
+        event.preventDefault();
+        const target=dropTarget||{id:item.id,after:false};
+        const moving=draggedId;
+        draggedId=null;
+        clearDropState();
+        reorder(moving,target.id,target.after);
       });
-      select.addEventListener('change',()=>{
-        item.page=select.value;
-        meta.firstElementChild.textContent=pageLabel(item.page);
-        setDirty(true);
-      });
-      pageField.append(select);
 
-      const publish=document.createElement('div');
-      publish.className='faq-admin-publish';
-      const publishLabel=document.createElement('label');
-      publishLabel.className='adm-switch';
-      const checkbox=document.createElement('input');
-      checkbox.type='checkbox';
-      checkbox.checked=item.published!==false;
-      const track=document.createElement('span');
-      track.className='adm-switch-track';track.setAttribute('aria-hidden','true');
-      const text=document.createElement('span');text.textContent='published';
-      checkbox.addEventListener('change',()=>{
-        item.published=checkbox.checked;
-        setDirty(true);
-        render();
-      });
-      publishLabel.append(checkbox,track,text);
-      publish.append(publishLabel);
-      bottom.append(pageField,publish);
-
-      card.append(top,fields,bottom);
+      card.append(head,panel);
       return card;
     });
+
     list.replaceChildren(...cards);
   };
 
@@ -260,11 +380,13 @@
     if(loaded)return Promise.resolve();
     if(loadingPromise)return loadingPromise;
     setStatus('Loading FAQs…');
+
     loadingPromise=(async()=>{
       try{
         const rows=await sb.select('settings','key=eq.faq.items&select=value');
         const defaults=await waitForDefaults();
-        items=Array.isArray(rows?.[0]?.value)?clone(rows[0].value):clone(defaults);
+        const source=Array.isArray(rows?.[0]?.value)?rows[0].value:defaults;
+        items=clone(source).map(item=>({...item,id:item.id||makeId(),page:'/pricing'}));
         loaded=true;
         setDirty(false);
         setStatus('');
@@ -275,37 +397,43 @@
         loadingPromise=null;
       }
     })();
+
     return loadingPromise;
   };
 
   addButton.addEventListener('click',async()=>{
     await load();
-    items.push({id:makeId(),page:'/pricing',question:'',answer:'',published:true});
+    const item={id:makeId(),page:'/pricing',question:'',answer:'',published:true};
+    items.push(item);
+    expandedId=item.id;
     setDirty(true);
     render();
     const card=list.lastElementChild;
     card?.scrollIntoView({behavior:'smooth',block:'center'});
-    card?.querySelector('input')?.focus({preventScroll:true});
+    requestAnimationFrame(()=>card?.querySelector('input')?.focus({preventScroll:true}));
   });
 
   saveButton.addEventListener('click',async()=>{
     await load();
     const invalid=items.find(item=>!String(item.question||'').trim()||!String(item.answer||'').trim());
     if(invalid){
-      setStatus('Every FAQ needs both a question and an answer.',true);
-      const index=items.indexOf(invalid);
-      list.children[index]?.scrollIntoView({behavior:'smooth',block:'center'});
-      list.children[index]?.querySelector(!String(invalid.question||'').trim()?'input':'textarea')?.focus();
+      expandedId=invalid.id;
+      render();
+      setStatus('Every FAQ needs both a title and an answer.',true);
+      const card=list.querySelector(`[data-faq-id="${CSS.escape(invalid.id)}"]`);
+      card?.scrollIntoView({behavior:'smooth',block:'center'});
+      requestAnimationFrame(()=>card?.querySelector(!String(invalid.question||'').trim()?'input':'textarea')?.focus());
       return;
     }
 
     clearTimeout(saveTimer);
     setSaveState('saving…',true);
     setStatus('Saving changes…');
+
     try{
       items=items.map((item,position)=>({
         id:item.id||makeId(),
-        page:item.page||'/pricing',
+        page:'/pricing',
         question:String(item.question).trim(),
         answer:String(item.answer).trim(),
         published:item.published!==false,
