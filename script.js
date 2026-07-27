@@ -111,7 +111,9 @@ renderBrand();
 
   const N=15, SEG=7, GRAV=0.62, DAMP=0.986, ITER=6;
   const REST=(N-1)*SEG;            // hanging length
-  const STRETCH=78;                // how far past rest it can be pulled
+  const STRETCH=46;                // how far past rest it can be pulled
+  const FLICK=0.55;                // px/ms downward that counts as a yank
+  const FLICK_MIN=22;              // ...provided it travelled at least this far
   const MAXLEN=REST+STRETCH;       // the click point
 
   const el=document.createElement('div');
@@ -134,6 +136,7 @@ renderBrand();
   const tail=P[N-1];
 
   let dragging=false,grabId=null,target=null,running=false,still=0,armed=false,taut=false;
+  let lastY=0,lastT=0,vy=0,peak=0;
 
   function step(){
     for(let i=1;i<N;i++){
@@ -192,6 +195,7 @@ renderBrand();
   bead.addEventListener('pointerdown',e=>{
     e.preventDefault();
     grabId=e.pointerId; dragging=true; armed=false;
+    lastY=e.clientY; lastT=performance.now(); vy=0; peak=0;
     bead.setPointerCapture(grabId);
     document.dispatchEvent(new Event('tip:lock'));   // no tooltip mid-pull
     target={x:e.clientX,y:e.clientY}; wake();
@@ -208,6 +212,11 @@ renderBrand();
   bead.addEventListener('pointermove',e=>{
     if(e.pointerId!==grabId)return;
     const r=reach(e);
+    // speed of the pull, so a sharp yank counts even if it never reaches the end
+    const t=performance.now(), dt=Math.max(1,t-lastT);
+    vy=(e.clientY-lastY)/dt;
+    lastY=e.clientY; lastT=t;
+    peak=Math.max(peak,r.dist);
     // Once the rope has run out it stays armed for the rest of the drag. Easing
     // off after hitting the end should not quietly disarm it, and a fast flick
     // out and back should still count.
@@ -221,9 +230,15 @@ renderBrand();
     if(e.pointerId!==grabId)return;
     // A flick can release without a move event in between, so check the release
     // point too rather than trusting that pointermove ran.
-    if(reach(e).dist>=MAXLEN)armed=true;
+    const r=reach(e);
+    peak=Math.max(peak,r.dist);
+    if(r.dist>=MAXLEN)armed=true;
+    // A sharp downward yank reads as a pull even if the rope never ran out.
+    // Without this only a slow, deliberate drag registered, which is the
+    // opposite of how a pull switch feels.
+    if(!armed&&vy>=FLICK&&peak>=REST+FLICK_MIN)armed=true;
     const fire=armed;
-    if(fire){tail.px=tail.x;tail.py=tail.y-11}      // kick it up so it rebounds
+    if(fire){tail.px=tail.x;tail.py=tail.y-18}      // kick it up so it snaps back
     letGo();
     if(fire)toggleTheme();
     document.dispatchEvent(new Event('tip:unlock'));
