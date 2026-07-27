@@ -294,6 +294,10 @@ html[data-theme="light"] .adm-note b{color:#151519}
         <div><label for="a-system">system prompt</label><textarea id="a-system" style="min-height:180px"></textarea></div>
         <div><label for="a-model">model</label><input type="text" id="a-model" placeholder="deepseek-v4-flash"></div>
         <div class="adm-note">
+          <b>What the guide does, and does not do.</b><br>
+          It explains the site, work, pricing, process and how to contact Abat. It cannot access accounts, take payments, send messages, reveal private settings, provide code or hacking help, or make binding promises. Those boundaries are fixed in the server and cannot be weakened by this prompt. Rate limits and model failures automatically show visitors a retry action and a contact-support button.
+        </div>
+        <div class="adm-note">
           <b>The API key is not set here, on purpose.</b><br>
           Public settings are readable with the publishable key, while the system prompt stays behind row-level security. The DeepSeek key lives as <code>DEEPSEEK_API_KEY</code> in Vercel → Settings → Environment Variables, where only <code>/api/chat</code> can read it. Never paste a secret into this dashboard.
         </div>
