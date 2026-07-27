@@ -152,12 +152,12 @@ addEventListener('DOMContentLoaded', () => {
   [
     ['/assistant-v2.js?v=4','stream-markdown'],
     ['/assistant-polish.js?v=1','visual-polish'],
-    ['/mobile-viewport-fix.js?v=3','mobile-viewport-fix'],
+    ['/mobile-viewport-fix.js?v=4','mobile-viewport-fix'],
     ['/responsive-lamp.js?v=5','responsive-lamp'],
     ['/dynamic-work.js?v=1','dynamic-work'],
     ['/admin-work-enhancements.js?v=2','admin-work-enhancements'],
     ['/admin-guided-controls.js?v=1','admin-guided-controls'],
-    ['/admin-announcement-ux.js?v=1','admin-announcement-ux'],
+    ['/admin-announcement-ux.js?v=2','admin-announcement-ux'],
     ['/admin-ux-fixes.js?v=1','admin-ux-fixes'],
     ['/admin-validation-fix.js?v=1','admin-validation-fix'],
     ['/admin-password-toggle.js?v=1','admin-password-toggle']
