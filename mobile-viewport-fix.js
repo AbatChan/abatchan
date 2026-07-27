@@ -2,20 +2,21 @@
 // iOS browsers resize the visual viewport as their address and toolbar chrome
 // expands and collapses, often without a matching layout viewport resize.
 (function mobileViewportFix(){
+  const isAdmin=/\/admin(?:\.html)?$/.test(location.pathname);
   const root=document.documentElement;
   const scroller=document.scrollingElement||root;
   const viewport=window.visualViewport;
   let frame=0,settleTimer=0,lastWidth=0,lastHeight=0;
 
   const realPageEnd=()=>{
-    const footer=document.querySelector('footer');
+    const footer=document.querySelector('body > footer');
     if(!footer)return scroller.scrollHeight;
     const rect=footer.getBoundingClientRect();
     return Math.max(0,Math.round(rect.bottom+scroller.scrollTop));
   };
 
   const clampToContent=()=>{
-    if(innerWidth>900||document.body.classList.contains('assist-sheet-open'))return;
+    if(isAdmin||innerWidth>900||document.body.classList.contains('assist-sheet-open'))return;
     const height=Math.round(viewport?.height||root.clientHeight||innerHeight);
     const max=Math.max(0,realPageEnd()-height);
     if(scroller.scrollTop>max+2){
@@ -25,6 +26,7 @@
   };
 
   const queueClamp=(delay=90)=>{
+    if(isAdmin)return;
     clearTimeout(settleTimer);
     settleTimer=setTimeout(()=>requestAnimationFrame(clampToContent),delay);
   };
@@ -49,8 +51,8 @@
     }
 
     // WebKit can inflate the root scroll extent while its dynamic toolbar moves.
-    // The footer is the final in-flow element, so its measured bottom is a more
-    // dependable page boundary than document.scrollHeight on affected iPhones.
+    // This clamp is intentionally public-site only; dashboard pages have sticky
+    // sidebars and nested controls that must retain their own scroll position.
     queueClamp();
   };
 
@@ -78,14 +80,4 @@
   viewport?.addEventListener('scroll',schedule,{passive:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule()});
   schedule();
-})();
-
-// Small feature modules shared by public pages and the dashboard.
-(function loadSiteEnhancements(){
-  const scripts=['/responsive-lamp.js?v=1','/dynamic-work.js?v=1'];
-  if(/\/admin(?:\.html)?$/.test(location.pathname))scripts.push('/admin-work-enhancements.js?v=1');
-  scripts.forEach(src=>{
-    if(document.querySelector(`script[src="${src}"]`))return;
-    const script=document.createElement('script');script.src=src;script.defer=true;document.head.appendChild(script);
-  });
 })();
