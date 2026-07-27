@@ -88,7 +88,8 @@
   };
 
   const loadUpgrade=(src,label)=>{
-    if(document.querySelector(`script[data-site-upgrade="${label}"]`))return;
+    const previous=document.querySelector(`script[data-site-upgrade="${label}"]`);
+    if(previous)previous.remove();
     const script=document.createElement('script');
     script.src=src;
     script.defer=true;
@@ -100,9 +101,9 @@
     removeHomepageFallbacks();
     preventGalleryCarryover();
     loadUpgrade('/work-grid-layout-fix.js?v=3','work-grid-layout');
-    loadUpgrade('/faq-system.js?v=3','faq-system');
+    loadUpgrade('/faq-system.js?v=4','faq-system');
     loadUpgrade('/commercial-positioning.js?v=3','commercial-positioning');
-    if(/\/admin(?:\.html)?$/.test(location.pathname))loadUpgrade('/faq-admin.js?v=2','faq-admin');
+    if(/\/admin(?:\.html)?$/.test(location.pathname))loadUpgrade('/faq-admin.js?v=3','faq-admin');
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
