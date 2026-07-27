@@ -77,6 +77,17 @@ html[data-theme="light"] .adm-news-item textarea{color:#151519}
 .adm-check{display:flex;align-items:center;gap:10px;color:var(--paper);font-size:14px;cursor:pointer}
 html[data-theme="light"] .adm-check{color:#151519}
 .adm-check input{width:18px;height:18px;accent-color:var(--signal);cursor:pointer}
+.adm-switch{display:flex;align-items:center;gap:12px;width:max-content;color:var(--paper);font-size:14px;cursor:pointer}
+html[data-theme="light"] .adm-switch{color:#151519}
+.adm-switch input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.adm-switch-track{position:relative;width:46px;height:28px;flex:0 0 46px;border:1px solid var(--edge);
+  border-radius:999px;background:rgba(255,255,255,.07);transition:background .22s,border-color .22s,box-shadow .22s}
+.adm-switch-track::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:var(--muted);box-shadow:0 2px 7px rgba(0,0,0,.3);transition:transform .24s var(--ease),background .22s}
+.adm-switch input:checked+.adm-switch-track{background:var(--signal);border-color:var(--signal);
+  box-shadow:0 0 0 4px rgba(99,102,241,.12)}
+.adm-switch input:checked+.adm-switch-track::after{transform:translateX(18px);background:#fff}
+.adm-switch input:focus-visible+.adm-switch-track{outline:2px solid var(--paper);outline-offset:3px}
 .adm-drop{display:grid;place-items:center;gap:8px;padding:26px;border:1px dashed var(--edge);border-radius:16px;
   color:var(--muted);font-size:13px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
 .adm-drop:hover,.adm-drop.over{border-color:var(--signal);background:rgba(99,102,241,.07)}
@@ -100,7 +111,10 @@ html[data-theme="light"] .adm-note b{color:#151519}
 .adm-news-preview span{color:var(--signal-ink);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
 .adm-news-preview h3{font-size:16px;margin:10px 0 6px}.adm-news-preview p{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
 .adm-key{display:block;color:var(--signal-ink);font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:4px}
-.adm-test{display:grid;grid-template-columns:1fr auto;gap:10px}.adm-test-output{min-height:48px}
+.adm-assistant-test{padding-top:8px}
+.adm-test{display:grid;grid-template-columns:1fr auto;gap:10px}
+.adm-test-output{min-height:48px;margin-top:12px}
+.adm-announcement-actions{margin-top:18px}
 
 /* ---- toast ---- */
 .adm-toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:500;
@@ -275,7 +289,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
       <div class="adm-head"><h2>Assistant</h2><button class="btn primary sm" id="saveAssistant" type="button">save <span class="arrow">↗</span></button></div>
       <p class="adm-sub">The chat bubble on the site. Behaviour and greeting are editable here.</p>
       <form class="adm-form" id="assistantForm">
-        <label class="adm-check"><input type="checkbox" id="a-enabled"> show the assistant on the site</label>
+        <label class="adm-switch"><input type="checkbox" id="a-enabled"><span class="adm-switch-track" aria-hidden="true"></span><span>show the assistant on the site</span></label>
         <div><label for="a-greeting">opening message</label><textarea id="a-greeting"></textarea></div>
         <div><label for="a-system">system prompt</label><textarea id="a-system" style="min-height:180px"></textarea></div>
         <div><label for="a-model">model</label><input type="text" id="a-model" placeholder="deepseek-v4-flash"></div>
@@ -283,7 +297,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
           <b>The API key is not set here, on purpose.</b><br>
           Public settings are readable with the publishable key, while the system prompt stays behind row-level security. The DeepSeek key lives as <code>DEEPSEEK_API_KEY</code> in Vercel → Settings → Environment Variables, where only <code>/api/chat</code> can read it. Never paste a secret into this dashboard.
         </div>
-        <div>
+        <div class="adm-assistant-test">
           <label for="a-test">test one message</label>
           <div class="adm-test"><input type="text" id="a-test" placeholder="What do you build?"><button class="btn sm" id="testAssistant" type="button">send</button></div>
           <div class="adm-note adm-test-output" id="a-test-output">The reply will appear here.</div>
@@ -297,7 +311,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
       <p class="adm-sub">Visitors see the first announcement they have not dismissed. Closing it or following its button hides that ID permanently on that device.</p>
       <div class="adm-note" style="margin-bottom:18px"><b>To show an announcement again, change its ID.</b><br>Dismissal is stored against the ID. A new ID is intentionally treated as a new announcement.</div>
       <div class="adm-news-list" id="announcementList"></div>
-      <div class="adm-actions"><button class="btn" id="addAnnouncement" type="button">add announcement</button></div>
+      <div class="adm-actions adm-announcement-actions"><button class="btn" id="addAnnouncement" type="button">add announcement</button></div>
     </section>
   </main>
 </div>
