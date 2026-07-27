@@ -126,8 +126,13 @@ balanced. Assert file size too.
 - One button system, one nav definition, one diagram component.
 - Verlet pull-cord theme switch: holds at its limit while held, fires on
   release, latches once the limit is reached, works with touch and keyboard.
-- Assistant bubble and panel, answering from canned replies until an endpoint
-  exists.
+- Supabase-backed dashboard: authentication, Work CRUD and ordering, site copy,
+  assistant settings/test, announcements, image upload and cleanup.
+- Public Work, editable copy, assistant enable/greeting, and announcements read
+  from Supabase with authored HTML fallbacks when the service is unavailable.
+- Read-only, page-aware assistant proxy at `/api/chat`, with fixed safety rules,
+  live published-work context, short conversation memory, and DeepSeek context
+  caching.
 - Custom tooltips, animated FAQ accordion, staggered page transition,
   scrollspy sidebar on the document pages.
 - SEO: unique titles/descriptions/canonicals, JSON-LD on indexable pages,
@@ -135,17 +140,13 @@ balanced. Assert file size too.
 
 ## 6. What is NOT done
 
-1. **`admin.js` does not exist.** `/admin` loads and renders, but nothing works —
-   no login, no saving. This is the next task.
-2. **`/work` does not read from the database.** Work cards are still hardcoded
-   in `work.html`.
-3. **Site copy is not wired.** The `settings` rows exist and the dashboard is
-   designed for them, but no element on the public site reads them yet. The
-   intended mechanism is `data-copy="key"` attributes replaced at runtime.
-4. **The assistant is not connected.** `ASSISTANT.endpoint` is `null`, so it
-   uses local canned answers.
-5. Work-card hover parallax, scroll-velocity glass, idle drift on the system
-   map — suggested, not built.
+1. **DeepSeek is not live until `DEEPSEEK_API_KEY` is added to Vercel** for the
+   Preview environment and the branch is redeployed.
+2. **The Work table currently has no published rows.** The public page correctly
+   shows its empty state until portfolio items are added in `/admin`.
+3. **PayPal is not connected.** Pricing CTAs still lead to the contact flow.
+4. Work-card hover parallax, scroll-velocity glass, idle drift on the system
+   map, and the chromatic-metal concept are suggested, not built.
 
 ---
 
@@ -160,26 +161,26 @@ repository, and none should ever be committed.** Create the account yourself:
 2. **SQL Editor → New query →** paste `supabase/schema.sql` → Run.
 3. **Authentication → Users → Add user**, enter your email and a password you
    choose, and tick *Auto Confirm User*.
-4. **Authentication → Providers → Email:** turn **off** "Enable sign ups", so
-   only you can ever have an account.
-5. **Settings → API:** copy *Project URL* and the *anon public* key into
+4. **Authentication → Sign In / Providers → User Signups:** turn off
+   **Allow new users to sign up**. Keep the Email provider enabled.
+5. **Settings → API Keys:** copy *Project URL* and the publishable key into
    `supabase-config.js`.
 
-That email and password are your dashboard login. The `anon` key is safe to
+That email and password are your dashboard login. The publishable key is safe to
 commit — it is public by design and every request it makes is filtered by the
-row-level-security policies in the schema. **The `service_role` key must never
+row-level-security policies in the schema. **The secret key must never
 appear in any file served to a browser.**
 
 ### 7.2 Assistant
 
-Add `DEEPSEEK_API_KEY` in Vercel → Settings → Environment Variables, then set
-`ASSISTANT.endpoint` to `'/api/chat'` in `script.js`.
+Add `DEEPSEEK_API_KEY` in Vercel → Settings → Environment Variables for Preview
+and Production, then redeploy. `ASSISTANT.endpoint` is already `/api/chat`.
 
-The key is **deliberately not editable from the dashboard**. Anything stored
-there is readable by anyone who opens the site, because the browser needs the
-public key to fetch it. The dashboard manages the model, greeting and system
-prompt only.
+The key is **deliberately not editable from the dashboard**. The dashboard
+manages the enable switch and public greeting. To make the private system notes
+and model field editable there too, add `SUPABASE_URL` and
+`SUPABASE_SECRET_KEY` to Vercel. `SUPABASE_SECRET_KEY` must be the new
+`sb_secret_...` server key and must never be committed or pasted into a browser.
 
-DeepSeek was chosen over GPT-4o-mini and Gemini Flash-Lite because its automatic
-prompt caching gives ~98% off repeated input, and a site assistant sends the
-same system prompt every turn.
+DeepSeek context caching is automatic. Keep the fixed safety and site knowledge
+at the start of the prompt so repeated requests share a stable prefix.

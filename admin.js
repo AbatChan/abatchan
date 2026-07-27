@@ -454,7 +454,9 @@
       q('#a-enabled').checked = assistantRows['assistant.enabled'] !== false;
       q('#a-greeting').value = assistantRows['assistant.greeting'] || '';
       q('#a-system').value = assistantRows['assistant.system'] || '';
-      q('#a-model').value = assistantRows['assistant.model'] || 'deepseek-chat';
+      q('#a-model').value = assistantRows['assistant.model'] === 'deepseek-chat'
+        ? 'deepseek-v4-flash'
+        : (assistantRows['assistant.model'] || 'deepseek-v4-flash');
       qa('#assistantForm input,#assistantForm textarea').forEach(el => el.addEventListener('input', () => dirty.add('assistant')));
     } catch (err) {
       toast(`Assistant settings could not be loaded. ${err.message}`, true);

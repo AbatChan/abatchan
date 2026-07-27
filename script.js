@@ -616,6 +616,7 @@ const CANNED=[
 
   const log=q('.assist-log',panel), form=q('.assist-form',panel), input=q('input',form);
   const chips=q('.assist-chips',panel);
+  const history=[];
   let greeted=false;
 
   const add=(text,who)=>{
@@ -636,7 +637,7 @@ const CANNED=[
     if(ASSISTANT.endpoint){
       try{
         const res=await fetch(ASSISTANT.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({message:text})});
+          body:JSON.stringify({message:text,history:history.slice(-6),page:location.pathname})});
         const data=await res.json();
         if(!res.ok)throw new Error(data.error||'assistant unavailable');
         answer=data.reply;
@@ -647,6 +648,11 @@ const CANNED=[
     }
     dots.remove();
     add(answer||ASSISTANT.offline,'bot');
+    history.push(
+      {role:'user',content:text},
+      {role:'assistant',content:answer||ASSISTANT.offline}
+    );
+    if(history.length>8)history.splice(0,history.length-8);
   };
 
   const open=on=>{

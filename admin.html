@@ -226,10 +226,10 @@ html[data-theme="light"] .adm-note b{color:#151519}
         <label class="adm-check"><input type="checkbox" id="a-enabled"> show the assistant on the site</label>
         <div><label for="a-greeting">opening message</label><textarea id="a-greeting"></textarea></div>
         <div><label for="a-system">system prompt</label><textarea id="a-system" style="min-height:180px"></textarea></div>
-        <div><label for="a-model">model</label><input type="text" id="a-model" placeholder="deepseek-chat"></div>
+        <div><label for="a-model">model</label><input type="text" id="a-model" placeholder="deepseek-v4-flash"></div>
         <div class="adm-note">
           <b>The API key is not set here, on purpose.</b><br>
-          Public settings are readable with the anon key, while the system prompt stays behind row-level security. The DeepSeek key lives as <code>DEEPSEEK_API_KEY</code> in Vercel → Settings → Environment Variables, where only <code>/api/chat</code> can read it. Never paste a secret into this dashboard.
+          Public settings are readable with the publishable key, while the system prompt stays behind row-level security. The DeepSeek key lives as <code>DEEPSEEK_API_KEY</code> in Vercel → Settings → Environment Variables, where only <code>/api/chat</code> can read it. Never paste a secret into this dashboard.
         </div>
         <div>
           <label for="a-test">test one message</label>

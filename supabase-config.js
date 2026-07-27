@@ -28,7 +28,10 @@ window.SUPABASE = {
   const headers = (auth = true) => {
     const h = { apikey: cfg.anonKey, 'Content-Type': 'application/json' };
     const t = auth && session.token;
-    h.Authorization = `Bearer ${t || cfg.anonKey}`;
+    if (t) h.Authorization = `Bearer ${t}`;
+    // Legacy anon keys are JWTs and were commonly repeated as Bearer tokens.
+    // New sb_publishable keys are opaque and belong in apikey only.
+    else if (!cfg.anonKey.startsWith('sb_publishable_')) h.Authorization = `Bearer ${cfg.anonKey}`;
     return h;
   };
 
@@ -76,7 +79,10 @@ window.SUPABASE = {
       const xhr = new XMLHttpRequest();
       xhr.open(method, url);
       xhr.setRequestHeader('apikey', cfg.anonKey);
-      xhr.setRequestHeader('Authorization', `Bearer ${session.token || cfg.anonKey}`);
+      if (session.token) xhr.setRequestHeader('Authorization', `Bearer ${session.token}`);
+      else if (!cfg.anonKey.startsWith('sb_publishable_')) {
+        xhr.setRequestHeader('Authorization', `Bearer ${cfg.anonKey}`);
+      }
       if (method === 'POST') xhr.setRequestHeader('x-upsert', 'true');
       if (xhr.upload && onProgress) xhr.upload.addEventListener('progress', e => {
         if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
