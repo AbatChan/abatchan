@@ -1,6 +1,7 @@
 // Shared FAQ content and motion for static, injected, and admin-managed accordions.
 (function faqSystem(){
   const selector='.faq-list details,[data-faq] details,.faq-group details';
+  const cssSelector=':is(.faq-list details,[data-faq] details,.faq-group details)';
   const page=location.pathname.replace(/\/+$/,'')||'/';
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const running=new WeakMap();
@@ -22,89 +23,45 @@
 
   const style=document.createElement('style');
   style.textContent=`
-    ${selector}{overflow:hidden}
-    ${selector}>summary{position:relative;padding-right:42px;cursor:pointer;list-style:none}
-    ${selector}>summary::-webkit-details-marker{display:none}
-    ${selector}>summary::before,${selector}>summary::after{content:"";position:absolute;right:4px;top:50%;width:16px;height:1.5px;border-radius:2px;background:currentColor;transform:translateY(-50%);transition:transform .28s var(--ease),opacity .28s var(--ease)}
-    ${selector}>summary::after{transform:translateY(-50%) rotate(90deg)}
-    ${selector}[open]>summary::after{transform:translateY(-50%) rotate(0);opacity:0}
+    ${cssSelector}{overflow:hidden}
+    ${cssSelector}>summary{position:relative;padding-right:42px;cursor:pointer;list-style:none}
+    ${cssSelector}>summary::-webkit-details-marker{display:none}
+    ${cssSelector}>summary::before,${cssSelector}>summary::after{content:"";position:absolute;right:4px;top:50%;width:16px;height:1.5px;border-radius:2px;background:currentColor;transform:translateY(-50%);transition:transform .28s var(--ease),opacity .28s var(--ease)}
+    ${cssSelector}>summary::after{transform:translateY(-50%) rotate(90deg)}
+    ${cssSelector}[open]>summary::after{transform:translateY(-50%) rotate(0);opacity:0}
     .faq-answer{overflow:hidden}
   `;
   document.head.appendChild(style);
 
   const groupFor=details=>details.closest('.faq-list,[data-faq],.faq-group')||details.parentElement;
   const answerFor=details=>details.querySelector(':scope>.faq-answer');
-
   const prepare=details=>{
     if(details.dataset.faqReady)return;
-    const summary=details.querySelector(':scope>summary');
-    if(!summary)return;
+    const summary=details.querySelector(':scope>summary');if(!summary)return;
     details.dataset.faqReady='1';
     let answer=answerFor(details);
-    if(!answer){
-      answer=document.createElement('div');
-      answer.className='faq-answer';
-      [...details.children].filter(node=>node!==summary).forEach(node=>answer.append(node));
-      details.append(answer);
-    }
+    if(!answer){answer=document.createElement('div');answer.className='faq-answer';[...details.children].filter(node=>node!==summary).forEach(node=>answer.append(node));details.append(answer)}
     summary.setAttribute('aria-expanded',String(details.open));
     summary.addEventListener('click',event=>{event.preventDefault();toggle(details,!details.open)});
   };
-
   const animate=async(details,opening)=>{
-    prepare(details);
-    const summary=details.querySelector(':scope>summary'),answer=answerFor(details);
-    if(!summary||!answer)return;
-    running.get(details)?.cancel();
-    const start=details.getBoundingClientRect().height;
-    if(opening)details.open=true;
-    const end=summary.getBoundingClientRect().height+(opening?answer.scrollHeight:0);
-    summary.setAttribute('aria-expanded',String(opening));
+    prepare(details);const summary=details.querySelector(':scope>summary'),answer=answerFor(details);if(!summary||!answer)return;
+    running.get(details)?.cancel();const start=details.getBoundingClientRect().height;if(opening)details.open=true;
+    const end=summary.getBoundingClientRect().height+(opening?answer.scrollHeight:0);summary.setAttribute('aria-expanded',String(opening));
     if(reduceMotion.matches){details.open=opening;details.style.height='';return}
     details.style.height=`${start}px`;details.style.overflow='hidden';
-    const animation=details.animate([{height:`${start}px`},{height:`${end}px`}],{duration:300,easing:'cubic-bezier(.2,.75,.2,1)'});
-    running.set(details,animation);
-    try{await animation.finished}catch{}
-    if(running.get(details)!==animation)return;
+    const animation=details.animate([{height:`${start}px`},{height:`${end}px`}],{duration:300,easing:'cubic-bezier(.2,.75,.2,1)'});running.set(details,animation);
+    try{await animation.finished}catch{}if(running.get(details)!==animation)return;
     running.delete(details);details.open=opening;details.style.height='';details.style.overflow='';
   };
-
-  const toggle=(details,opening)=>{
-    if(opening){
-      const group=groupFor(details);
-      group?.querySelectorAll('details[open]').forEach(other=>{if(other!==details)animate(other,false)});
-    }
-    animate(details,opening);
-  };
-
-  const scan=root=>{
-    if(root.matches?.(selector))prepare(root);
-    root.querySelectorAll?.(selector).forEach(prepare);
-  };
-
-  const renderItems=(container,items)=>{
-    container.replaceChildren(...items.filter(item=>item.published!==false&&item.page===page).map(item=>{
-      const details=document.createElement('details');
-      details.dataset.faqId=item.id;
-      const summary=document.createElement('summary');summary.textContent=item.question;
-      const paragraph=document.createElement('p');paragraph.textContent=item.answer;
-      details.append(summary,paragraph);return details;
-    }));
-  };
-
+  const toggle=(details,opening)=>{if(opening){groupFor(details)?.querySelectorAll('details[open]').forEach(other=>{if(other!==details)animate(other,false)})}animate(details,opening)};
+  const scan=root=>{if(root.matches?.(selector))prepare(root);root.querySelectorAll?.(selector).forEach(prepare)};
+  const renderItems=(container,items)=>container.replaceChildren(...items.filter(item=>item.published!==false&&item.page===page).map(item=>{const details=document.createElement('details');details.dataset.faqId=item.id;const summary=document.createElement('summary');summary.textContent=item.question;const paragraph=document.createElement('p');paragraph.textContent=item.answer;details.append(summary,paragraph);return details}));
   const loadManaged=async()=>{
-    const container=document.querySelector('.faq-list,[data-faq-page]');
-    if(!container||!window.sb?.configured?.())return;
-    try{
-      const rows=await sb.select('settings','key=eq.faq.items&is_public=eq.true&select=value');
-      const items=rows?.[0]?.value;
-      if(Array.isArray(items))renderItems(container,items);
-      else if(page==='/pricing')renderItems(container,window.ABATCHAN_FAQ_DEFAULTS);
-    }catch{
-      if(page==='/pricing'&&!container.children.length)renderItems(container,window.ABATCHAN_FAQ_DEFAULTS);
-    }
+    const container=document.querySelector('.faq-list,[data-faq-page]');if(!container||!window.sb?.configured?.())return;
+    try{const rows=await sb.select('settings','key=eq.faq.items&is_public=eq.true&select=value');const items=rows?.[0]?.value;if(Array.isArray(items))renderItems(container,items);else if(page==='/pricing')renderItems(container,window.ABATCHAN_FAQ_DEFAULTS)}
+    catch{if(page==='/pricing'&&!container.children.length)renderItems(container,window.ABATCHAN_FAQ_DEFAULTS)}
   };
-
   scan(document);
   new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===1)scan(node)}))).observe(document.documentElement,{childList:true,subtree:true});
   loadManaged();
