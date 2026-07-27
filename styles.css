@@ -529,6 +529,14 @@ html[data-theme="light"] .assist-form input{color:#151519}
 .lamp-bead:hover::before{transform:scale(1.15)}
 .lamp.taut .lamp-bead::before{transform:scale(1.3)}
 .lamp-bead:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:50%}
+/* Standing label so the cord reads as a control rather than decoration. It sits
+   beside the bead, follows it, and fades once the visitor has used it. */
+.lamp-label{position:absolute;left:0;top:0;pointer-events:none;white-space:nowrap;
+  font-size:11px;letter-spacing:.05em;color:var(--muted);
+  opacity:0;transition:opacity .35s var(--ease)}
+.lamp-label.right{transform-origin:0 50%}
+.lamp.show-label .lamp-label,.lamp-bead:hover~.lamp-label,.lamp-bead:focus-visible~.lamp-label{opacity:1}
+.lamp.is-dragging .lamp-label{opacity:0}
 /* light mode is the lamp being on */
 html[data-theme="light"] .lamp-bead::before{background:#ffd77a;
   box-shadow:0 0 0 1px rgba(214,160,40,.5),0 0 16px 3px rgba(255,206,110,.6),0 0 42px 12px rgba(255,206,110,.3)}
@@ -551,6 +559,11 @@ html[data-theme="light"] .news{background:rgba(255,255,255,.78);
   font-size:11px;letter-spacing:.07em;text-transform:uppercase}
 .news-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--signal);
   box-shadow:0 0 0 3px rgba(99,102,241,.2)}
+/* an upcoming notice, rather than something already shipped */
+.news.soon .news-tag{color:#e0a24a}
+.news.soon .news-tag::before{background:#e0a24a;box-shadow:0 0 0 3px rgba(224,162,74,.2);animation:newsSoon 2s ease-in-out infinite}
+@keyframes newsSoon{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.news.soon .news-tag::before{animation:none}}
 .news h3{font-size:16px;letter-spacing:-.02em;margin:10px 0 6px}
 .news p{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
 .news-foot{display:flex;align-items:center;gap:10px;margin-top:14px}

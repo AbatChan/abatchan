@@ -117,9 +117,10 @@ renderBrand();
   const el=document.createElement('div');
   el.className='lamp';
   el.innerHTML='<svg aria-hidden="true"><path/></svg>'+
-    '<button class="lamp-bead" type="button" aria-label="Switch colour theme" data-tip="Pull the cord"></button>';
+    '<button class="lamp-bead" type="button" aria-label="Switch colour theme" data-tip="Pull the cord"></button>'+
+    '<span class="lamp-label" aria-hidden="true"></span>';
   document.body.appendChild(el);
-  const svg=q('svg',el), path=q('path',el), bead=q('.lamp-bead',el);
+  const svg=q('svg',el), path=q('path',el), bead=q('.lamp-bead',el), label=q('.lamp-label',el);
 
   const anchor={x:0,y:-6};
   const place=()=>{
@@ -132,7 +133,7 @@ renderBrand();
   for(let i=0;i<N;i++)P.push({x:anchor.x,y:anchor.y+i*SEG,px:anchor.x,py:anchor.y+i*SEG});
   const tail=P[N-1];
 
-  let dragging=false,grabId=null,target=null,running=false,still=0,fired=false,taut=false;
+  let dragging=false,grabId=null,target=null,running=false,still=0,armed=false,taut=false;
 
   function step(){
     for(let i=1;i<N;i++){
@@ -166,6 +167,8 @@ renderBrand();
     d+=' L '+tail.x.toFixed(1)+' '+tail.y.toFixed(1);
     path.setAttribute('d',d);
     bead.style.transform='translate('+tail.x.toFixed(1)+'px,'+tail.y.toFixed(1)+'px)';
+    const onLeft=tail.x>innerWidth/2;
+    label.style.transform='translate('+(tail.x+(onLeft?-14:14)).toFixed(1)+'px,'+(tail.y-6).toFixed(1)+'px)'+(onLeft?' translateX(-100%)':'');
   }
 
   function frame(){
@@ -181,40 +184,44 @@ renderBrand();
 
   // let go for the visitor, so the rope rebounds while their finger is still down
   function letGo(){
+    armed=false;
     if(grabId!==null&&bead.hasPointerCapture?.(grabId)){try{bead.releasePointerCapture(grabId)}catch{}}
     dragging=false; grabId=null; target=null; setTaut(false); wake();
   }
 
   bead.addEventListener('pointerdown',e=>{
     e.preventDefault();
-    grabId=e.pointerId; dragging=true; fired=false;
+    grabId=e.pointerId; dragging=true; armed=false;
     bead.setPointerCapture(grabId);
     document.dispatchEvent(new Event('tip:lock'));   // no tooltip mid-pull
     target={x:e.clientX,y:e.clientY}; wake();
   });
 
   bead.addEventListener('pointermove',e=>{
-    if(e.pointerId!==grabId||fired)return;
+    if(e.pointerId!==grabId)return;
     let dx=e.clientX-anchor.x, dy=e.clientY-anchor.y;
     const dist=Math.hypot(dx,dy)||1e-4;
-    setTaut(dist>MAXLEN-16);
     if(dist>=MAXLEN){
-      // the cord has run out: click, then spring back without waiting for release
-      fired=true;
-      dx*=MAXLEN/dist; dy*=MAXLEN/dist;
-      tail.x=anchor.x+dx; tail.y=anchor.y+dy;
-      tail.px=tail.x; tail.py=tail.y-10;            // kick it upward on rebound
-      toggleTheme();
-      letGo();
-      return;
+      // The rope has run out. Hold the bead at the limit rather than snapping
+      // out from under a finger that is still pulling — the cord simply refuses
+      // to stretch further, and the click happens when they let go.
+      armed=true;
+      const k=MAXLEN/dist;
+      target={x:anchor.x+dx*k, y:anchor.y+dy*k};
+    }else{
+      armed=false;
+      target={x:e.clientX,y:e.clientY};
     }
-    target={x:e.clientX,y:e.clientY};
+    setTaut(dist>MAXLEN-18);
     wake();
   });
 
   const release=e=>{
     if(e.pointerId!==grabId)return;
+    const fire=armed;
+    if(fire){tail.px=tail.x;tail.py=tail.y-11}      // kick it up so it rebounds
     letGo();
+    if(fire)toggleTheme();
     document.dispatchEvent(new Event('tip:unlock'));
   };
   bead.addEventListener('pointerup',release);
@@ -227,6 +234,16 @@ renderBrand();
     tail.py=tail.y; tail.y+=STRETCH*.7;             // a real yank, then it rebounds
     wake(); toggleTheme();
   });
+
+  // the label stands out until the visitor has actually pulled it once
+  if(!localStorage.getItem('abatLampUsed'))el.classList.add('show-label');
+  bead.addEventListener('pointerdown',()=>{
+    localStorage.setItem('abatLampUsed','1');
+    el.classList.remove('show-label');
+    el.classList.add('is-dragging');
+  });
+  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>
+    bead.addEventListener(t,()=>el.classList.remove('is-dragging')));
 
   addEventListener('resize',()=>{place();wake()});
   draw(); wake();
@@ -311,6 +328,8 @@ const updateThemeUI=()=>{
     bead.setAttribute('aria-label',`Switch to ${next} mode`);
     bead.setAttribute('aria-pressed',String(currentTheme==='light'));
     bead.dataset.tip=`Pull for ${next} mode`;
+    const label=bead.parentElement&&bead.parentElement.querySelector('.lamp-label');
+    if(label)label.textContent=`pull for ${next}`;
   });
 };
 function toggleTheme(){
@@ -575,9 +594,11 @@ const CANNED=[
 })();
 
 // ------------------------------------------------------------- what's new
-// One announcement at a time. Dismissing writes the id, so that visitor never
-// sees it again; publishing a new one is a new id at the top of the list.
-const NEWS=[
+// Announcements come from the dashboard (settings key "news.items"), with this
+// list as the fallback so the site still works before Supabase is connected.
+// One card at a time; dismissing writes the id so that visitor never sees it
+// again. A "soon" item is an upcoming-work notice rather than a shipped one.
+const NEWS_FALLBACK=[
   {
     id:'2026-07-brand-and-assistant',
     tag:"what's new",
@@ -588,20 +609,31 @@ const NEWS=[
   }
 ];
 
-(function news(){
-  const item=NEWS.find(n=>!localStorage.getItem('abatNews:'+n.id));
+async function loadNews(){
+  if(!window.sb?.configured?.())return NEWS_FALLBACK;
+  try{
+    const rows=await sb.select('settings','key=eq.news.items&select=value');
+    const list=rows?.[0]?.value;
+    return Array.isArray(list)&&list.length?list:NEWS_FALLBACK;
+  }catch{ return NEWS_FALLBACK; }
+}
+
+(async function news(){
+  const list=await loadNews();
+  const item=list.find(n=>n&&n.id&&!localStorage.getItem('abatNews:'+n.id));
   if(!item)return;
 
+  const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const el=document.createElement('aside');
-  el.className='news';
+  el.className='news'+(item.soon?' soon':'');
   el.setAttribute('role','status');
   el.setAttribute('aria-label',"What's new");
   el.innerHTML=
     '<button class="news-x" type="button" aria-label="Dismiss">'+
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'+
-    `<span class="news-tag">${item.tag}</span>`+
-    `<h3>${item.title}</h3><p>${item.body}</p>`+
-    (item.href?`<div class="news-foot"><a class="btn primary" href="${item.href}">${item.cta} <span class="arrow">↗</span></a></div>`:'');
+    `<span class="news-tag">${esc(item.tag||(item.soon?'coming soon':"what's new"))}</span>`+
+    `<h3>${esc(item.title)}</h3><p>${esc(item.body)}</p>`+
+    (item.href?`<div class="news-foot"><a class="btn primary" href="${esc(item.href)}">${esc(item.cta||'take a look')} <span class="arrow">↗</span></a></div>`:'');
   document.body.appendChild(el);
 
   const dismiss=()=>{
@@ -610,10 +642,8 @@ const NEWS=[
     setTimeout(()=>el.remove(),420);
   };
   q('.news-x',el).addEventListener('click',dismiss);
-  // following the link counts as read
   el.querySelector('a')?.addEventListener('click',()=>localStorage.setItem('abatNews:'+item.id,'1'));
 
-  // let the page settle first so it does not compete with the intro
   setTimeout(()=>el.classList.add('is-on'),1400);
 })();
 
