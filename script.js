@@ -100,9 +100,9 @@ renderBrand();
 //
 // The cord lives on a viewport-sized layer, not in a small box, so the bead can
 // never jam against a container edge. Its limit is the rope's own length,
-// measured radially from the anchor: pull to the end and the switch clicks and
-// springs back mid-drag, the way a real pull switch does. You do not have to
-// let go for it to fire.
+// measured radially from the anchor. A deliberate short pull clicks immediately
+// and springs back mid-drag; a quick flick is also recognised on release, and a
+// tap remains available as the simple pointer alternative.
 //
 // One SVG path and one transform per frame, so nothing reflows while it moves,
 // and the loop parks itself once the rope is still.
@@ -112,8 +112,11 @@ renderBrand();
   const N=15, SEG=7, GRAV=0.62, DAMP=0.986, ITER=6;
   const REST=(N-1)*SEG;            // hanging length
   const STRETCH=46;                // how far past rest it can be pulled
-  const FLICK=0.55;                // px/ms downward that counts as a yank
-  const FLICK_MIN=22;              // ...provided it travelled at least this far
+  const PULL_MOUSE=22;             // deliberate travel before a mouse pull fires
+  const PULL_TOUCH=18;             // fingers need a slightly more forgiving pull
+  const FLICK=0.42;                // px/ms downward that counts as a yank
+  const FLICK_MIN=12;              // ...provided it travelled far enough to be intentional
+  const TAP_SLOP=7;                // a near-stationary press is the simple fallback
   const MAXLEN=REST+STRETCH;       // the click point
 
   const el=document.createElement('div');
@@ -135,8 +138,8 @@ renderBrand();
   for(let i=0;i<N;i++)P.push({x:anchor.x,y:anchor.y+i*SEG,px:anchor.x,py:anchor.y+i*SEG});
   const tail=P[N-1];
 
-  let dragging=false,grabId=null,target=null,running=false,still=0,armed=false,taut=false;
-  let lastY=0,lastT=0,vy=0,peak=0;
+  let dragging=false,grabId=null,target=null,running=false,still=0,taut=false;
+  let startDist=0,startY=0,startT=0,lastY=0,lastT=0,peakVy=0,travel=0,pointerType='mouse';
 
   function step(){
     for(let i=1;i<N;i++){
@@ -185,20 +188,16 @@ renderBrand();
 
   const setTaut=on=>{if(on!==taut){taut=on;el.classList.toggle('taut',on)}};
 
-  // let go for the visitor, so the rope rebounds while their finger is still down
+  // Let go for the visitor, so the rope rebounds while their finger is still down.
+  // Mark the drag finished before releasing capture: lostpointercapture may run
+  // immediately, and must not re-enter this function.
   function letGo(){
-    armed=false;
-    if(grabId!==null&&bead.hasPointerCapture?.(grabId)){try{bead.releasePointerCapture(grabId)}catch{}}
-    dragging=false; grabId=null; target=null; setTaut(false); wake();
+    const id=grabId;
+    dragging=false; grabId=null; target=null; setTaut(false);
+    el.classList.remove('is-dragging');
+    if(id!==null&&bead.hasPointerCapture?.(id)){try{bead.releasePointerCapture(id)}catch{}}
+    wake();
   }
-
-  bead.addEventListener('pointerdown',e=>{
-    e.preventDefault();
-    grabId=e.pointerId; dragging=true; armed=false;
-    lastY=e.clientY; lastT=performance.now(); vy=0; peak=0;
-    bead.setPointerCapture(grabId);
-    target={x:e.clientX,y:e.clientY}; wake();
-  });
 
   // How far from the anchor a pointer event is, and where the bead may sit for it.
   const reach=e=>{
@@ -208,46 +207,72 @@ renderBrand();
     return {dist, x:anchor.x+dx*k, y:anchor.y+dy*k};
   };
 
-  bead.addEventListener('pointermove',e=>{
-    if(e.pointerId!==grabId)return;
-    const r=reach(e);
-    // speed of the pull, so a sharp yank counts even if it never reaches the end
-    const t=performance.now(), dt=Math.max(1,t-lastT);
-    vy=(e.clientY-lastY)/dt;
-    lastY=e.clientY; lastT=t;
-    peak=Math.max(peak,r.dist);
-    // Once the rope has run out it stays armed for the rest of the drag. Easing
-    // off after hitting the end should not quietly disarm it, and a fast flick
-    // out and back should still count.
-    if(r.dist>=MAXLEN)armed=true;
-    target={x:r.x,y:r.y};      // the bead can never go past the rope's length
-    setTaut(armed||r.dist>MAXLEN-18);
+  const pullLimit=()=>pointerType==='touch'?PULL_TOUCH:PULL_MOUSE;
+
+  // Browsers may combine several fast hardware samples into one pointermove.
+  // Read those samples when available, and always include pointerup itself.
+  const sample=e=>{
+    const samples=e.getCoalescedEvents?.()||[];
+    const list=samples.length?[...samples,e]:[e];
+    let r=reach(e);
+    for(const s of list){
+      const t=s.timeStamp,dt=Math.max(1,t-lastT);
+      peakVy=Math.max(peakVy,(s.clientY-lastY)/dt);
+      lastY=s.clientY;lastT=t;
+      r=reach(s);
+      travel=Math.max(travel,r.dist-startDist);
+    }
+    target={x:r.x,y:r.y};
+    setTaut(travel>=pullLimit()*.58);
     wake();
+    return r;
+  };
+
+  const fire=()=>{
+    if(!dragging)return;
+    tail.px=tail.x;tail.py=tail.y-18;
+    letGo();
+    toggleTheme();
+  };
+
+  bead.addEventListener('pointerdown',e=>{
+    if(e.button!==undefined&&e.button!==0)return;
+    e.preventDefault();
+    const r=reach(e);
+    grabId=e.pointerId;dragging=true;pointerType=e.pointerType||'mouse';
+    startDist=r.dist;startY=lastY=e.clientY;startT=lastT=e.timeStamp;
+    peakVy=0;travel=0;
+    bead.setPointerCapture(grabId);
+    target={x:r.x,y:r.y};wake();
   });
 
-  const release=e=>{
+  bead.addEventListener('pointermove',e=>{
     if(e.pointerId!==grabId)return;
-    // A flick can release without a move event in between, so check the release
-    // point too rather than trusting that pointermove ran.
-    const r=reach(e);
-    peak=Math.max(peak,r.dist);
-    if(r.dist>=MAXLEN)armed=true;
-    // A sharp downward yank reads as a pull even if the rope never ran out.
-    // Without this only a slow, deliberate drag registered, which is the
-    // opposite of how a pull switch feels.
-    if(!armed&&vy>=FLICK&&peak>=REST+FLICK_MIN)armed=true;
-    const fire=armed;
-    if(fire){tail.px=tail.x;tail.py=tail.y-18}      // kick it up so it snaps back
-    letGo();
-    if(fire)toggleTheme();
+    sample(e);
+    // Crossing the click point operates the switch immediately. Release timing
+    // is no longer part of the primary interaction.
+    if(travel>=pullLimit())fire();
+  });
+
+  const release=(e,cancelled=false)=>{
+    if(e.pointerId!==grabId)return;
+    if(cancelled){letGo();return}
+    sample(e);
+    const elapsed=Math.max(1,e.timeStamp-startT);
+    const averageVy=(e.clientY-startY)/elapsed;
+    const yank=travel>=FLICK_MIN&&Math.max(peakVy,averageVy)>=FLICK;
+    const tap=travel<TAP_SLOP&&Math.abs(e.clientY-startY)<TAP_SLOP;
+    if(travel>=pullLimit()||yank||tap)fire();
+    else letGo();
   };
-  bead.addEventListener('pointerup',release);
-  bead.addEventListener('pointercancel',release);
+  bead.addEventListener('pointerup',e=>release(e));
+  bead.addEventListener('pointercancel',e=>release(e,true));
   bead.addEventListener('lostpointercapture',()=>{if(dragging)letGo()});
 
   bead.addEventListener('keydown',e=>{
     if(e.key!==' '&&e.key!=='Enter')return;
     e.preventDefault();
+    if(e.repeat)return;
     tail.py=tail.y; tail.y+=STRETCH*.7;             // a real yank, then it rebounds
     wake(); toggleTheme();
   });
@@ -345,7 +370,7 @@ const updateThemeUI=()=>{
     bead.setAttribute('aria-label',`Switch to ${next} mode`);
     bead.setAttribute('aria-pressed',String(currentTheme==='light'));
     const label=bead.parentElement&&bead.parentElement.querySelector('.lamp-label');
-    if(label)label.textContent=`pull for ${next}`;
+    if(label)label.textContent=`pull or tap for ${next}`;
   });
 };
 function toggleTheme(){

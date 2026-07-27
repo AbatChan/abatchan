@@ -509,8 +509,8 @@ html[data-theme="light"] .assist-form input{color:#151519}
 /* --- lamp pull switch ---------------------------------------------------- */
 /* The cord spans the whole viewport rather than living in a 120x250 box, so the
    bead cannot stick against a container edge. What limits it is the rope's own
-   length, checked radially from the anchor - pull past that and the switch
-   clicks and springs back, the way a real pull switch does.
+   length, checked radially from the anchor. A deliberate short pull clicks and
+   springs back immediately, while a simple tap remains available as a fallback.
    One SVG path "d" and one transform per frame, so no layout runs while it
    moves, and the loop sleeps once it settles. */
 .lamp{position:fixed;inset:0;z-index:99;pointer-events:none;touch-action:none}
@@ -518,7 +518,7 @@ html[data-theme="light"] .assist-form input{color:#151519}
 .lamp path{fill:none;stroke:var(--line);stroke-width:1.25;stroke-linecap:round}
 .lamp.taut path{stroke:rgba(129,132,255,.75)}
 .lamp-bead{pointer-events:auto;position:absolute;left:0;top:0;
-  width:34px;height:34px;margin:-17px 0 0 -17px;padding:0;cursor:grab;
+  width:44px;height:44px;margin:-22px 0 0 -22px;padding:0;cursor:grab;
   border:0;border-radius:50%;background:transparent;
   display:grid;place-items:center;touch-action:none;-webkit-tap-highlight-color:transparent;
   will-change:transform}
