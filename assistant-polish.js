@@ -111,7 +111,7 @@
       .assist-head{
         grid-template-columns:auto minmax(0,1fr) auto auto!important;
         min-height:68px!important;
-        padding:12px 62px 12px 16px!important;
+        padding:12px 16px!important;
         column-gap:9px!important;
         row-gap:0!important;
       }
