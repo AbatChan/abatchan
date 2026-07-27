@@ -79,3 +79,13 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule()});
   schedule();
 })();
+
+// Small feature modules shared by public pages and the dashboard.
+(function loadSiteEnhancements(){
+  const scripts=['/responsive-lamp.js?v=1','/dynamic-work.js?v=1'];
+  if(/\/admin(?:\.html)?$/.test(location.pathname))scripts.push('/admin-work-enhancements.js?v=1');
+  scripts.forEach(src=>{
+    if(document.querySelector(`script[src="${src}"]`))return;
+    const script=document.createElement('script');script.src=src;script.defer=true;document.head.appendChild(script);
+  });
+})();
