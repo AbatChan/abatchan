@@ -89,7 +89,8 @@
 
   const loadUpgrade=(src,label)=>{
     const previous=document.querySelector(`script[data-site-upgrade="${label}"]`);
-    if(previous)previous.remove();
+    if(previous&&!label.startsWith('faq-'))return;
+    previous?.remove();
     const script=document.createElement('script');
     script.src=src;
     script.defer=true;
