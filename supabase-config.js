@@ -160,6 +160,7 @@ addEventListener('DOMContentLoaded', () => {
     ['/admin-announcement-ux.js?v=2','admin-announcement-ux'],
     ['/admin-ux-fixes.js?v=3','admin-ux-fixes'],
     ['/admin-validation-fix.js?v=1','admin-validation-fix'],
+    ['/admin-pattern-fix.js?v=1','admin-pattern-fix'],
     ['/admin-password-toggle.js?v=1','admin-password-toggle'],
     ['/admin-theme-sync.js?v=2','admin-theme-sync']
   ].forEach(([src,label]) => {
