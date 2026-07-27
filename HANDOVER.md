@@ -136,7 +136,8 @@ balanced. Assert file size too.
 ## 6. What is NOT done
 
 1. **`admin.js` does not exist.** `/admin` loads and renders, but nothing works —
-   no login, no saving. This is the next task.
+   no login, no saving. This is the next task. **`ADMIN_SPEC.md` describes what it
+   must do, screen by screen, with an acceptance checklist.**
 2. **`/work` does not read from the database.** Work cards are still hardcoded
    in `work.html`.
 3. **Site copy is not wired.** The `settings` rows exist and the dashboard is
