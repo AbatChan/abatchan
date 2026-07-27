@@ -43,22 +43,14 @@
     root.style.setProperty('--visual-top',top+'px');
     root.style.setProperty('--visual-left',left+'px');
 
-    // The lamp's physics listens to window resize. Forward visual viewport
-    // changes so its right-side anchor cannot become stale on iOS browser chrome.
     if(width!==lastWidth||height!==lastHeight){
       lastWidth=width;lastHeight=height;
       dispatchEvent(new Event('resize'));
     }
-
-    // WebKit can inflate the root scroll extent while its dynamic toolbar moves.
-    // This clamp is intentionally public-site only; dashboard pages have sticky
-    // sidebars and nested controls that must retain their own scroll position.
     queueClamp();
   };
 
-  const schedule=()=>{
-    if(!frame)frame=requestAnimationFrame(measure);
-  };
+  const schedule=()=>{if(!frame)frame=requestAnimationFrame(measure)};
 
   const style=document.createElement('style');
   style.textContent=`
@@ -80,4 +72,20 @@
   viewport?.addEventListener('scroll',schedule,{passive:true});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule()});
   schedule();
+})();
+
+// Small late-loaded fixes shared across public pages and the dashboard.
+(function loadRuntimeFixes(){
+  const isAdmin=/\/admin(?:\.html)?$/.test(location.pathname);
+  const scripts=[
+    ['/site-settings-fixes.js?v=1','global-site-settings'],
+    ['/announcement-force.js?v=1','forced-announcement']
+  ];
+  if(isAdmin)scripts.push(['/admin-runtime-fixes.js?v=1','admin-runtime-fixes']);
+  scripts.forEach(([src,label])=>{
+    if(document.querySelector(`script[src="${src}"]`))return;
+    const script=document.createElement('script');
+    script.src=src;script.defer=true;script.dataset.siteUpgrade=label;
+    document.head.appendChild(script);
+  });
 })();
