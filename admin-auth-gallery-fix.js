@@ -100,7 +100,7 @@
     removeHomepageFallbacks();
     preventGalleryCarryover();
     loadUpgrade('/work-grid-layout-fix.js?v=3','work-grid-layout');
-    loadUpgrade('/faq-system.js?v=2','faq-system');
+    loadUpgrade('/faq-system.js?v=3','faq-system');
     loadUpgrade('/commercial-positioning.js?v=3','commercial-positioning');
     if(/\/admin(?:\.html)?$/.test(location.pathname))loadUpgrade('/faq-admin.js?v=1','faq-admin');
   };
