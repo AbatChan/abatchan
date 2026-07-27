@@ -87,19 +87,20 @@
     document.querySelector('#cancelItem')?.addEventListener('click',()=>{creating=false});
   };
 
-  const loadWorkGridLayout=()=>{
-    if(document.querySelector('script[data-site-upgrade="work-grid-layout"]'))return;
+  const loadUpgrade=(src,label)=>{
+    if(document.querySelector(`script[data-site-upgrade="${label}"]`))return;
     const script=document.createElement('script');
-    script.src='/work-grid-layout-fix.js?v=3';
+    script.src=src;
     script.defer=true;
-    script.dataset.siteUpgrade='work-grid-layout';
+    script.dataset.siteUpgrade=label;
     document.head.appendChild(script);
   };
 
   const start=()=>{
     removeHomepageFallbacks();
     preventGalleryCarryover();
-    loadWorkGridLayout();
+    loadUpgrade('/work-grid-layout-fix.js?v=3','work-grid-layout');
+    loadUpgrade('/commercial-positioning.js?v=1','commercial-positioning');
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
