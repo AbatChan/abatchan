@@ -8,6 +8,7 @@
     .adm-switch,.adm-form label.adm-switch,.adm-news-item label.adm-switch{min-height:0!important}
     .adm-featured-control{padding:14px 16px;border:1px solid rgba(99,102,241,.38);border-radius:15px;background:linear-gradient(145deg,rgba(99,102,241,.12),rgba(255,255,255,.02))}
     .adm-featured-help{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+    .adm-cover-help{margin:7px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
     .adm-preview-label{display:flex;align-items:center;gap:8px;margin:2px 0 8px;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
     .adm-preview-label::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--signal);box-shadow:0 0 12px rgba(99,102,241,.65)}
     .adm-news-preview .btn.primary{margin-top:14px}
@@ -26,6 +27,21 @@
     }
   `;
   document.head.appendChild(style);
+
+  function enhanceCoverUpload(){
+    const input=q('#f-image');
+    if(!input||input.dataset.coverUx)return;
+    input.dataset.coverUx='1';
+    const label=document.querySelector('label[for="f-image"]');
+    if(label)label.textContent='project cover image';
+    const drop=q('#drop');
+    if(drop&&!q('.adm-cover-help',drop.parentElement)){
+      const help=document.createElement('p');
+      help.className='adm-cover-help';
+      help.textContent='This is the main image shown on the Work page and homepage. If it is empty, the homepage uses an authored fallback visual.';
+      drop.after(help);
+    }
+  }
 
   function enhanceFeatured(){
     const input=q('#f-featured');
@@ -60,12 +76,12 @@
       if(!button){
         button=document.createElement('a');
         button.className='btn primary sm adm-preview-cta';
+        button.addEventListener('click',e=>e.preventDefault());
         preview.append(button);
       }
       button.href=href||'#';
       button.innerHTML=`${cta||'view update'} <span class="arrow">↗</span>`;
       button.title=href?`Links to ${href}`:'Add a button link in advanced options';
-      button.addEventListener('click',e=>e.preventDefault(),{once:true});
     }else button?.remove();
   }
 
@@ -74,13 +90,9 @@
     card.dataset.finalUx='1';
     const index=card.dataset.index;
     ['title','body','cta','href','tag'].forEach(name=>{
-      q(`#news-${index}-${name}`,card)?.addEventListener('input',()=>setTimeout(()=>updatePreview(card),0));
-      q(`#news-${index}-${name}`,card)?.addEventListener('change',()=>setTimeout(()=>updatePreview(card),0));
+      q(`#news-${index}-${name}`,card)?.addEventListener('input',()=>requestAnimationFrame(()=>updatePreview(card)));
+      q(`#news-${index}-${name}`,card)?.addEventListener('change',()=>requestAnimationFrame(()=>updatePreview(card)));
     });
-    const preview=q('.adm-news-preview',card);
-    if(preview)new MutationObserver(()=>{
-      if(!preview.querySelector('.adm-preview-cta'))setTimeout(()=>updatePreview(card),0);
-    }).observe(preview,{childList:true});
     updatePreview(card);
   }
 
@@ -91,6 +103,8 @@
     {view:'view-announcements',save:'#saveAnnouncements',label:'Save announcements',hint:'Announcement changes are ready to save.'}
   ];
 
+  function activeContext(){return contexts.find(x=>!q(`#${x.view}`)?.classList.contains('adm-hide'))}
+
   function buildStickySave(){
     let bar=q('#admSmartSave');
     if(bar)return bar;
@@ -100,13 +114,9 @@
     const hint=document.createElement('span');hint.id='admSmartSaveHint';
     const save=document.createElement('button');save.type='button';save.className='btn primary sm';save.id='admSmartSaveButton';
     const discard=document.createElement('button');discard.type='button';discard.className='adm-sticky-discard';discard.setAttribute('aria-label','Discard unsaved changes');discard.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
-    save.addEventListener('click',()=>{
-      const ctx=contexts.find(x=>!q(`#${x.view}`)?.classList.contains('adm-hide'));
-      if(ctx)q(ctx.save)?.click();
-    });
+    save.addEventListener('click',()=>{const ctx=activeContext();if(ctx)q(ctx.save)?.click()});
     discard.addEventListener('click',()=>{
-      const ctx=contexts.find(x=>!q(`#${x.view}`)?.classList.contains('adm-hide'));
-      if(!ctx)return;
+      const ctx=activeContext();if(!ctx)return;
       if(!confirm('Discard unsaved changes on this page?'))return;
       if(ctx.view==='view-editor')q('#cancelItem')?.click();
       else location.reload();
@@ -114,9 +124,13 @@
     main.append(hint,save);bar.append(main,discard);document.body.append(bar);return bar;
   }
 
+  let lastView='';
   function updateStickySave(){
     const bar=buildStickySave();
-    const ctx=contexts.find(x=>!q(`#${x.view}`)?.classList.contains('adm-hide'));
+    const ctx=activeContext();
+    const view=ctx?.view||'';
+    if(view===lastView)return;
+    lastView=view;
     if(!ctx){bar.hidden=true;return}
     bar.hidden=false;
     q('#admSmartSaveHint').textContent=ctx.hint;
@@ -126,15 +140,20 @@
   function enhanceAnnouncements(){
     const section=q('#view-announcements');
     if(!section)return;
-    const note=q(':scope > .adm-note',section);
-    if(note)note.remove();
+    const note=q(':scope > .adm-note',section);if(note)note.remove();
     qa('#announcementList .adm-news-item').forEach(enhanceAnnouncementCard);
   }
 
-  function refresh(){enhanceFeatured();enhanceAnnouncements();updateStickySave()}
+  function initialEnhance(){enhanceCoverUpload();enhanceFeatured();enhanceAnnouncements();updateStickySave()}
+
   const start=()=>{
-    refresh();
-    new MutationObserver(refresh).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+    initialEnhance();
+    contexts.forEach(({view})=>{
+      const section=q(`#${view}`);
+      if(section)new MutationObserver(updateStickySave).observe(section,{attributes:true,attributeFilter:['class']});
+    });
+    const list=q('#announcementList');
+    if(list)new MutationObserver(enhanceAnnouncements).observe(list,{childList:true});
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
