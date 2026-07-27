@@ -100,7 +100,8 @@
     removeHomepageFallbacks();
     preventGalleryCarryover();
     loadUpgrade('/work-grid-layout-fix.js?v=3','work-grid-layout');
-    loadUpgrade('/commercial-positioning.js?v=1','commercial-positioning');
+    loadUpgrade('/faq-system.js?v=1','faq-system');
+    loadUpgrade('/commercial-positioning.js?v=2','commercial-positioning');
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
