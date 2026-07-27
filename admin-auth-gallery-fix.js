@@ -89,7 +89,7 @@
 
   const loadUpgrade=(src,label)=>{
     const previous=document.querySelector(`script[data-site-upgrade="${label}"]`);
-    if(previous&&!label.startsWith('faq-'))return;
+    if(previous&&!label.startsWith('faq-')&&label!=='admin-work-list')return;
     previous?.remove();
     const script=document.createElement('script');
     script.src=src;
@@ -104,7 +104,10 @@
     loadUpgrade('/work-grid-layout-fix.js?v=3','work-grid-layout');
     loadUpgrade('/faq-system.js?v=5','faq-system');
     loadUpgrade('/commercial-positioning.js?v=3','commercial-positioning');
-    if(/\/admin(?:\.html)?$/.test(location.pathname))loadUpgrade('/faq-admin.js?v=4','faq-admin');
+    if(/\/admin(?:\.html)?$/.test(location.pathname)){
+      loadUpgrade('/faq-admin.js?v=4','faq-admin');
+      loadUpgrade('/admin-work-list.js?v=1','admin-work-list');
+    }
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
