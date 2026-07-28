@@ -172,6 +172,7 @@
     activeView = name;
     writeRoute(name, item, routeMode);
   }
+  window.__adminShowView = showView;
 
   q('#tabs').addEventListener('click', e => {
     const button = e.target.closest('[data-view]');

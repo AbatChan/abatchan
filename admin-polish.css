@@ -38,6 +38,8 @@ html body .adm-nav button[aria-current="true"]{
   background:linear-gradient(135deg,rgba(99,102,241,.22),rgba(99,102,241,.11));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 12px 30px rgba(54,52,160,.12);
 }
+html body .adm-nav button[data-view="announcements"]{font-size:0}
+html body .adm-nav button[data-view="announcements"]::after{content:"announcements";font-size:14px}
 html body .adm-side footer{
   gap:10px;
   padding-top:18px;
@@ -412,6 +414,7 @@ html[data-theme="light"] body .faq-admin-item{background:linear-gradient(145deg,
     min-height:68px;
     border:1px solid var(--adm-hairline);
   }
+  html body .adm-nav button[data-view="announcements"]::after{content:"news";font-size:10px}
   html body .work-compact-toggle{
     grid-template-columns:78px minmax(0,1fr) 32px;
     gap:11px;

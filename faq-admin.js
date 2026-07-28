@@ -30,6 +30,7 @@
 
   let tab=q('[data-view="faqs"]',tabs);if(!tab){tab=document.createElement('button');tab.type='button';tab.dataset.view='faqs';tab.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M9 9h6M9 12h4"/></svg>FAQs';tabs.append(tab)}
   q('#view-faqs')?.remove();const section=document.createElement('section');section.id='view-faqs';section.className='adm-hide faq-admin-shell';section.innerHTML=`<div class="adm-head"><h2>FAQs</h2><button class="btn primary sm" id="saveFaqs" type="button">save <span class="arrow">↗</span></button></div><p class="adm-sub">Pricing-page questions. Drag on desktop, or use the up and down buttons on any screen.</p><div class="faq-admin-toolbar"><span class="faq-admin-count" id="faqAdminCount">0 FAQs</span><button class="btn sm" id="addFaq" type="button">add FAQ <span class="arrow">↗</span></button></div><div class="faq-admin-status" id="faqAdminStatus"></div><div class="faq-admin-list" id="faqAdminList"></div>`;main.append(section);
+  if(new URLSearchParams(location.search).get('view')==='faqs')queueMicrotask(()=>window.__adminShowView?.('faqs',{routeMode:'replace'}));
   const list=q('#faqAdminList'),count=q('#faqAdminCount'),status=q('#faqAdminStatus'),save=q('#saveFaqs'),add=q('#addFaq');
   const setSaveState=changed=>{
     save.dataset.clean=String(!changed);
