@@ -84,7 +84,7 @@ const PAGE={
 };
 
 const hits=new Map();
-const RATE={max:60,windowMs:10*60*1000};
+const RATE={max:20,windowMs:10*60*1000};
 function allowed(ip){
   const now=Date.now(),record=hits.get(ip);
   if(!record||now>record.reset){hits.set(ip,{n:1,reset:now+RATE.windowMs});return true;}
@@ -125,12 +125,16 @@ function model(value){return value==='deepseek-v4-pro'||value==='deepseek-v4-fla
 
 export default async function handler(req,res){
   if(req.method!=='POST')return sendError(res,405,'invalid_request','Send a short question about the work, pricing or process.');
+  const contentType=String(req.headers['content-type']||'').toLowerCase();
+  const contentLength=Number(req.headers['content-length']||0);
+  if(!contentType.includes('application/json')||contentLength>24*1024)return sendError(res,413,'invalid_request','Send a shorter question.');
   const ip=String(req.headers['x-forwarded-for']||'').split(',')[0].trim()||'unknown';
   if(!allowed(ip))return sendError(res,429,'rate_limited','There have been many questions from this connection. Try again in a few minutes.');
   if(!process.env.DEEPSEEK_API_KEY)return sendError(res,503,'not_configured','The live model is not connected right now.');
 
   let body={};
   try{body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});}catch{return sendError(res,400,'invalid_request','The question could not be read.');}
+  if(JSON.stringify(body).length>24*1024)return sendError(res,413,'invalid_request','Send a shorter question.');
   const message=String(body.message||'').slice(0,1000).trim();
   if(!message)return sendError(res,400,'invalid_request','Enter a question first.');
   const page=String(body.page||'/').slice(0,120).split('?')[0].split('#')[0].replace(/\.html$/,'')||'/';

@@ -252,13 +252,30 @@
   }
 
   async function removeItem(item) {
-    if (!confirm(`Delete “${item.title}”? This also removes its stored image.`)) return;
+    if (!confirm(`Delete “${item.title}”? This also removes its cover and gallery images.`)) return;
     try {
       await sb.remove('work_items', `id=eq.${encodeURIComponent(item.id)}`);
-      if (item.image_path) await sb.removeFile('work', item.image_path);
+      const cleanupFailures = [];
+      if (item.image_path) {
+        try { await sb.removeFile('work', item.image_path); } catch (error) { cleanupFailures.push(error); }
+      }
+      try {
+        const rows = await sb.select('settings', 'key=eq.work.enhancements&select=value');
+        const extras = rows?.[0]?.value && typeof rows[0].value === 'object' ? rows[0].value : {};
+        const media = Array.isArray(extras[item.slug]?.gallery_paths) ? extras[item.slug].gallery_paths : [];
+        for (const path of media) {
+          try { await sb.removeFile('work', path); } catch (error) { cleanupFailures.push(error); }
+        }
+        if (Object.prototype.hasOwnProperty.call(extras, item.slug)) {
+          delete extras[item.slug];
+          await sb.upsert('settings', [{ key: 'work.enhancements', value: extras, is_public: true }]);
+        }
+      } catch (error) {
+        cleanupFailures.push(error);
+      }
       workItems = workItems.filter(row => row.id !== item.id);
       renderWork();
-      toast('Work item deleted.');
+      toast(cleanupFailures.length ? 'Project deleted, but some media cleanup needs attention.' : 'Project and stored media deleted.', cleanupFailures.length > 0);
       if (editing?.id === item.id) {
         editing = null;
         showView('work');
@@ -442,6 +459,11 @@
     const form = q('#copyForm');
     try {
       copyRows = await sb.select('settings', 'key=like.copy.%25&select=key,value,is_public&order=key.asc');
+      const legacyWebsitePrice = copyRows.find(row => row.key === 'copy.pricing.website' && row.value === '$750');
+      if (legacyWebsitePrice) {
+        legacyWebsitePrice.value = '$150';
+        await sb.upsert('settings', [{ key: legacyWebsitePrice.key, value: legacyWebsitePrice.value, is_public: true }]);
+      }
       form.replaceChildren();
       copyRows.forEach(row => {
         const wrap = document.createElement('div');

@@ -1,0 +1,422 @@
+/* Dashboard visual system. Kept separate from the public site cascade. */
+html body{
+  --adm-glass:color-mix(in srgb,var(--panel) 76%,transparent);
+  --adm-glass-strong:color-mix(in srgb,var(--panel) 91%,transparent);
+  --adm-hairline:color-mix(in srgb,var(--paper) 11%,transparent);
+  --adm-hairline-strong:color-mix(in srgb,var(--signal) 44%,var(--adm-hairline));
+  --adm-shadow:0 24px 80px rgba(0,0,0,.22);
+  background:
+    radial-gradient(800px 520px at 82% -15%,rgba(99,102,241,.105),transparent 66%),
+    radial-gradient(640px 420px at -8% 92%,rgba(20,184,166,.045),transparent 68%),
+    var(--ink);
+}
+
+html body .adm{
+  grid-template-columns:248px minmax(0,1fr);
+}
+html body .adm-side{
+  padding:24px 18px;
+  border-right:1px solid var(--adm-hairline);
+  background:linear-gradient(155deg,rgba(255,255,255,.035),rgba(255,255,255,.008) 52%,rgba(99,102,241,.025));
+  backdrop-filter:blur(28px) saturate(135%);
+  -webkit-backdrop-filter:blur(28px) saturate(135%);
+}
+html body .adm-side img{width:124px;margin:4px 8px 28px}
+html body .adm-nav{gap:5px}
+html body .adm-nav button{
+  min-height:48px;
+  padding:11px 13px;
+  border:1px solid transparent;
+  border-radius:15px;
+}
+html body .adm-nav button:hover{
+  border-color:var(--adm-hairline);
+  background:rgba(255,255,255,.045);
+}
+html body .adm-nav button[aria-current="true"]{
+  border-color:rgba(99,102,241,.28);
+  background:linear-gradient(135deg,rgba(99,102,241,.22),rgba(99,102,241,.11));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 12px 30px rgba(54,52,160,.12);
+}
+html body .adm-side footer{
+  gap:10px;
+  padding-top:18px;
+  border-top:1px solid var(--adm-hairline);
+}
+html body .adm-side footer .btn{min-height:46px;border-radius:14px}
+
+html body .adm-main{
+  width:auto;
+  max-width:none;
+  margin:0 auto;
+  padding:44px clamp(24px,4vw,64px) 100px;
+}
+html body .adm-main>section{width:min(1180px,100%);margin-inline:auto}
+html body .adm-head{
+  align-items:flex-start;
+  min-height:52px;
+  margin-bottom:12px;
+}
+html body .adm-head h2{
+  font-size:clamp(34px,4vw,48px);
+  line-height:1;
+  letter-spacing:-.055em;
+}
+html body .adm-sub{
+  max-width:68ch;
+  margin:0 0 32px;
+  font-size:14px;
+  line-height:1.65;
+}
+html body .adm-head .btn,
+html body .faq-admin-toolbar .btn{
+  min-height:46px;
+  padding-inline:18px;
+  border-radius:15px;
+}
+html body .btn.primary{
+  box-shadow:0 13px 34px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.72);
+}
+
+/* Work overview */
+html body #items.adm-items{gap:12px}
+html body #items>.adm-item.work-compact-item{
+  border-color:var(--adm-hairline);
+  border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,.042),rgba(255,255,255,.012));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+html body #items>.work-compact-item:hover{
+  border-color:rgba(99,102,241,.36);
+  transform:translateY(-1px);
+  box-shadow:0 18px 44px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.055);
+}
+html body #items>.work-compact-item.is-open{
+  border-color:rgba(99,102,241,.48);
+  background:linear-gradient(145deg,rgba(99,102,241,.105),rgba(255,255,255,.018));
+}
+html body .work-compact-head{grid-template-columns:minmax(0,1fr) 54px}
+html body .work-compact-toggle{
+  grid-template-columns:118px minmax(0,1fr) 38px;
+  gap:18px;
+  min-height:122px;
+  padding:14px 14px 14px 16px;
+}
+html body .work-compact-toggle .adm-thumb{
+  width:118px;
+  border-radius:15px;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
+html body .work-compact-toggle h3{font-size:18px;margin-bottom:6px}
+html body .work-compact-toggle p{max-width:86ch;line-height:1.55}
+html body .work-compact-chevron{
+  width:38px;height:38px;border-color:var(--adm-hairline);border-radius:12px;
+  background:rgba(255,255,255,.025);
+}
+html body .work-compact-drag{
+  width:54px;
+  border-left-color:var(--adm-hairline);
+  background:rgba(255,255,255,.008);
+}
+html body #items .work-compact-panel{
+  min-height:64px!important;
+  padding:11px 15px!important;
+  border-top-color:var(--adm-hairline)!important;
+  background:rgba(255,255,255,.018)!important;
+}
+html body #items .work-compact-panel .adm-icon{
+  min-height:40px!important;
+  height:40px!important;
+  padding-inline:14px!important;
+  border-radius:12px!important;
+}
+
+/* Editor and every data-entry surface */
+html body .adm-form{
+  width:100%;
+  max-width:1040px;
+  gap:20px;
+}
+html body #view-copy .adm-form{max-width:960px}
+html body #view-assistant .adm-form{max-width:900px}
+html body .adm-form>div:not(.adm-two):not(.adm-actions):not(.adm-note):not(.adm-assistant-test),
+html body #copyForm>div{
+  min-width:0;
+}
+html body .adm-form label,
+html body .adm-news-item label,
+html body .faq-admin-field label{
+  margin-bottom:8px;
+  color:color-mix(in srgb,var(--paper) 66%,transparent);
+  font-size:12px;
+  font-weight:560;
+  letter-spacing:.01em;
+}
+html body .adm-form input[type=text],
+html body .adm-form textarea,
+html body .adm-form select,
+html body .adm-news-item input[type=text],
+html body .adm-news-item textarea,
+html body .faq-admin-field input,
+html body .faq-admin-field textarea{
+  min-height:48px;
+  padding:13px 15px;
+  border-color:var(--adm-hairline);
+  border-radius:15px;
+  background:rgba(255,255,255,.022);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+  transition:border-color .2s,background .2s,box-shadow .2s;
+}
+html body .adm-form textarea,
+html body .adm-news-item textarea,
+html body .faq-admin-field textarea{min-height:122px}
+html body .adm-form input:focus,
+html body .adm-form textarea:focus,
+html body .adm-form select:focus,
+html body .adm-news-item input:focus,
+html body .adm-news-item textarea:focus,
+html body .faq-admin-field input:focus,
+html body .faq-admin-field textarea:focus{
+  border-color:rgba(99,102,241,.72);
+  background:rgba(99,102,241,.04);
+  box-shadow:0 0 0 4px rgba(99,102,241,.11);
+}
+html body .adm-drop{
+  min-height:180px;
+  padding:30px;
+  border-color:var(--adm-hairline);
+  border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.009));
+}
+html body .adm-switch,
+html body .adm-form label.adm-switch,
+html body .adm-news-item label.adm-switch{
+  min-height:48px;
+  padding:7px 12px 7px 8px;
+  border:1px solid var(--adm-hairline);
+  border-radius:15px;
+  background:rgba(255,255,255,.018);
+}
+html body .adm-switch-track{
+  width:48px;height:28px;flex-basis:48px;
+  border-color:var(--adm-hairline);
+  background:rgba(255,255,255,.085);
+}
+html body .adm-switch-track::after{width:20px;height:20px}
+html body .adm-switch input:checked+.adm-switch-track{
+  background:linear-gradient(135deg,#7678ff,var(--signal));
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.35),0 0 0 3px rgba(99,102,241,.11),0 7px 20px rgba(99,102,241,.24);
+}
+html body .adm-switch input:checked+.adm-switch-track::after{transform:translateX(20px)}
+html body .adm-actions{
+  align-items:center;
+  gap:10px;
+  padding-top:2px;
+}
+html body .adm-actions .btn{min-height:48px;border-radius:15px}
+html body .adm-note{
+  max-width:none;
+  padding:17px 18px;
+  border-color:var(--adm-hairline);
+  border-radius:17px;
+  background:rgba(255,255,255,.018);
+}
+html body .adm-empty,
+html body .faq-admin-empty{
+  min-height:156px;
+  display:grid;
+  place-items:center;
+  border-color:var(--adm-hairline);
+  border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,.02),rgba(255,255,255,.006));
+}
+
+/* Project media: one glass surface, not boxes nested inside boxes. */
+html body .adm-work-extra{
+  gap:22px;
+  padding:22px;
+  border-color:var(--adm-hairline);
+  border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,.032),rgba(255,255,255,.009));
+}
+html body .adm-home-extra{
+  padding:0 0 22px;
+  border:0;
+  border-bottom:1px solid var(--adm-hairline);
+  border-radius:0;
+  background:transparent;
+}
+html body .adm-media-details{padding-top:0;border:0}
+html body .adm-media-details summary{
+  min-height:44px;
+  padding:0 2px 14px;
+  font-size:15px;
+  font-weight:620;
+}
+html body .adm-gallery-drop{
+  min-height:128px;
+  border-color:var(--adm-hairline);
+  border-radius:18px;
+  background:rgba(255,255,255,.012);
+}
+html body .adm-gallery-grid{
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+  gap:12px;
+}
+html body .adm-gallery-card{
+  border-color:var(--adm-hairline);
+  border-radius:17px;
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
+}
+html body .adm-gallery-order,
+html body .adm-gallery-tools button{
+  border:1px solid rgba(255,255,255,.13);
+  background:rgba(8,8,12,.68);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+@media(hover:hover){
+  html body .adm-gallery-tools{opacity:0;transform:translateY(-3px);transition:.2s}
+  html body .adm-gallery-card:hover .adm-gallery-tools,
+  html body .adm-gallery-card:focus-within .adm-gallery-tools{opacity:1;transform:none}
+}
+
+/* Copy, assistant, announcements */
+html body #copyForm{gap:0}
+html body #copyForm>div{
+  padding:18px 0 20px;
+  border-bottom:1px solid var(--adm-hairline);
+}
+html body #copyForm>div:first-child{padding-top:0}
+html body #copyForm .adm-key{margin:4px 0 10px}
+html body .adm-news-list{max-width:960px;gap:16px}
+html body .adm-news-item{
+  padding:22px;
+  border-color:var(--adm-hairline);
+  border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.01));
+}
+html body .adm-news-preview{
+  padding:20px;
+  border-color:var(--adm-hairline);
+  border-radius:18px;
+  background:rgba(10,10,14,.54);
+}
+html body .adm-test{gap:12px}
+html body .adm-test .btn{min-width:92px}
+html body .adm-test-output{margin-top:14px}
+html body .adm-announcement-actions{margin-top:22px}
+
+/* FAQ manager */
+html body .faq-admin-shell{max-width:1100px}
+html body .faq-admin-toolbar{
+  min-height:48px;
+  margin:0 0 16px;
+  padding:8px 0;
+  border-bottom:1px solid var(--adm-hairline);
+}
+html body .faq-admin-status{min-height:20px;margin:0 0 14px}
+html body .faq-admin-list{gap:12px}
+html body .faq-admin-item{
+  border-color:var(--adm-hairline);
+  border-radius:20px;
+  background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.009));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+html body .faq-admin-item:hover{border-color:rgba(99,102,241,.36)}
+html body .faq-admin-item.is-open{
+  border-color:rgba(99,102,241,.5);
+  background:linear-gradient(145deg,rgba(99,102,241,.105),rgba(255,255,255,.015));
+}
+html body .faq-admin-head{grid-template-columns:minmax(0,1fr) 54px}
+html body .faq-admin-toggle{min-height:76px;padding:13px 12px 13px 16px}
+html body .faq-admin-drag{
+  width:54px;
+  border-left-color:var(--adm-hairline);
+  background:rgba(255,255,255,.008);
+}
+html body .faq-admin-panel{padding:22px;border-top-color:var(--adm-hairline)}
+html body .faq-admin-fields{gap:18px}
+
+html[data-theme="light"] body{
+  --adm-glass:rgba(255,255,255,.72);
+  --adm-glass-strong:rgba(255,255,255,.9);
+  --adm-hairline:rgba(20,21,28,.11);
+  --adm-shadow:0 24px 70px rgba(37,38,50,.11);
+}
+html[data-theme="light"] body .adm-side{background:linear-gradient(155deg,rgba(255,255,255,.82),rgba(255,255,255,.5))}
+html[data-theme="light"] body #items>.adm-item.work-compact-item,
+html[data-theme="light"] body .adm-work-extra,
+html[data-theme="light"] body .adm-news-item,
+html[data-theme="light"] body .faq-admin-item{background:linear-gradient(145deg,rgba(255,255,255,.75),rgba(255,255,255,.42))}
+
+@media(max-width:980px) and (min-width:821px){
+  html body .adm{grid-template-columns:218px minmax(0,1fr)}
+  html body .adm-main{padding-inline:28px}
+  html body .adm-two{grid-template-columns:1fr}
+}
+
+@media(max-width:820px){
+  html body .adm-side{
+    top:max(10px,env(safe-area-inset-top));
+    height:62px;
+    margin:10px 12px;
+    padding:0 8px 0 14px;
+    border:1px solid var(--adm-hairline);
+    background:rgba(13,13,13,.76);
+    backdrop-filter:blur(24px) saturate(180%);
+    -webkit-backdrop-filter:blur(24px) saturate(180%);
+  }
+  html body .adm-side img{width:108px;margin:0}
+  html body .adm-side footer{padding:0;border:0}
+  html body .adm-side footer #signOut{display:none}
+  html body .adm-side footer .btn{font-size:0;width:44px;padding:0}
+  html body .adm-side footer .btn .arrow{font-size:16px}
+  html body .adm-main{
+    padding:30px 16px calc(118px + env(safe-area-inset-bottom));
+  }
+  html body .adm-main>section{width:100%}
+  html body .adm-head{align-items:center;margin-bottom:12px}
+  html body .adm-head h2{font-size:34px}
+  html body .adm-head .btn{min-height:44px;padding-inline:14px}
+  html body .adm-sub{margin-bottom:24px}
+  html body .adm-nav{
+    width:min(470px,calc(100% - 20px));
+    min-height:68px;
+    bottom:max(10px,env(safe-area-inset-bottom));
+    border:1px solid var(--adm-hairline);
+  }
+  html body .work-compact-toggle{
+    grid-template-columns:78px minmax(0,1fr) 32px;
+    gap:11px;
+    min-height:96px;
+    padding:10px 8px 10px 10px;
+  }
+  html body .work-compact-toggle .adm-thumb{width:78px}
+  html body .work-compact-head,
+  html body .faq-admin-head{grid-template-columns:minmax(0,1fr) 46px}
+  html body .work-compact-drag,
+  html body .faq-admin-drag{width:46px}
+  html body .adm-work-extra{padding:16px;border-radius:18px}
+  html body .adm-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  html body .adm-actions{position:sticky;bottom:86px;z-index:20;padding:10px;border:1px solid var(--adm-hairline);border-radius:18px;background:rgba(13,13,13,.82);backdrop-filter:blur(20px)}
+  html[data-theme="light"] body .adm-actions{background:rgba(255,255,255,.84)}
+  html body .adm-actions .btn{flex:1}
+  html body .adm-news-item,
+  html body .faq-admin-panel{padding:17px}
+}
+
+@media(max-width:520px){
+  html body .adm-head{align-items:flex-start}
+  html body .adm-head h2{font-size:31px}
+  html body .adm-head .btn{font-size:12px}
+  html body .work-compact-toggle p{display:none}
+  html body .work-compact-toggle h3{font-size:15px}
+  html body .adm-gallery-grid{grid-template-columns:1fr}
+  html body .adm-two{grid-template-columns:1fr}
+  html body .adm-nav button{font-size:9px}
+  html body .adm-nav svg{width:19px;height:19px}
+  html body .faq-admin-toggle{grid-template-columns:34px minmax(0,1fr) 30px}
+}

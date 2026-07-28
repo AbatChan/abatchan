@@ -3,7 +3,7 @@
 --
 -- Security model, in short:
 --   * anon can READ published work and public settings. Nothing else.
---   * authenticated (you, signed in) can do everything.
+--   * only the site owner or an account marked site_admin can manage content.
 --   * secrets never live here. The DeepSeek key is a Vercel environment
 --     variable read by /api/chat on the server. A key stored in this table
 --     would be readable by anyone with the anon key, which is public by design.
@@ -58,6 +58,20 @@ create trigger settings_touch before update on public.settings
 alter table public.work_items enable row level security;
 alter table public.settings   enable row level security;
 
+-- Do not treat every authenticated Supabase account as an administrator.
+-- app_metadata is controlled by the project, unlike user_metadata. The email
+-- clause keeps the existing owner account working during the transition.
+create or replace function public.is_site_admin()
+returns boolean
+language sql
+stable
+set search_path = ''
+as $$
+  select
+    coalesce((auth.jwt() -> 'app_metadata' ->> 'site_admin')::boolean, false)
+    or lower(coalesce(auth.jwt() ->> 'email', '')) = 'akinyughababajide@gmail.com'
+$$;
+
 drop policy if exists "published work is public" on public.work_items;
 create policy "published work is public"
   on public.work_items for select
@@ -66,7 +80,9 @@ create policy "published work is public"
 drop policy if exists "signed in manages work" on public.work_items;
 create policy "signed in manages work"
   on public.work_items for all
-  to authenticated using (true) with check (true);
+  to authenticated
+  using (public.is_site_admin())
+  with check (public.is_site_admin());
 
 drop policy if exists "public settings are public" on public.settings;
 create policy "public settings are public"
@@ -76,7 +92,9 @@ create policy "public settings are public"
 drop policy if exists "signed in manages settings" on public.settings;
 create policy "signed in manages settings"
   on public.settings for all
-  to authenticated using (true) with check (true);
+  to authenticated
+  using (public.is_site_admin())
+  with check (public.is_site_admin());
 
 -- -------------------------------------------------------------------- storage
 insert into storage.buckets (id, name, public)
@@ -91,7 +109,9 @@ create policy "work images are public"
 drop policy if exists "signed in uploads work images" on storage.objects;
 create policy "signed in uploads work images"
   on storage.objects for all
-  to authenticated using (bucket_id = 'work') with check (bucket_id = 'work');
+  to authenticated
+  using (bucket_id = 'work' and public.is_site_admin())
+  with check (bucket_id = 'work' and public.is_site_admin());
 
 -- ------------------------------------------------------- editable site copy
 -- Anything on the site tagged data-copy="<key>" is replaced by these values.
@@ -101,7 +121,7 @@ insert into public.settings (key, value, is_public) values
   ('copy.home.h1',        '"Build connected systems."',   true),
   ('copy.home.sub',       '"I design and build the interface, backend, integrations, and automation as one working product."', true),
   ('copy.contact.email',  '"abatchan4@gmail.com"',        true),
-  ('copy.pricing.website','"$750"',                       true),
+  ('copy.pricing.website','"$150"',                       true),
   ('copy.pricing.platform','"$1,500"',                    true),
   ('copy.pricing.system', '"$3,500"',                     true),
   ('assistant.enabled',   'true',                         true),
@@ -110,3 +130,9 @@ insert into public.settings (key, value, is_public) values
   ('assistant.system',    '"Sound like a warm, practical studio guide rather than a support script. Lead with the answer, keep it concise, and give one useful next step. Refer to the owner as Abat. Prices are starting points, never quotes. If a visitor needs a human decision or a fact you do not have, say so plainly and point them to the contact page."', false),
   ('news.items',          '[{"id":"2026-07-brand-and-assistant","tag":"what''s new","title":"Brand page, process, and an assistant","body":"The full brand system with downloadable lockups is up, along with how projects actually run. There is also a chat bubble now if you would rather ask than read.","href":"/brand","cta":"see the brand page","soon":false}]', true)
 on conflict (key) do nothing;
+
+-- Repair the one legacy seed without overwriting a price the owner edited.
+update public.settings
+set value = '"$150"'::jsonb
+where key = 'copy.pricing.website'
+  and value = '"$750"'::jsonb;

@@ -260,6 +260,11 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return publicError(res, 405, 'invalid_request');
   }
+  const contentType = String(req.headers['content-type'] || '').toLowerCase();
+  const contentLength = Number(req.headers['content-length'] || 0);
+  if (!contentType.includes('application/json') || contentLength > 24 * 1024) {
+    return publicError(res, 413, 'invalid_request');
+  }
 
   const ip =
     (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
@@ -277,6 +282,9 @@ export default async function handler(req, res) {
     body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
   } catch {
     return publicError(res, 400, 'invalid_request');
+  }
+  if (JSON.stringify(body).length > 24 * 1024) {
+    return publicError(res, 413, 'invalid_request');
   }
   const message = String(body.message || '').slice(0, 1000).trim();
   if (!message) return publicError(res, 400, 'invalid_request');
