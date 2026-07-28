@@ -512,7 +512,8 @@ const loadPublicSettings=()=>{
   // Any real dashboard edit still applies immediately.
   const legacyCopy={
     'copy.home.eyebrow':'digital engineering studio',
-    'copy.home.sub':'We design and engineer the interfaces, infrastructure, and integrations behind modern digital products.'
+    'copy.home.sub':'We design and engineer the interfaces, infrastructure, and integrations behind modern digital products.',
+    'copy.pricing.website':'$750'
   };
   const targets={
     'copy.home.h1':q('.hero h1'),
