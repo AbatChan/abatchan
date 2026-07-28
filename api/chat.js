@@ -10,7 +10,7 @@
 
 const API_URL = 'https://api.deepseek.com/chat/completions';
 const DEFAULT_MODEL = 'deepseek-v4-flash';
-const LEGACY_OWNER_NOTES = 'You are the assistant on abatchan.com, an independent digital engineering studio. Answer briefly and concretely about services, pricing, work, and process. Websites start at $750, platforms at $1,500, and connected systems at $3,500. Always say these are starting points, not quotes. Never invent a firm quote, delivery date, client, or result. If you do not know, say so and point to the contact page.';
+const LEGACY_OWNER_NOTES = 'You are the assistant on abatchan.com, an independent digital engineering studio. Answer briefly and concretely about services, pricing, work, and process. Focused landing pages start at $150, platforms at $1,500, and connected systems at $3,500. Always say these are starting points, not quotes. Never invent a firm quote, delivery date, client, or result. If you do not know, say so and point to the contact page.';
 const PUBLIC_SUPABASE_URL =
   process.env.SUPABASE_URL || 'https://fdubcelrwfpzjjnqipku.supabase.co';
 const PUBLIC_SUPABASE_KEY =
@@ -58,7 +58,7 @@ workflow systems, APIs and third-party integrations, backend architecture, and
 cloud infrastructure.
 
 Starting prices in USD:
-- Focused website or landing experience: $750.
+- Focused landing page: $150.
 - Platform, dashboard, ecommerce, membership, or workflow product: $1,500.
 - Connected interface, API, automation, and infrastructure system: $3,500.
 - Small fixes and consultations: usually from $100.

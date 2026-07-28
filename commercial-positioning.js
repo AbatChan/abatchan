@@ -15,17 +15,6 @@
   `;
   document.head.appendChild(style);
 
-  const cards=[...document.querySelectorAll('.price-card')];
-  const website=cards.find(card=>card.querySelector('h2')?.textContent.trim()==='Website');
-  if(website){
-    const price=website.querySelector('.price');
-    const copy=website.querySelector(':scope>p');
-    const list=website.querySelector('.price-list');
-    if(price)price.innerHTML='$150 <small>landing pages from</small>';
-    if(copy)copy.textContent='For focused landing pages and business websites built quickly without sacrificing clarity, responsiveness, or conversion.';
-    if(list)list.innerHTML='<li>landing pages from $150</li><li>focused landing pages commonly delivered in 2–3 working days</li><li>focused 5-page business websites commonly delivered in about 5 working days</li><li>responsive design, enquiry flow, SEO, deployment, and handover</li><li>final price depends on sections, content, integrations, and functionality</li>';
-  }
-
   const scopeStrip=document.querySelector('.scope-strip');
   if(scopeStrip&&!document.querySelector('.delivery-strip')){
     const strip=document.createElement('div');

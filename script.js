@@ -593,7 +593,7 @@ const ASSISTANT_FALLBACK_ERROR={
   contact:{label:'Contact support',href:'/contact'}
 };
 const CANNED=[
-  [/price|cost|budget|charge|quote/i,"Websites start at $750, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes. The real number comes from scope, with the full breakdown on the pricing page."],
+  [/price|cost|budget|charge|quote/i,"Focused landing pages start at $150, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes. The real number comes from scope, with the full breakdown on the pricing page."],
   [/how long|timeline|deadline|when/i,"It depends on scope, but work is split into milestones so you see something usable at each one. The process page walks through all five stages."],
   [/what.*(build|do)|services|offer/i,"Connected web and mobile products, automation and workflow systems, APIs and integrations, dashboards, and the infrastructure under them."],
   [/small|tiny|fix|quick/i,"Yes. Small fixes and consultations are quoted separately, usually from $100, and ongoing work is $30/hour when project pricing does not fit."],
