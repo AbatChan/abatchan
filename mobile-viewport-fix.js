@@ -58,17 +58,6 @@
 
   const schedule=()=>{if(!frame)frame=requestAnimationFrame(measure)};
 
-  const style=document.createElement('style');
-  style.textContent=`
-    html,body{min-height:100%;overscroll-behavior-y:none}
-    @supports(height:100dvh){body{min-height:100dvh}}
-    @media(max-width:900px){
-      .grid-bg,.cursor-light{height:var(--visual-height,100dvh)}
-      .mobile-tabs{max-width:calc(var(--visual-width,100vw) - 24px)}
-    }
-  `;
-  document.head.appendChild(style);
-
   addEventListener('resize',schedule,{passive:true});
   addEventListener('orientationchange',()=>setTimeout(()=>{schedule();settleClamp()},80),{passive:true});
   addEventListener('pageshow',()=>{schedule();settleClamp()},{passive:true});

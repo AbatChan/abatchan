@@ -23,23 +23,6 @@
     return true;
   };
 
-  const style=document.createElement('style');
-  style.textContent=`
-    .lamp>svg path{stroke:var(--muted)!important}
-    .lamp-label.is-icon{
-      width:20px;height:20px;display:grid;place-items:center;padding:0;border:0;
-      border-radius:0;background:transparent!important;box-shadow:none!important;
-      color:#f5f5f3;filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));
-    }
-    .lamp-label.is-icon svg{width:18px;height:18px;overflow:visible}
-    .lamp-label.is-icon svg circle,.lamp-label.is-icon svg path{
-      fill:none!important;stroke:currentColor!important;stroke-width:2!important;
-      stroke-linecap:round;stroke-linejoin:round;
-    }
-    html[data-theme="light"] .lamp-label.is-icon{color:#57575f;filter:none}
-  `;
-  document.head.appendChild(style);
-
   const watch=()=>{
     if(!apply()){
       const observer=new MutationObserver(()=>{if(apply())observer.disconnect()});

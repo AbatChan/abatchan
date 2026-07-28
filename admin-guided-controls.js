@@ -3,27 +3,6 @@
   if(!/\/admin(?:\.html)?$/.test(location.pathname))return;
   const q=(s,c=document)=>c.querySelector(s);
 
-  const style=document.createElement('style');
-  style.textContent=`
-    .adm-select-wrap{position:relative}
-    .adm-select-wrap select{width:100%;min-height:48px;padding:12px 46px 12px 14px;border:1px solid var(--edge);border-radius:14px;
-      appearance:none;-webkit-appearance:none;background:linear-gradient(145deg,rgba(99,102,241,.09),rgba(255,255,255,.025));
-      color:var(--paper);font:inherit;font-size:14px;cursor:pointer;outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
-    html[data-theme="light"] .adm-select-wrap select{color:#151519;background:linear-gradient(145deg,rgba(99,102,241,.08),rgba(255,255,255,.9))}
-    .adm-select-wrap select:focus{border-color:var(--signal);box-shadow:0 0 0 3px rgba(99,102,241,.13)}
-    .adm-select-wrap::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;border-right:1.8px solid var(--signal);border-bottom:1.8px solid var(--signal);transform:translateY(-68%) rotate(45deg);pointer-events:none}
-    .adm-field-help{margin:7px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
-    .adm-slug-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
-    .adm-slug-action{min-height:48px;padding:0 13px;border:1px solid var(--edge);border-radius:13px;background:rgba(99,102,241,.08);color:var(--paper);cursor:pointer}
-    html[data-theme="light"] .adm-slug-action{color:#151519}
-    .adm-slug-action:hover{border-color:var(--signal);background:rgba(99,102,241,.14)}
-    .adm-model-note{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:12px 14px;border:1px solid var(--line);border-radius:13px;background:rgba(99,102,241,.055);font-size:12px;color:var(--muted)}
-    .adm-model-note b{display:block;color:var(--paper);font-size:13px;margin-bottom:2px}html[data-theme="light"] .adm-model-note b{color:#151519}
-    .adm-model-badge{padding:4px 8px;border-radius:999px;border:1px solid rgba(99,102,241,.4);color:var(--signal-ink,var(--signal));white-space:nowrap}
-    @media(max-width:620px){.adm-slug-row{grid-template-columns:1fr}.adm-slug-action{width:max-content}.adm-model-note{grid-template-columns:1fr}}
-  `;
-  document.head.appendChild(style);
-
   const replaceWithSelect=(id,options,help)=>{
     const old=q('#'+id);if(!old||old.tagName==='SELECT')return old;
     const current=old.value;

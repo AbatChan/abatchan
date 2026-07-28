@@ -5,20 +5,6 @@
   let extras={},entries=[],loadedSlug='',pendingSave=false,busy=false,dragIndex=-1;
   const MAX_GALLERY_IMAGES=12;
 
-  const style=document.createElement('style');
-  style.dataset.adminWorkEnhancements='4';
-  style.textContent=`
-    .adm-work-extra{display:grid;gap:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(245,245,243,.018)}
-    .adm-home-extra{display:grid;gap:10px;padding:14px;border:1px solid rgba(99,102,241,.28);border-radius:14px;background:rgba(99,102,241,.045)}
-    .adm-home-extra[hidden]{display:none}.adm-mini-note{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
-    .adm-media-details{border-top:1px solid var(--line);padding-top:12px}.adm-media-details summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;color:var(--paper);font-size:14px;list-style:none}.adm-media-details summary::-webkit-details-marker{display:none}.adm-media-details summary::after{content:'+';color:var(--signal);font-size:18px}.adm-media-details[open] summary::after{content:'−'}
-    .adm-media-body{display:grid;gap:12px;padding-top:14px}.adm-gallery-input{display:none}.adm-gallery-drop{display:grid;place-items:center;min-height:104px;padding:18px;border:1px dashed var(--edge);border-radius:14px;color:var(--muted);font-size:13px;text-align:center;cursor:pointer;transition:.22s}.adm-gallery-drop:hover,.adm-gallery-drop.over{border-color:var(--signal);background:rgba(99,102,241,.07);color:var(--paper)}
-    .adm-gallery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.adm-gallery-card{position:relative;aspect-ratio:8/5;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#111;cursor:grab}.adm-gallery-card.dragging{opacity:.45}.adm-gallery-card img{width:100%;height:100%;object-fit:cover;display:block}.adm-gallery-order{position:absolute;left:7px;top:7px;min-width:25px;height:25px;padding:0 6px;border-radius:8px;background:rgba(8,8,12,.78);color:#fff;display:grid;place-items:center;font-size:11px}.adm-gallery-tools{position:absolute;right:7px;top:7px;display:flex;gap:5px}.adm-gallery-tools button{width:30px;height:30px;border:0;border-radius:9px;background:rgba(8,8,12,.78);color:#fff;display:grid;place-items:center;cursor:pointer}.adm-gallery-tools button:hover{background:var(--signal)}.adm-gallery-tools .remove:hover{background:#e0564a}.adm-enhance-status{min-height:18px;color:var(--muted);font-size:12px}
-    html[data-theme="light"] .adm-work-extra{background:rgba(21,21,25,.018)}
-    @media(max-width:620px){.adm-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  `;
-  document.head.appendChild(style);
-
   const loadExtras=async()=>{try{const rows=await sb.select('settings','key=eq.work.enhancements&select=value');extras=rows?.[0]?.value&&typeof rows[0].value==='object'?rows[0].value:{}}catch{extras={}}};
   const currentSlug=()=>q('#f-slug')?.value.trim()||'';
   const setStatus=(text,bad=false)=>{const el=q('#enhanceStatus');if(el){el.textContent=text;el.style.color=bad?'#ff9e95':''}};

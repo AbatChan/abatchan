@@ -3,18 +3,6 @@
   const path=location.pathname.replace(/\/+$/,'')||'/';
   if(path!=='/pricing')return;
 
-  const style=document.createElement('style');
-  style.textContent=`
-    .delivery-strip{margin-top:18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:24px;overflow:hidden}
-    .delivery-item{padding:24px;border-right:1px solid var(--line)}
-    .delivery-item:last-child{border-right:0}
-    .delivery-item span{color:var(--signal);font-size:11px}
-    .delivery-item h3{font-size:20px;margin:15px 0 8px}
-    .delivery-item p{color:var(--muted);font-size:13px;margin:0}
-    @media(max-width:900px){.delivery-strip{grid-template-columns:1fr}.delivery-item{border-right:0;border-bottom:1px solid var(--line)}.delivery-item:last-child{border-bottom:0}}
-  `;
-  document.head.appendChild(style);
-
   const scopeStrip=document.querySelector('.scope-strip');
   if(scopeStrip&&!document.querySelector('.delivery-strip')){
     const strip=document.createElement('div');
