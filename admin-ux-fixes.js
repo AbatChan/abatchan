@@ -16,9 +16,9 @@
     html[data-theme="light"] .adm-news-preview h3{color:#151519}
     html[data-theme="light"] .adm-news-preview p{color:#62636d}
     html[data-theme="light"] .adm-news-preview>span{color:#4f46e5}
-    .adm-form-save{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;max-width:720px}
+    .adm-form-save{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:18px;max-width:960px}
     .adm-form-save .btn{margin-left:0!important}
-    #view-announcements>.adm-form-save{max-width:820px;margin-top:18px}
+    #view-announcements>.adm-form-save{max-width:960px;margin-top:24px}
     #admSmartSave{display:none!important}
     @media(max-width:820px){
       .adm-form-save{width:100%}

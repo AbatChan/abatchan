@@ -13,6 +13,7 @@
   const resetMsg = q('#resetMsg');
   const toastEl = q('#toast');
   const dirty = new Set();
+  const ROUTE_VIEWS = new Set(['work', 'copy', 'assistant', 'announcements', 'faqs']);
   let activeView = 'work';
   let toastTimer;
 
@@ -39,8 +40,35 @@
       button.disabled = true;
     } else {
       button.textContent = button.dataset.label || button.textContent;
-      button.disabled = false;
+      button.disabled = button.dataset.clean === 'true';
     }
+  }
+
+  function saveState(button, changed) {
+    if (!button) return;
+    button.dataset.clean = String(!changed);
+    button.disabled = !changed;
+    button.innerHTML = changed
+      ? 'save <span class="arrow">↗</span>'
+      : 'saved <span aria-hidden="true">✓</span>';
+  }
+
+  function routeFromUrl() {
+    const params = new URLSearchParams(location.search);
+    const view = params.get('view');
+    return {
+      view: ROUTE_VIEWS.has(view) ? view : 'work',
+      item: params.get('item') || ''
+    };
+  }
+
+  function writeRoute(view, item = '', mode = 'replace') {
+    const url = new URL(location.href);
+    const publicView = view === 'editor' ? 'work' : (ROUTE_VIEWS.has(view) ? view : 'work');
+    url.searchParams.set('view', publicView);
+    if (view === 'editor' && item) url.searchParams.set('item', item);
+    else url.searchParams.delete('item');
+    history[mode === 'push' ? 'pushState' : 'replaceState']({ view: publicView, item }, '', url);
   }
 
   function showGate() {
@@ -64,6 +92,19 @@
     gate.classList.add('adm-hide');
     app.classList.remove('adm-hide');
     await Promise.all([loadWork(), loadCopy(), loadAssistant(), loadAnnouncements()]);
+    const route = routeFromUrl();
+    if (route.view === 'work' && route.item) {
+      if (route.item === 'new') {
+        openEditor(null, { routeMode: 'replace' });
+        return;
+      }
+      const item = workItems.find(row => row.slug === route.item || String(row.id) === route.item);
+      if (item) {
+        openEditor(item, { routeMode: 'replace' });
+        return;
+      }
+    }
+    showView(route.view, { routeMode: 'replace' });
   }
 
   login.addEventListener('submit', async e => {
@@ -123,11 +164,13 @@
     e.returnValue = '';
   });
 
-  function showView(name) {
+  function showView(name, { routeMode = 'replace', item = '' } = {}) {
     qa('[id^="view-"]').forEach(el => el.classList.add('adm-hide'));
     q(`#view-${name}`)?.classList.remove('adm-hide');
-    qa('#tabs [data-view]').forEach(btn => btn.setAttribute('aria-current', String(btn.dataset.view === name)));
+    const tabName = name === 'editor' ? 'work' : name;
+    qa('#tabs [data-view]').forEach(btn => btn.setAttribute('aria-current', String(btn.dataset.view === tabName)));
     activeView = name;
+    writeRoute(name, item, routeMode);
   }
 
   q('#tabs').addEventListener('click', e => {
@@ -135,7 +178,28 @@
     if (!button || button.dataset.view === activeView) return;
     if (dirty.size && !confirm('Discard unsaved changes?')) return;
     dirty.clear();
-    showView(button.dataset.view);
+    showView(button.dataset.view, { routeMode: 'push' });
+  });
+
+  addEventListener('popstate', () => {
+    if (dirty.size && !confirm('Discard unsaved changes?')) {
+      history.forward();
+      return;
+    }
+    dirty.clear();
+    const route = routeFromUrl();
+    if (route.view === 'work' && route.item) {
+      if (route.item === 'new') {
+        openEditor(null, { routeMode: 'replace' });
+        return;
+      }
+      const item = workItems.find(row => row.slug === route.item || String(row.id) === route.item);
+      if (item) {
+        openEditor(item, { routeMode: 'replace' });
+        return;
+      }
+    }
+    showView(route.view, { routeMode: 'replace' });
   });
 
   // ---------------------------------------------------------------- work
@@ -302,7 +366,7 @@
       toast(cleanupFailures.length ? 'Project deleted, but some media cleanup needs attention.' : 'Project and stored media deleted.', cleanupFailures.length > 0);
       if (editing?.id === item.id) {
         editing = null;
-        showView('work');
+        showView('work', { routeMode: 'replace' });
       }
     } catch (err) {
       toast(`Delete failed. ${err.message}`, true);
@@ -330,7 +394,7 @@
     q('#dropText').classList.add('adm-hide');
   }
 
-  function openEditor(item = null) {
+  function openEditor(item = null, { routeMode = 'push' } = {}) {
     editing = item ? { ...item } : null;
     imageFile = null;
     slugTouched = !!item;
@@ -351,7 +415,7 @@
     q('#deleteItem').classList.toggle('adm-hide', !item);
     if (item?.image_path) setPreview(sb.publicUrl('work', item.image_path), item.image_alt || '');
     dirty.delete('editor');
-    showView('editor');
+    showView('editor', { routeMode, item: item?.slug || 'new' });
     q('#f-title').focus();
   }
 
@@ -359,7 +423,7 @@
   q('#cancelItem').addEventListener('click', () => {
     if (dirty.has('editor') && !confirm('Discard this edit?')) return;
     dirty.delete('editor');
-    showView('work');
+    showView('work', { routeMode: 'push' });
   });
   q('#deleteItem').addEventListener('click', () => editing && removeItem(editing));
 
@@ -473,7 +537,7 @@
       q('#uploadProgress').classList.add('adm-hide');
       q('#uploadProgress i').style.width = '0';
       await loadWork();
-      showView('work');
+      showView('work', { routeMode: 'replace' });
       toast('Work item saved.');
     } catch (err) {
       if (uploadedPath) {
@@ -513,11 +577,15 @@
         field.value = value;
         field.dataset.key = row.key;
         field.dataset.original = value;
-        field.addEventListener('input', () => dirty.add('copy'));
+        field.addEventListener('input', () => {
+          dirty.add('copy');
+          saveState(q('#saveCopy'), true);
+        });
         wrap.append(label, field);
         form.append(wrap);
       });
       if (!copyRows.length) form.append(empty('No copy.* settings exist yet. Add rows in Supabase and they will appear here automatically.'));
+      saveState(q('#saveCopy'), false);
     } catch (err) {
       form.replaceChildren(empty(`Site copy could not be loaded. ${err.message}`));
     }
@@ -537,6 +605,7 @@
       toast(`Copy was not saved. ${err.message}`, true);
     } finally {
       pending(button, false);
+      saveState(button, dirty.has('copy'));
     }
   });
 
@@ -565,7 +634,28 @@
       q('#a-model').value = assistantRows['assistant.model'] === 'deepseek-chat'
         ? 'deepseek-v4-flash'
         : (assistantRows['assistant.model'] || 'deepseek-v4-flash');
-      qa('#assistantForm input,#assistantForm textarea').forEach(el => el.addEventListener('input', () => dirty.add('assistant')));
+      qa('#assistantForm input,#assistantForm textarea').forEach(el => {
+        if (el === q('#a-enabled') || el === q('#a-test')) return;
+        el.addEventListener('input', () => {
+          dirty.add('assistant');
+          saveState(q('#saveAssistant'), true);
+        });
+      });
+      q('#a-enabled').addEventListener('change', async event => {
+        const field = event.currentTarget;
+        const next = field.checked;
+        field.disabled = true;
+        try {
+          await sb.upsert('settings', [{ key: 'assistant.enabled', value: next, is_public: true }]);
+          toast(next ? 'Assistant is visible on the site.' : 'Assistant is hidden from the site.');
+        } catch (err) {
+          field.checked = !next;
+          toast(`Assistant visibility was not updated. ${err.message}`, true);
+        } finally {
+          field.disabled = false;
+        }
+      });
+      saveState(q('#saveAssistant'), false);
     } catch (err) {
       toast(`Assistant settings could not be loaded. ${err.message}`, true);
     }
@@ -587,6 +677,7 @@
       toast(`Assistant settings were not saved. ${err.message}`, true);
     } finally {
       pending(button, false);
+      saveState(button, dirty.has('assistant'));
     }
   });
 
@@ -614,11 +705,16 @@
 
   // --------------------------------------------------------- announcements
   let announcements = [];
+  const markAnnouncementsDirty = () => {
+    dirty.add('announcements');
+    saveState(q('#saveAnnouncements'), true);
+  };
   async function loadAnnouncements() {
     try {
       const rows = await sb.select('settings', 'key=eq.news.items&select=key,value,is_public');
       announcements = Array.isArray(rows?.[0]?.value) ? structuredClone(rows[0].value) : [];
       renderAnnouncements();
+      saveState(q('#saveAnnouncements'), false);
     } catch (err) {
       q('#announcementList').replaceChildren(empty(`Announcements could not be loaded. ${err.message}`));
     }
@@ -635,7 +731,7 @@
     field.value = item[name] || '';
     field.addEventListener('input', () => {
       announcements[index][name] = field.value;
-      dirty.add('announcements');
+      markAnnouncementsDirty();
       renderNewsPreview(index);
     });
     wrap.append(label, field);
@@ -659,7 +755,7 @@
       const soon = document.createElement('input');
       soon.type = 'checkbox';
       soon.checked = !!item.soon;
-      soon.addEventListener('change', () => { announcements[index].soon = soon.checked; dirty.add('announcements'); renderNewsPreview(index); });
+      soon.addEventListener('change', () => { announcements[index].soon = soon.checked; markAnnouncementsDirty(); renderNewsPreview(index); });
       const soonTrack = document.createElement('span');
       soonTrack.className = 'adm-switch-track';
       soonTrack.setAttribute('aria-hidden', 'true');
@@ -668,7 +764,7 @@
       soonLabel.append(soon, soonTrack, soonText);
       const remove = iconButton(`Remove ${strong.textContent}`, icons.trash, () => {
         announcements.splice(index, 1);
-        dirty.add('announcements');
+        markAnnouncementsDirty();
         renderAnnouncements();
       }, { danger: true });
       top.append(strong, soonLabel, remove);
@@ -714,7 +810,7 @@
       cta: '',
       soon: false
     });
-    dirty.add('announcements');
+    markAnnouncementsDirty();
     renderAnnouncements();
     q('#announcementList .adm-news-item:last-child input')?.focus();
   });
@@ -742,6 +838,7 @@
       toast(`Announcements were not saved. ${err.message}`, true);
     } finally {
       pending(button, false);
+      saveState(button, dirty.has('announcements'));
     }
   });
 
