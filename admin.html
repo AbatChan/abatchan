@@ -137,7 +137,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
   .adm-nav{position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom));z-index:320;
     transform:translateX(-50%);
     width:min(440px,calc(100% - 24px));min-height:66px;padding:7px;gap:0;
-    grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:initial;border:0;border-radius:22px;
+    grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);border:0;border-radius:22px;
     overflow:hidden;isolation:isolate;background:rgba(13,13,13,.84);
     backdrop-filter:blur(20px) saturate(220%);-webkit-backdrop-filter:blur(20px) saturate(220%);
     box-shadow:0 0 0 1px rgba(245,245,243,.14),inset 0 1px 0 rgba(255,255,255,.12),0 20px 50px rgba(0,0,0,.4)}
@@ -215,6 +215,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
       <button data-view="copy"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>site copy</button>
       <button data-view="assistant"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg>assistant</button>
       <button data-view="announcements"><svg viewBox="0 0 24 24"><path d="M4 13.5V8.8l12-4.6v13.9L4 13.5Z"/><path d="M8 15v4.2a1.8 1.8 0 0 0 3.6 0v-2.8M16 8.5h2.2a2.3 2.3 0 0 1 0 4.6H16"/></svg>announcements</button>
+      <button data-view="faqs"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M9 9h6M9 12h4"/></svg>FAQs</button>
     </nav>
     <footer>
       <div class="adm-who" id="who"></div>
@@ -324,4 +325,17 @@ html[data-theme="light"] .adm-note b{color:#151519}
 
 <script src="/supabase-config.js"></script>
 <script src="/admin.js"></script>
+<script src="/admin-runtime-fixes.js?v=1"></script>
+<script src="/admin-guided-controls.js?v=1"></script>
+<script src="/admin-announcement-ux.js?v=2"></script>
+<script src="/admin-ux-fixes.js?v=3"></script>
+<script src="/admin-validation-fix.js?v=1"></script>
+<script src="/admin-pattern-fix.js?v=1"></script>
+<script src="/admin-password-toggle.js?v=1"></script>
+<script src="/admin-theme-sync.js?v=2"></script>
+<script src="/admin-work-enhancements.js?v=5"></script>
+<script src="/admin-work-list.js?v=3"></script>
+<script src="/admin-work-action-polish.js?v=3"></script>
+<script src="/faq-admin.js?v=6"></script>
+<script src="/admin-auth-gallery-fix.js?v=5"></script>
 </body></html>

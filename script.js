@@ -763,6 +763,8 @@ const CANNED=[
     /\/work(?:\.html)?$/.test(location.pathname.replace(/\/+$/,''))?q('.work-grid'):null
   );
   if(!grid)return;
+  grid.dataset.loadingWork='true';
+  grid.setAttribute('aria-busy','true');
   const fallbackVisuals=new Map(qa('.work-card',grid).map(card=>[
     q('.card-info h3',card)?.textContent.trim().toLowerCase(),
     q('.card-visual',card)?.cloneNode(true)
@@ -779,11 +781,19 @@ const CANNED=[
       card.hidden=button.dataset.filter!=='all'&&card.dataset.type!==button.dataset.filter;
     });
   }));
-  if(!window.sb?.configured?.())return;
+  if(!window.sb?.configured?.()){
+    delete grid.dataset.loadingWork;
+    grid.removeAttribute('aria-busy');
+    return;
+  }
   let rows;
   try{
     rows=await sb.select('work_items','published=eq.true&select=*&order=position.asc,created_at.asc');
-  }catch{return}
+  }catch{
+    delete grid.dataset.loadingWork;
+    grid.removeAttribute('aria-busy');
+    return;
+  }
   grid.replaceChildren();
   if(!rows.length){
     filters.forEach(button=>{button.hidden=button.dataset.filter!=='all'});
@@ -791,6 +801,8 @@ const CANNED=[
     empty.className='work-empty';
     empty.textContent='New work is being prepared. Check back soon.';
     grid.append(empty);
+    delete grid.dataset.loadingWork;
+    grid.removeAttribute('aria-busy');
     return;
   }
   rows.forEach(item=>{
@@ -842,6 +854,8 @@ const CANNED=[
     grid.append(card);
   });
   syncFilterAvailability();
+  delete grid.dataset.loadingWork;
+  grid.removeAttribute('aria-busy');
 })();
 
 // ------------------------------------------------------------- what's new

@@ -18,6 +18,10 @@
     .managed-gallery{position:relative;width:100%;height:100%;overflow:hidden;background:#111116}.managed-gallery-track{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}.managed-gallery-track::-webkit-scrollbar{display:none}.managed-gallery-slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:start;position:relative}.managed-gallery-slide img,.work-card .card-visual>img{width:100%;height:100%;display:block;object-fit:cover;cursor:zoom-in}
     .managed-gallery-nav{position:absolute;left:16px;right:16px;bottom:14px;display:flex;align-items:center;justify-content:space-between;pointer-events:none}.managed-gallery-dots{display:flex;gap:6px;padding:7px 9px;border-radius:999px;background:rgba(10,10,14,.62);backdrop-filter:blur(12px)}.managed-gallery-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.36);transition:width .22s,background .22s}.managed-gallery-dot.is-on{width:18px;border-radius:999px;background:var(--signal)}.managed-gallery-count{padding:7px 9px;border-radius:999px;background:rgba(10,10,14,.62);color:#fff;font-size:11px;line-height:1;backdrop-filter:blur(12px)}
     .home-managed-card .card-info{display:flex;flex-direction:column;align-items:flex-start}.home-managed-card .card-info .btn{margin-top:14px}.work-grid.home-dynamic-grid>.home-slot-card:nth-child(1){grid-column:span 12}.work-grid.home-dynamic-grid>.home-slot-card:nth-child(2),.work-grid.home-dynamic-grid>.home-slot-card:nth-child(3){grid-column:span 6}.work-grid.home-dynamic-grid>.home-slot-card.reveal{opacity:1;transform:none}
+    .work-grid[data-loading-work="true"]{position:relative;min-height:360px}
+    .work-grid[data-loading-work="true"]>*{visibility:hidden}
+    .work-grid[data-loading-work="true"]::after{content:"";position:absolute;inset:0;border:1px solid var(--line);border-radius:28px;background:linear-gradient(105deg,rgba(245,245,243,.018) 35%,rgba(99,102,241,.085) 50%,rgba(245,245,243,.018) 65%);background-size:220% 100%;animation:work-loading 1.2s linear infinite}
+    @keyframes work-loading{to{background-position:-220% 0}}
     .work-lightbox{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:32px;background:rgba(5,5,8,.92);backdrop-filter:blur(18px);opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}.work-lightbox.open{opacity:1;visibility:visible}.work-lightbox-stage{position:relative;width:min(1400px,94vw);height:min(900px,88vh);display:grid;place-items:center}.work-lightbox img{max-width:100%;max-height:100%;object-fit:contain;display:block;box-shadow:0 30px 90px rgba(0,0,0,.5)}.work-lightbox-close,.work-lightbox-prev,.work-lightbox-next{position:absolute;border:1px solid rgba(255,255,255,.24);background:rgba(15,15,20,.72);color:#fff;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(12px)}.work-lightbox-close{top:18px;right:18px;width:46px;height:46px;border-radius:50%;font-size:25px}.work-lightbox-prev,.work-lightbox-next{top:50%;transform:translateY(-50%);width:48px;height:64px;border-radius:14px;font-size:25px}.work-lightbox-prev{left:18px}.work-lightbox-next{right:18px}.work-lightbox-count{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);padding:8px 11px;border-radius:999px;background:rgba(15,15,20,.72);color:#fff;font-size:12px}.work-lightbox button[hidden],.work-lightbox-count[hidden]{display:none}.work-lightbox-open{overflow:hidden}
     @media(max-width:900px){.work-grid.home-dynamic-grid>.home-slot-card:nth-child(n){grid-column:span 12}.home-dynamic-grid>.home-slot-card:nth-child(n) .card-visual{aspect-ratio:16/10}.work-lightbox{padding:14px}.work-lightbox-prev{left:8px}.work-lightbox-next{right:8px}.work-lightbox-close{top:8px;right:8px}}
   `;
@@ -139,6 +143,8 @@
     const grid = heading?.closest('section')?.querySelector('.work-grid');
     if (!grid) return;
     grid.classList.add('home-dynamic-grid');
+    grid.dataset.loadingWork = 'true';
+    grid.setAttribute('aria-busy', 'true');
 
     try {
       const [rows, extras] = await Promise.all([
@@ -147,7 +153,12 @@
       ]);
       const cards = (rows || []).slice(0, 3).map(item => createCard(item, extras[item.slug] || {}));
       if (cards.length) grid.replaceChildren(...cards);
-    } catch {}
+    } catch {
+      // Authored cards remain the resilient fallback.
+    } finally {
+      delete grid.dataset.loadingWork;
+      grid.removeAttribute('aria-busy');
+    }
   };
 
   const enhanceWork = async () => {

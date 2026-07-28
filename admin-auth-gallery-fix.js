@@ -1,4 +1,4 @@
-// Refresh expired Supabase sessions across REST/storage and load current UI upgrades.
+// Refresh expired Supabase sessions across REST/storage and guard editor state.
 (function adminAuthGalleryFix(){
   if(!window.sb)return;
 
@@ -36,25 +36,8 @@
     title.addEventListener('input',()=>{if(!creating)return;setTimeout(()=>{const next=slug.value.trim();if(!next||next===lastLoadedSlug)return;lastLoadedSlug=next;slug.dispatchEvent(new Event('change',{bubbles:true}))},0)});
     editor.addEventListener('submit',()=>{creating=false},{capture:true});document.querySelector('#cancelItem')?.addEventListener('click',()=>{creating=false});
   };
-  const loadUpgrade=(src,label)=>{
-    document.querySelectorAll(`script[data-site-upgrade="${label}"]`).forEach(node=>node.remove());
-    const script=document.createElement('script');script.src=src;script.defer=true;script.dataset.siteUpgrade=label;document.head.appendChild(script);
-  };
   const start=()=>{
     removeHomepageFallbacks();preventGalleryCarryover();
-    window.__ABATCHAN_FAQ_SYSTEM_VERSION__=0;window.__ABATCHAN_FAQ_ADMIN_VERSION__=0;window.__ABATCHAN_FAQ_CLEANUP_VERSION__=0;
-    document.querySelectorAll('style[data-faq-styles],style[data-faq-admin-styles],style[data-faq-runtime-cleanup]').forEach(node=>node.remove());
-    loadUpgrade('/work-grid-layout-fix.js?v=3','work-grid-layout');
-    loadUpgrade('/faq-system.js?v=7','faq-system');
-    loadUpgrade('/commercial-positioning.js?v=3','commercial-positioning');
-    loadUpgrade('/faq-runtime-cleanup.js?v=2','faq-runtime-cleanup');
-    if(/\/admin(?:\.html)?$/.test(location.pathname)){
-      window.__ABATCHAN_WORK_LIST_VERSION__=0;window.__ABATCHAN_WORK_ACTION_POLISH__=0;
-      loadUpgrade('/faq-admin.js?v=6','faq-admin');
-      loadUpgrade('/admin-work-enhancements.js?v=5','admin-work-enhancements');
-      loadUpgrade('/admin-work-list.js?v=3','admin-work-list');
-      loadUpgrade('/admin-work-action-polish.js?v=3','admin-work-action-polish');
-    }
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();

@@ -84,5 +84,8 @@
   const scan=root=>{root.querySelectorAll?.(groupSelector).forEach(number);if(root.matches?.(groupSelector))number(root)};
   const render=(container,items)=>{container.replaceChildren(...items.filter(item=>item.published!==false&&(item.page==='/pricing'||!item.page)&&page==='/pricing').map(item=>{const details=document.createElement('details');details.dataset.faqId=item.id||'';const summary=document.createElement('summary');summary.textContent=item.question||'';const p=document.createElement('p');p.textContent=item.answer||'';details.append(summary,p);return details}));number(container)};
   const load=async()=>{const container=document.querySelector('.faq-list,[data-faq-page]');if(!container)return;try{const rows=await sb.select('settings','key=eq.faq.items&is_public=eq.true&select=value');render(container,Array.isArray(rows?.[0]?.value)?rows[0].value:window.ABATCHAN_FAQ_DEFAULTS)}catch{if(page==='/pricing')render(container,window.ABATCHAN_FAQ_DEFAULTS)}};
-  scan(document);new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===1)scan(node)}))).observe(document.documentElement,{childList:true,subtree:true});load();
+  const initial=document.querySelector('.faq-list,[data-faq-page]');
+  if(initial&&page==='/pricing')render(initial,window.ABATCHAN_FAQ_DEFAULTS);
+  else scan(document);
+  load();
 })();

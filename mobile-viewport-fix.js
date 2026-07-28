@@ -79,19 +79,3 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){schedule();settleClamp()}});
   schedule();
 })();
-
-// Small late-loaded fixes shared across public pages and the dashboard.
-(function loadRuntimeFixes(){
-  const isAdmin=/\/admin(?:\.html)?$/.test(location.pathname);
-  const scripts=[
-    ['/site-settings-fixes.js?v=1','global-site-settings'],
-    ['/announcement-force.js?v=1','forced-announcement']
-  ];
-  if(isAdmin)scripts.push(['/admin-runtime-fixes.js?v=1','admin-runtime-fixes']);
-  scripts.forEach(([src,label])=>{
-    if(document.querySelector(`script[src="${src}"]`))return;
-    const script=document.createElement('script');
-    script.src=src;script.defer=true;script.dataset.siteUpgrade=label;
-    document.head.appendChild(script);
-  });
-})();

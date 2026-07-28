@@ -147,28 +147,3 @@ window.SUPABASE = {
     removeFile: (bucket, path) => storageRequest('DELETE', bucket, path)
   };
 })();
-
-addEventListener('DOMContentLoaded', () => {
-  [
-    ['/assistant-v2.js?v=4','stream-markdown'],
-    ['/assistant-polish.js?v=1','visual-polish'],
-    ['/mobile-viewport-fix.js?v=4','mobile-viewport-fix'],
-    ['/responsive-lamp.js?v=5','responsive-lamp'],
-    ['/dynamic-work.js?v=3','dynamic-work'],
-    ['/admin-work-enhancements.js?v=3','admin-work-enhancements'],
-    ['/admin-guided-controls.js?v=1','admin-guided-controls'],
-    ['/admin-announcement-ux.js?v=2','admin-announcement-ux'],
-    ['/admin-ux-fixes.js?v=3','admin-ux-fixes'],
-    ['/admin-validation-fix.js?v=1','admin-validation-fix'],
-    ['/admin-pattern-fix.js?v=1','admin-pattern-fix'],
-    ['/admin-password-toggle.js?v=1','admin-password-toggle'],
-    ['/admin-theme-sync.js?v=2','admin-theme-sync'],
-    ['/admin-auth-gallery-fix.js?v=4','admin-auth-gallery-fix']
-  ].forEach(([src,label]) => {
-    const script = document.createElement('script');
-    script.src = src;
-    script.defer = true;
-    script.dataset.siteUpgrade = label;
-    document.head.appendChild(script);
-  });
-}, { once: true });
