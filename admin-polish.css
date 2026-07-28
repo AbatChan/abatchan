@@ -377,19 +377,57 @@ html[data-theme="light"] body .faq-admin-item{background:linear-gradient(145deg,
 
 @media(max-width:820px){
   html body .adm-side{
+    --glass-tint:rgba(13,13,13,.005);
+    --glass-ring:rgba(0,0,0,.05);
+    --glass-spec:rgba(255,255,255,.05);
     position:sticky;
     inset:auto;
     top:max(10px,env(safe-area-inset-top));
     bottom:auto;
-    height:62px;
-    margin:10px 12px;
-    padding:0 8px 0 14px;
-    border:1px solid var(--adm-hairline);
-    background:rgba(13,13,13,.94);
+    height:60px;
+    margin:12px 16px;
+    padding:0 12px 0 16px;
+    border:0;
+    border-radius:20px;
+    isolation:isolate;
+    background:var(--glass-tint);
+    box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),inset 0 -1px 0 rgba(255,255,255,.08),0 20px 50px rgba(0,0,0,.4);
     /* A filtered ancestor becomes the containing block for fixed children.
-       Keep the dock fixed to the viewport by leaving blur ownership to it. */
+       Put the glass sampling on a pseudo-element so the dock stays fixed to
+       the viewport while the mobile header still matches the public glass. */
     backdrop-filter:none;
     -webkit-backdrop-filter:none;
+  }
+  html body .adm-side::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:0;
+    border-radius:inherit;
+    pointer-events:none;
+    backdrop-filter:blur(8px) saturate(220%) brightness(1.07);
+    -webkit-backdrop-filter:blur(8px) saturate(220%) brightness(1.07);
+  }
+  html body .adm-side::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:1;
+    border-radius:inherit;
+    pointer-events:none;
+    background:radial-gradient(180px 130px at 50% -35%,rgba(255,255,255,.07),transparent 72%);
+  }
+  html body .adm-side>img,
+  html body .adm-side>footer{position:relative;z-index:2}
+  html[data-theme="light"] body .adm-side{
+    --glass-tint:rgba(255,255,255,.005);
+    --glass-ring:rgba(21,21,25,.05);
+    --glass-spec:rgba(255,255,255,.05);
+    background:var(--glass-tint);
+    box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),0 18px 44px rgba(27,28,34,.16);
+  }
+  html[data-theme="light"] body .adm-side::after{
+    background:radial-gradient(180px 130px at 50% -35%,rgba(255,255,255,.16),transparent 72%);
   }
   html body .adm-side img{width:108px;margin:0}
   html body .adm-side footer{padding:0;border:0}
@@ -405,14 +443,29 @@ html[data-theme="light"] body .faq-admin-item{background:linear-gradient(145deg,
   html body .adm-head .btn{min-height:44px;padding-inline:14px}
   html body .adm-sub{margin-bottom:24px}
   html body .adm-nav{
+    --glass-tint:rgba(13,13,13,.005);
+    --glass-blur:8px;
+    --glass-ring:rgba(0,0,0,.05);
+    --glass-spec:rgba(255,255,255,.05);
     position:fixed!important;
     inset:auto auto max(10px,env(safe-area-inset-bottom)) 50%!important;
     top:auto!important;
     margin:0!important;
     transform:translateX(-50%)!important;
-    width:min(470px,calc(100% - 20px));
-    min-height:68px;
-    border:1px solid var(--adm-hairline);
+    width:min(440px,calc(100% - 24px));
+    min-height:66px;
+    border:0;
+    background:var(--glass-tint);
+    backdrop-filter:blur(var(--glass-blur)) saturate(220%) brightness(1.07);
+    -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(220%) brightness(1.07);
+    box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),inset 0 -1px 0 rgba(255,255,255,.08),0 20px 50px rgba(0,0,0,.4);
+  }
+  html[data-theme="light"] body .adm-nav{
+    --glass-tint:rgba(255,255,255,.005);
+    --glass-ring:rgba(21,21,25,.05);
+    --glass-spec:rgba(255,255,255,.05);
+    background:var(--glass-tint);
+    box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),0 18px 44px rgba(27,28,34,.16);
   }
   html body .adm-nav button[data-view="announcements"]::after{content:"news";font-size:10px}
   html body .work-compact-toggle{

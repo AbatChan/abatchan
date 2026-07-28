@@ -129,18 +129,15 @@ html[data-theme="light"] .adm-note b{color:#151519}
   .adm{display:block;min-height:100svh}
   .adm-side{position:sticky;top:12px;z-index:300;height:60px;margin:12px;padding:0 8px 0 14px;
     flex-direction:row;align-items:center;gap:8px;overflow:visible;border:0;border-radius:20px;
-    background:rgba(13,13,13,.94);
-    box-shadow:0 0 0 1px rgba(245,245,243,.14),inset 0 1px 0 rgba(255,255,255,.12),0 18px 44px rgba(0,0,0,.34)}
-  html[data-theme="light"] .adm-side{background:rgba(245,245,243,.96);
-    box-shadow:0 0 0 1px rgba(21,21,25,.12),inset 0 1px 0 rgba(255,255,255,.8),0 18px 44px rgba(27,28,34,.14)}
+    background:transparent;box-shadow:none}
+  html[data-theme="light"] .adm-side{background:transparent;box-shadow:none}
   .adm-side img{display:block;width:112px;flex:0 0 112px;margin:0}
   .adm-nav{position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom));z-index:320;
     transform:translateX(-50%);
     width:min(440px,calc(100% - 24px));min-height:66px;padding:7px;gap:0;
     grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);border:0;border-radius:22px;
-    overflow:hidden;isolation:isolate;background:rgba(13,13,13,.84);
-    backdrop-filter:blur(20px) saturate(220%);-webkit-backdrop-filter:blur(20px) saturate(220%);
-    box-shadow:0 0 0 1px rgba(245,245,243,.14),inset 0 1px 0 rgba(255,255,255,.12),0 20px 50px rgba(0,0,0,.4)}
+    overflow:hidden;isolation:isolate;background:transparent;
+    backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
   .adm-nav::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
     background:radial-gradient(180px 130px at 50% -35%,rgba(255,255,255,.07),transparent 72%)}
   .adm-nav>.glass-edge{display:block;position:absolute;inset:0;z-index:0;pointer-events:none}
@@ -152,8 +149,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
   .adm-nav button[aria-current="true"]{color:var(--paper);background:rgba(245,245,243,.14);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.24)}
   html[data-theme="light"] .adm-nav button{color:#3c3e46}
-  html[data-theme="light"] .adm-nav{background:rgba(255,255,255,.84);
-    box-shadow:0 0 0 1px rgba(21,21,25,.12),inset 0 1px 0 rgba(255,255,255,.8),0 18px 44px rgba(27,28,34,.16)}
+  html[data-theme="light"] .adm-nav{background:transparent;box-shadow:none}
   html[data-theme="light"] .adm-nav button[aria-current="true"]{color:#151519;background:rgba(79,70,229,.16);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
   .adm-nav svg{width:20px;height:20px;flex:0 0 20px}
@@ -169,7 +165,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
   .adm-toast{bottom:calc(92px + env(safe-area-inset-bottom));width:min(360px,calc(100% - 32px));text-align:center}
 }
 </style>
-<link rel="stylesheet" href="/admin-polish.css?v=5">
+<link rel="stylesheet" href="/admin-polish.css?v=6">
 </head><body>
 
 <!-- login ---------------------------------------------------------------- -->
