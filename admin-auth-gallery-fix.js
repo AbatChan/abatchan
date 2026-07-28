@@ -117,7 +117,7 @@
       loadUpgrade('/faq-admin.js?v=5','faq-admin');
       loadUpgrade('/admin-work-enhancements.js?v=5','admin-work-enhancements');
       loadUpgrade('/admin-work-list.js?v=3','admin-work-list');
-      loadUpgrade('/admin-work-action-polish.js?v=2','admin-work-action-polish');
+      loadUpgrade('/admin-work-action-polish.js?v=3','admin-work-action-polish');
     }
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
