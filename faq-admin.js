@@ -1,65 +1,46 @@
-// Admin CRUD for the shared faq.items setting.
+// Compact pricing FAQ editor stored in faq.items.
 (function faqAdmin(){
-  if(!/\/admin(?:\.html)?$/.test(location.pathname))return;
-  const q=(s,c=document)=>c.querySelector(s);
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let items=[];
+  'use strict';
+  const VERSION=6;
+  if((window.__ABATCHAN_FAQ_ADMIN_VERSION__||0)>=VERSION)return;
+  window.__ABATCHAN_FAQ_ADMIN_VERSION__=VERSION;
+  if(!/\/admin(?:\.html)?$/.test(location.pathname)||!window.sb)return;
 
-  const style=document.createElement('style');
-  style.textContent=`
-    .faq-admin-list{display:grid;gap:12px}.faq-admin-card{border:1px solid var(--line);border-radius:18px;padding:18px;background:rgba(245,245,243,.025)}
-    .faq-admin-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.faq-admin-top h3{margin:0;font-size:17px}.faq-admin-actions{display:flex;gap:7px;flex-wrap:wrap}
-    .faq-admin-card textarea{min-height:110px}.faq-admin-card .adm-two{margin-top:14px}.faq-admin-card.is-draft{opacity:.62}
-  `;
-  document.head.appendChild(style);
+  const q=(s,c=document)=>c.querySelector(s),qa=(s,c=document)=>[...c.querySelectorAll(s)];
+  const tabs=q('#tabs'),main=q('.adm-main');if(!tabs||!main)return;
+  let items=[],loaded=false,dirty=false,expanded=null,dragged=null,target=null;
+  const makeId=()=>`faq-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const dragIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7" r="1"/><circle cx="16" cy="7" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="17" r="1"/><circle cx="16" cy="17" r="1"/></svg>';
+  const chevron='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>';
+  const trash='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 3h6l1 4H8l1-4ZM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>';
 
-  const tab=document.createElement('button');
-  tab.dataset.view='faqs';
-  tab.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M9 9h6M9 12h4"/></svg>FAQs';
-  q('#tabs')?.append(tab);
+  document.querySelectorAll('style[data-faq-admin-styles]').forEach(node=>node.remove());
+  const style=document.createElement('style');style.dataset.faqAdminStyles=String(VERSION);style.textContent=`
+    .faq-admin-shell{max-width:980px}.faq-admin-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-8px 0 20px}.faq-admin-count{margin-right:auto;color:var(--muted);font-size:13px}.faq-admin-status{min-height:18px;margin:-7px 0 10px;color:var(--muted);font-size:12px}.faq-admin-status.bad{color:#ff948b}.faq-admin-list{display:grid;gap:10px}
+    .faq-admin-item{position:relative;border:1px solid var(--line);border-radius:18px;background:var(--panel);overflow:hidden;transition:.22s var(--ease)}.faq-admin-item:hover{border-color:rgba(99,102,241,.4)}.faq-admin-item.is-open{border-color:rgba(99,102,241,.62);background:linear-gradient(145deg,rgba(99,102,241,.075),rgba(245,245,243,.018))}.faq-admin-item.is-draft{opacity:.7}
+    .faq-admin-head{display:grid;grid-template-columns:minmax(0,1fr) 50px}.faq-admin-toggle{display:grid;grid-template-columns:38px minmax(0,1fr) 34px;align-items:center;gap:13px;width:100%;padding:14px 10px 14px 16px;border:0;background:transparent;color:var(--paper);text-align:left;cursor:pointer}.faq-admin-index{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line);border-radius:11px;color:var(--signal);background:rgba(99,102,241,.07);font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace}.faq-admin-copy{min-width:0}.faq-admin-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:620}.faq-admin-meta{display:block;margin-top:3px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.faq-admin-chevron{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;color:var(--muted);transition:.22s var(--ease)}.faq-admin-chevron svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.faq-admin-item.is-open .faq-admin-chevron{transform:rotate(180deg);color:var(--paper);border-color:rgba(99,102,241,.5)}
+    .faq-admin-drag{width:50px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);cursor:grab}.faq-admin-drag:hover{color:var(--paper);background:rgba(99,102,241,.08)}.faq-admin-drag svg{width:22px;height:22px;fill:currentColor}.faq-admin-panel{padding:18px;border-top:1px solid var(--line)}.faq-admin-panel[hidden]{display:none}.faq-admin-fields{display:grid;gap:14px}.faq-admin-field label{display:block;margin:0 0 7px;color:var(--muted);font-size:12px}.faq-admin-field input,.faq-admin-field textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:13px;background:transparent;color:var(--paper);font:inherit;font-size:14px;outline:0}.faq-admin-field textarea{min-height:120px;resize:vertical;line-height:1.65}.faq-admin-field input:focus,.faq-admin-field textarea:focus{border-color:var(--signal);box-shadow:0 0 0 3px rgba(99,102,241,.1)}.faq-admin-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}.faq-admin-delete{display:inline-flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid rgba(224,86,74,.3);border-radius:10px;background:transparent;color:#ff948b;cursor:pointer}.faq-admin-delete svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.faq-admin-empty{padding:40px 20px;border:1px dashed var(--line);border-radius:18px;text-align:center;color:var(--muted)}
+    .faq-admin-item.is-dragging{opacity:.35;transform:scale(.985)}.faq-admin-item.drop-before::before,.faq-admin-item.drop-after::after{content:"";position:absolute;z-index:5;left:12px;right:12px;height:3px;border-radius:99px;background:var(--signal)}.faq-admin-item.drop-before::before{top:-2px}.faq-admin-item.drop-after::after{bottom:-2px}
+    @media(max-width:560px){.faq-admin-head{grid-template-columns:minmax(0,1fr) 44px}.faq-admin-toggle{grid-template-columns:34px minmax(0,1fr) 30px;gap:10px;padding:12px 8px 12px 12px}.faq-admin-index{width:34px;height:34px}.faq-admin-drag{width:44px}.faq-admin-panel{padding:15px}.faq-admin-footer{align-items:flex-start;flex-direction:column}}
+  `;document.head.append(style);
 
-  const section=document.createElement('section');
-  section.id='view-faqs';section.className='adm-hide';
-  section.innerHTML='<div class="adm-head"><h2>FAQs</h2><div class="adm-actions"><button class="btn" id="addFaq" type="button">add FAQ</button><button class="btn primary sm" id="saveFaqs" type="button">save <span class="arrow">↗</span></button></div></div><p class="adm-sub">Add, edit, order, publish, or remove FAQs. Every FAQ uses the same public style and smooth transition automatically.</p><div class="faq-admin-list" id="faqAdminList"></div>';
-  q('.adm-main')?.append(section);
+  let tab=q('[data-view="faqs"]',tabs);if(!tab){tab=document.createElement('button');tab.type='button';tab.dataset.view='faqs';tab.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M9 9h6M9 12h4"/></svg>FAQs';tabs.append(tab)}
+  q('#view-faqs')?.remove();const section=document.createElement('section');section.id='view-faqs';section.className='adm-hide faq-admin-shell';section.innerHTML=`<div class="adm-head"><h2>FAQs</h2><button class="btn primary sm" id="saveFaqs" type="button">save <span class="arrow">↗</span></button></div><p class="adm-sub">Pricing-page questions. Open a row to edit it and drag the handle on the right to change the order.</p><div class="faq-admin-toolbar"><span class="faq-admin-count" id="faqAdminCount">0 FAQs</span><button class="btn sm" id="addFaq" type="button">add FAQ <span class="arrow">↗</span></button></div><div class="faq-admin-status" id="faqAdminStatus"></div><div class="faq-admin-list" id="faqAdminList"></div>`;main.append(section);
+  const list=q('#faqAdminList'),count=q('#faqAdminCount'),status=q('#faqAdminStatus'),save=q('#saveFaqs'),add=q('#addFaq');
+  const setDirty=value=>{dirty=value;status.textContent=value?'Unsaved changes':''};
+  const clearDrop=()=>{qa('.is-dragging,.drop-before,.drop-after',list).forEach(node=>node.classList.remove('is-dragging','drop-before','drop-after'));target=null};
+  const reorder=()=>{if(!dragged||!target||dragged===target.id)return clearDrop();const from=items.findIndex(x=>x.id===dragged);if(from<0)return clearDrop();const [moving]=items.splice(from,1);let to=items.findIndex(x=>x.id===target.id);if(to<0)to=items.length;else if(target.after)to++;items.splice(to,0,moving);clearDrop();setDirty(true);render()};
 
-  const list=q('#faqAdminList');
-  const id=()=>`faq-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+  const render=()=>{count.textContent=`${items.length} FAQ${items.length===1?'':'s'}`;if(!items.length){list.innerHTML='<div class="faq-admin-empty">No FAQs yet. Add your first pricing question.</div>';return}list.replaceChildren(...items.map((item,index)=>{
+    item.id=item.id||makeId();item.page='/pricing';const open=expanded===item.id;const card=document.createElement('article');card.className=`faq-admin-item${open?' is-open':''}${item.published===false?' is-draft':''}`;card.dataset.faqId=item.id;
+    const head=document.createElement('div');head.className='faq-admin-head';const toggle=document.createElement('button');toggle.type='button';toggle.className='faq-admin-toggle';toggle.setAttribute('aria-expanded',String(open));toggle.innerHTML=`<span class="faq-admin-index">${String(index+1).padStart(2,'0')}</span><span class="faq-admin-copy"><span class="faq-admin-title"></span><span class="faq-admin-meta">${item.published===false?'draft':'published'}</span></span><span class="faq-admin-chevron">${chevron}</span>`;q('.faq-admin-title',toggle).textContent=item.question?.trim()||'Untitled FAQ';toggle.addEventListener('click',()=>{expanded=open?null:item.id;render()});
+    const drag=document.createElement('button');drag.type='button';drag.className='faq-admin-drag';drag.draggable=true;drag.innerHTML=dragIcon;drag.setAttribute('aria-label','Drag to reorder');drag.addEventListener('dragstart',e=>{dragged=item.id;card.classList.add('is-dragging');e.dataTransfer.effectAllowed='move'});drag.addEventListener('dragend',()=>{dragged=null;clearDrop()});head.append(toggle,drag);
+    card.addEventListener('dragover',e=>{e.preventDefault();if(!dragged||dragged===item.id)return;qa('.drop-before,.drop-after',list).forEach(n=>n.classList.remove('drop-before','drop-after'));const rect=card.getBoundingClientRect();const after=e.clientY>rect.top+rect.height/2;card.classList.add(after?'drop-after':'drop-before');target={id:item.id,after}});card.addEventListener('drop',e=>{e.preventDefault();reorder()});
+    const panel=document.createElement('div');panel.className='faq-admin-panel';panel.hidden=!open;panel.innerHTML=`<div class="faq-admin-fields"><div class="faq-admin-field"><label>question</label><input data-question></div><div class="faq-admin-field"><label>answer</label><textarea data-answer></textarea></div></div><div class="faq-admin-footer"><button class="faq-admin-delete" type="button">${trash}<span>Delete FAQ</span></button><label class="adm-switch"><input data-published type="checkbox"><span class="adm-switch-track" aria-hidden="true"></span><span>published</span></label></div>`;q('[data-question]',panel).value=item.question||'';q('[data-answer]',panel).value=item.answer||'';q('[data-published]',panel).checked=item.published!==false;q('[data-question]',panel).addEventListener('input',e=>{item.question=e.target.value;q('.faq-admin-title',toggle).textContent=e.target.value.trim()||'Untitled FAQ';setDirty(true)});q('[data-answer]',panel).addEventListener('input',e=>{item.answer=e.target.value;setDirty(true)});q('[data-published]',panel).addEventListener('change',e=>{item.published=e.target.checked;setDirty(true);render()});q('.faq-admin-delete',panel).addEventListener('click',()=>{if(confirm('Delete this FAQ?')){items.splice(index,1);expanded=null;setDirty(true);render()}});card.append(head,panel);return card
+  }))};
 
-  const render=()=>{
-    list.replaceChildren(...items.map((item,index)=>{
-      const card=document.createElement('article');
-      card.className=`faq-admin-card${item.published===false?' is-draft':''}`;
-      card.innerHTML=`<div class="faq-admin-top"><h3>${esc(item.question||'Untitled FAQ')}</h3><div class="faq-admin-actions"><button class="btn sm" data-up type="button" ${index===0?'disabled':''}>↑</button><button class="btn sm" data-down type="button" ${index===items.length-1?'disabled':''}>↓</button><button class="btn sm danger" data-remove type="button">delete</button></div></div><div class="adm-two"><div><label>question</label><input data-question value="${esc(item.question)}"></div><div><label>page</label><select data-page><option value="/pricing" ${item.page==='/pricing'?'selected':''}>pricing</option><option value="/" ${item.page==='/'?'selected':''}>home</option><option value="/contact" ${item.page==='/contact'?'selected':''}>contact</option><option value="/work" ${item.page==='/work'?'selected':''}>work</option></select></div></div><div><label>answer</label><textarea data-answer>${esc(item.answer)}</textarea></div><label class="adm-switch"><input data-published type="checkbox" ${item.published!==false?'checked':''}><span class="adm-switch-track" aria-hidden="true"></span><span>published</span></label>`;
-      card.querySelector('[data-question]').addEventListener('input',e=>{item.question=e.target.value;card.querySelector('h3').textContent=e.target.value||'Untitled FAQ'});
-      card.querySelector('[data-answer]').addEventListener('input',e=>item.answer=e.target.value);
-      card.querySelector('[data-page]').addEventListener('change',e=>item.page=e.target.value);
-      card.querySelector('[data-published]').addEventListener('change',e=>{item.published=e.target.checked;render()});
-      card.querySelector('[data-up]').addEventListener('click',()=>{[items[index-1],items[index]]=[items[index],items[index-1]];render()});
-      card.querySelector('[data-down]').addEventListener('click',()=>{[items[index+1],items[index]]=[items[index],items[index+1]];render()});
-      card.querySelector('[data-remove]').addEventListener('click',()=>{if(confirm('Delete this FAQ?')){items.splice(index,1);render()}});
-      return card;
-    }));
-  };
-
-  const load=async()=>{
-    try{
-      const rows=await sb.select('settings','key=eq.faq.items&select=value');
-      items=Array.isArray(rows?.[0]?.value)?rows[0].value.map(x=>({...x})):(window.ABATCHAN_FAQ_DEFAULTS||[]).map(x=>({...x}));
-      render();
-    }catch(err){list.textContent=`FAQs could not be loaded. ${err.message}`}
-  };
-
-  q('#addFaq').addEventListener('click',()=>{items.push({id:id(),page:'/pricing',question:'',answer:'',published:true});render();list.lastElementChild?.scrollIntoView({behavior:'smooth',block:'center'})});
-  q('#saveFaqs').addEventListener('click',async e=>{
-    const button=e.currentTarget;button.disabled=true;button.textContent='saving…';
-    try{
-      items=items.map((item,position)=>({...item,id:item.id||id(),position}));
-      await sb.upsert('settings',[{key:'faq.items',value:items,is_public:true}]);
-      button.textContent='saved ✓';setTimeout(()=>{button.textContent='save ↗';button.disabled=false},1200);
-    }catch(err){button.textContent='save failed';button.disabled=false;alert(err.message)}
-  });
-
-  tab.addEventListener('click',()=>{if(!items.length)load()});
-  const wait=setInterval(()=>{if(!q('#app')?.classList.contains('adm-hide')){clearInterval(wait);load()}},400);
+  const load=async()=>{if(loaded)return;loaded=true;status.textContent='Loading FAQs…';try{const rows=await sb.select('settings','key=eq.faq.items&select=value');items=Array.isArray(rows?.[0]?.value)?rows[0].value.map(x=>({...x,page:'/pricing'})):(window.ABATCHAN_FAQ_DEFAULTS||[]).map(x=>({...x,page:'/pricing'}));status.textContent='';render()}catch(err){status.textContent=`FAQs could not load. ${err.message}`;status.classList.add('bad')}};
+  add.addEventListener('click',()=>{const item={id:makeId(),page:'/pricing',question:'',answer:'',published:true};items.push(item);expanded=item.id;setDirty(true);render();requestAnimationFrame(()=>q(`[data-faq-id="${CSS.escape(item.id)}"] input`,list)?.focus())});
+  save.addEventListener('click',async()=>{const invalid=items.find(item=>!item.question?.trim()||!item.answer?.trim());if(invalid){expanded=invalid.id;render();status.textContent='Every FAQ needs a question and answer.';status.classList.add('bad');return}save.disabled=true;save.textContent='saving…';try{items=items.map((item,position)=>({...item,page:'/pricing',position,question:item.question.trim(),answer:item.answer.trim()}));await sb.upsert('settings',[{key:'faq.items',value:items,is_public:true}]);dirty=false;status.classList.remove('bad');status.textContent='Saved';save.innerHTML='saved ✓';setTimeout(()=>{save.disabled=false;save.innerHTML='save <span class="arrow">↗</span>';status.textContent=''},1200)}catch(err){save.disabled=false;save.textContent='save';status.textContent=`Save failed. ${err.message}`;status.classList.add('bad')}});
+  tab.addEventListener('click',load);const wait=setInterval(()=>{if(!q('#app')?.classList.contains('adm-hide')){clearInterval(wait);load()}},300);addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
 })();
