@@ -628,6 +628,17 @@ const CANNED=[
     log.appendChild(el);log.scrollTop=log.scrollHeight;
     return el;
   };
+  const ensureGreeting=()=>{
+    let el=q('[data-guide-intro="true"]',log);
+    if(!el){
+      el=document.createElement('div');
+      el.className='assist-msg bot assist-intro';
+      el.dataset.guideIntro='true';
+    }
+    el.textContent=ASSISTANT.greeting;
+    if(log.firstElementChild!==el)log.prepend(el);
+    return el;
+  };
   const addError=(issue,question)=>{
     const safe=issue&&typeof issue==='object'?issue:ASSISTANT_FALLBACK_ERROR;
     const el=document.createElement('div');
@@ -708,7 +719,7 @@ const CANNED=[
     launch.dataset.tip=on?'Close':'Ask about the work';
     if(on){
       launch.style.setProperty('animation','none');
-      if(!greeted){greeted=true;add(ASSISTANT.greeting,'bot')}
+      if(!greeted){greeted=true;ensureGreeting()}
       setTimeout(()=>input.focus(),260);
     }
   };

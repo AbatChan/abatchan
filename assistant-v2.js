@@ -81,10 +81,16 @@
     }
   };
 
+  const isLegacyGreeting=item=>item?.role==='assistant'&&(
+    /^Hey,\s+I(?:'|’)?m the abatchan guide\b/i.test(item.content)||
+    /^Hi\.\s+Ask me anything about the work, pricing, or how a project runs\./i.test(item.content)
+  );
   const readStored=()=>{
     try{
       const value=JSON.parse(localStorage.getItem(STORE)||'[]');
-      return Array.isArray(value)?value.filter(x=>x&&['user','assistant'].includes(x.role)&&typeof x.content==='string').slice(-MAX_STORED):[];
+      return Array.isArray(value)?value.filter(x=>
+        x&&['user','assistant'].includes(x.role)&&typeof x.content==='string'&&!isLegacyGreeting(x)
+      ).slice(-MAX_STORED):[];
     }catch{return []}
   };
   const writeStored=items=>{
@@ -130,11 +136,14 @@
     if(transcript.length){
       transcript.forEach(item=>add(item.content,item.role==='assistant'?'bot':'me',true));
       chips&&(chips.hidden=true);
-      const greetingObserver=new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{
-        if(node.nodeType===1&&node.classList?.contains('assist-msg')&&!node.dataset.chatEntry&&/^Hey, I'm the abatchan guide\./.test(node.textContent||''))node.remove();
-      })));
-      greetingObserver.observe(log,{childList:true});
     }
+    const pinIntro=()=>{
+      const intro=log.querySelector('[data-guide-intro="true"]');
+      if(intro&&log.firstElementChild!==intro)log.prepend(intro);
+    };
+    const greetingObserver=new MutationObserver(pinIntro);
+    greetingObserver.observe(log,{childList:true});
+    pinIntro();
 
     const clear=document.createElement('button');
     clear.type='button';clear.className='assist-clear';clear.setAttribute('aria-label','Delete chat history');
