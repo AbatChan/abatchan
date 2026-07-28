@@ -416,35 +416,6 @@ qa('.desktop-nav').forEach(nav=>{
   requestAnimationFrame(settle);
 });
 
-// <details> cannot transition its own height. Wrap the answer so a 0fr -> 1fr
-// grid track can animate it, and hold `open` until the close finishes.
-qa('.faq-list details').forEach(d=>{
-  const summary=q('summary',d);
-  if(!summary||d.querySelector('.faq-body'))return;
-  const body=document.createElement('div');body.className='faq-body';
-  const inner=document.createElement('div');inner.className='faq-inner';
-  while(summary.nextSibling)inner.appendChild(summary.nextSibling);
-  body.appendChild(inner);d.appendChild(body);
-  if(d.open)d.classList.add('is-open');
-  summary.addEventListener('click',e=>{
-    e.preventDefault();
-    if(d.classList.contains('is-open')){
-      d.classList.remove('is-open');
-      const shut=ev=>{
-        if(ev.target!==body||ev.propertyName!=='grid-template-rows')return;
-        body.removeEventListener('transitionend',shut);d.open=false;
-      };
-      body.addEventListener('transitionend',shut);
-      // if the transition is suppressed (reduced motion) it never fires
-      if(matchMedia('(prefers-reduced-motion: reduce)').matches)d.open=false;
-    }else{
-      d.open=true;
-      body.offsetHeight;                 // commit the 0fr start state first
-      d.classList.add('is-open');
-    }
-  });
-});
-
 // Sidebar scrollspy on the document pages. Targets are mixed — <h2> on privacy
 // and terms, .doc-step and <section> on process — so they are resolved by id
 // rather than by selector. The active one is the last target that has passed

@@ -185,28 +185,6 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
   .desktop-nav .nav-lens,.page-transition>i,.page-transition .pt-mark,.page-transition.is-loaded>i{transition:none}
 }
 
-/* --- FAQ accordion ------------------------------------------------------ */
-/* <details> cannot transition its own height, so script.js wraps the answer in
-   .faq-body and the 0fr -> 1fr grid track does the animating. The rules are
-   scoped to .faq-body, which only exists once that has run, so the answers stay
-   readable if the script does not. pricing.html's inline <style> loads after
-   styles.css, hence the extra specificity here. */
-.faq-list details > .faq-body{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .38s var(--ease),opacity .26s linear}
-.faq-list details.is-open > .faq-body{grid-template-rows:1fr;opacity:1}
-.faq-list details > .faq-body > .faq-inner{overflow:hidden;min-height:0}
-.faq-list details > summary{position:relative;padding-right:34px;transition:color .24s}
-.faq-list details > summary:hover{color:var(--signal)}
-.faq-list details > summary:focus-visible{outline:2px solid var(--signal);outline-offset:4px;border-radius:6px}
-/* plus that collapses into a minus, rather than swapping the glyph outright */
-.faq-list details > summary::after,.faq-list details > summary::before{content:"";position:absolute;top:50%;float:none;background:var(--signal);transition:transform .34s var(--ease),opacity .34s var(--ease)}
-.faq-list details > summary::after{right:2px;width:14px;height:2px;margin-top:-1px}
-.faq-list details > summary::before{right:8px;width:2px;height:14px;margin-top:-7px}
-.faq-list details.is-open > summary::before{transform:scaleY(0);opacity:0}
-@media(prefers-reduced-motion:reduce){
-  .faq-list details > .faq-body{transition:none}
-  .faq-list details > summary::after,.faq-list details > summary::before{transition:none}
-}
-
 /* --- document pages (process, privacy, terms) --------------------------- */
 /* Shared by three pages, so it lives here rather than being pasted into each
    page's inline <style>. */
