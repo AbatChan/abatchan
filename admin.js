@@ -146,6 +146,25 @@
   let imageFile = null;
   let previewUrl = null;
   let slugTouched = false;
+  const FEATURED_LIMIT = 3;
+
+  function publishedFeatured(excludingId = null) {
+    return workItems.filter(item => item.published && item.featured && item.id !== excludingId);
+  }
+
+  function updateFeaturedHelp() {
+    const help = q('#featuredHelp');
+    const toggle = q('#f-featured');
+    if (!help || !toggle) return;
+    const used = publishedFeatured(editing?.id).length + (editing?.published && editing?.featured ? 1 : 0);
+    const otherFeatured = publishedFeatured(editing?.id);
+    const blocked = otherFeatured.length >= FEATURED_LIMIT && !editing?.featured;
+    toggle.disabled = blocked;
+    help.classList.toggle('bad', blocked);
+    help.textContent = blocked
+      ? `All ${FEATURED_LIMIT} homepage slots are in use by ${otherFeatured.map(item => item.title).join(', ')}. Turn off “show on homepage” on one of them first.`
+      : `${used} of ${FEATURED_LIMIT} homepage slots currently used. Only published projects appear there.`;
+  }
 
   async function loadWork() {
     try {
@@ -182,6 +201,11 @@
   }
 
   function renderWork() {
+    const featured = publishedFeatured();
+    const featuredSummary = q('#featuredSummary');
+    if (featuredSummary) {
+      featuredSummary.textContent = `${featured.length} of ${FEATURED_LIMIT} homepage slots used${featured.length ? `: ${featured.map(item => item.title).join(', ')}` : ''}.`;
+    }
     itemsEl.replaceChildren();
     if (!workItems.length) {
       itemsEl.append(empty('No work items yet. Add the first project, keep it as a draft while editing, then publish it when it is ready.'));
@@ -323,6 +347,7 @@
     q('#f-alt').value = item?.image_alt || '';
     q('#f-featured').checked = !!item?.featured;
     q('#f-published').checked = !!item?.published;
+    updateFeaturedHelp();
     q('#deleteItem').classList.toggle('adm-hide', !item);
     if (item?.image_path) setPreview(sb.publicUrl('work', item.image_path), item.image_alt || '');
     dirty.delete('editor');
@@ -342,6 +367,7 @@
     dirty.add('editor');
     if (e.target === q('#f-title') && !slugTouched) q('#f-slug').value = slugify(e.target.value);
     if (e.target === q('#f-slug') && e.isTrusted) slugTouched = true;
+    if (e.target === q('#f-featured') || e.target === q('#f-published')) updateFeaturedHelp();
   });
 
   const drop = q('#drop');
@@ -387,6 +413,7 @@
   }
 
   function validateWork() {
+    const competingFeatured = publishedFeatured(editing?.id);
     const checks = [
       [q('#f-title'), q('#f-title').value.trim(), 'Add a title.'],
       [q('#f-slug'), /^[a-z0-9-]+$/.test(q('#f-slug').value.trim()), 'Use only lowercase letters, numbers, and hyphens in the slug.'],
@@ -396,6 +423,11 @@
     for (const [field, valid, message] of checks) {
       field.setCustomValidity(valid ? '' : message);
       if (!valid) { field.reportValidity(); field.focus(); return false; }
+    }
+    if (q('#f-featured').checked && q('#f-published').checked && competingFeatured.length >= FEATURED_LIMIT) {
+      toast(`The homepage already has ${FEATURED_LIMIT} projects: ${competingFeatured.map(item => item.title).join(', ')}. Remove one from the homepage first.`, true);
+      q('#f-featured').focus();
+      return false;
     }
     return true;
   }
@@ -510,13 +542,26 @@
 
   // ------------------------------------------------------------ assistant
   let assistantRows = {};
+  const CANONICAL_GREETING = "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?";
+  const LEGACY_GREETING = 'Hi. Ask me anything about the work, pricing, or how a project runs.';
+  const CANONICAL_OWNER_PROMPT = 'Sound like a warm, practical studio guide rather than a support script. Lead with the answer, keep it concise, and give one useful next step. Refer to the owner as Abat. Prices are starting points, never quotes. If a visitor needs a human decision or a fact you do not have, say so plainly and point them to the contact page.';
   async function loadAssistant() {
     try {
       const rows = await sb.select('settings', 'key=like.assistant.%25&select=key,value,is_public');
       assistantRows = Object.fromEntries(rows.map(row => [row.key, row.value]));
+      const greeting = !assistantRows['assistant.greeting'] || assistantRows['assistant.greeting'] === LEGACY_GREETING
+        ? CANONICAL_GREETING
+        : assistantRows['assistant.greeting'];
+      const ownerPrompt = !assistantRows['assistant.system'] || String(assistantRows['assistant.system']).includes('Websites start at $750')
+        ? CANONICAL_OWNER_PROMPT
+        : assistantRows['assistant.system'];
+      const migrations = [];
+      if (greeting !== assistantRows['assistant.greeting']) migrations.push({ key: 'assistant.greeting', value: greeting, is_public: true });
+      if (ownerPrompt !== assistantRows['assistant.system']) migrations.push({ key: 'assistant.system', value: ownerPrompt, is_public: false });
+      if (migrations.length) await sb.upsert('settings', migrations);
       q('#a-enabled').checked = assistantRows['assistant.enabled'] !== false;
-      q('#a-greeting').value = assistantRows['assistant.greeting'] || '';
-      q('#a-system').value = assistantRows['assistant.system'] || '';
+      q('#a-greeting').value = greeting;
+      q('#a-system').value = ownerPrompt;
       q('#a-model').value = assistantRows['assistant.model'] === 'deepseek-chat'
         ? 'deepseek-v4-flash'
         : (assistantRows['assistant.model'] || 'deepseek-v4-flash');

@@ -49,6 +49,8 @@
     .work-compact-panel .adm-row-actions{display:flex;gap:8px}
     .work-compact-panel .adm-icon{width:auto;min-width:44px;padding:0 13px;gap:8px}
     .work-compact-panel .adm-icon::after{font-size:12px}
+    .work-compact-panel .adm-icon[data-work-up]::after{content:"up"}
+    .work-compact-panel .adm-icon[data-work-down]::after{content:"down"}
     .work-compact-panel .adm-icon[data-work-edit]::after{content:"edit"}
     .work-compact-panel .adm-icon[data-work-delete]::after{content:"delete"}
     .work-compact-item.is-dragging{opacity:.35;transform:scale(.985)}
@@ -138,9 +140,12 @@
     row.classList.add('work-compact-item');
 
     const buttons=qa(':scope>button',actions);
-    buttons.slice(0,2).forEach(button=>button.remove());
+    const up=buttons[0];
+    const down=buttons[1];
     const edit=buttons[2];
     const remove=buttons[3];
+    if(up)up.dataset.workUp='1';
+    if(down)down.dataset.workDown='1';
     if(edit)edit.dataset.workEdit='1';
     if(remove)remove.dataset.workDelete='1';
 
@@ -203,7 +208,7 @@
     if(!rows.length)return;
     processing=true;
     try{
-      if(records.length!==qa(':scope>.adm-item',list).length)await loadRecords(true);
+      await loadRecords(true);
       rows.forEach(row=>{
         const index=qa(':scope>.adm-item',list).indexOf(row);
         enhanceRow(row,index,records[index]);

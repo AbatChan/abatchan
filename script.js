@@ -564,6 +564,11 @@ const ASSISTANT_FALLBACK_ERROR={
   retryable:true,
   contact:{label:'Contact support',href:'/contact'}
 };
+const assistantPageContext=()=>{
+  const description=document.querySelector('meta[name="description"]')?.content||'';
+  const text=(q('main')?.innerText||'').replace(/\s+/g,' ').trim().slice(0,3500);
+  return {title:document.title.slice(0,160),description:description.slice(0,320),text};
+};
 const CANNED=[
   [/price|cost|budget|charge|quote/i,"Focused landing pages start at $150, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes. The real number comes from scope, with the full breakdown on the pricing page."],
   [/how long|timeline|deadline|when/i,"It depends on scope, but work is split into milestones so you see something usable at each one. The process page walks through all five stages."],
@@ -667,7 +672,7 @@ const CANNED=[
     if(ASSISTANT.endpoint){
       try{
         const res=await fetch(ASSISTANT.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({message:text,history:history.slice(-6),page:location.pathname})});
+          body:JSON.stringify({message:text,history:history.slice(-6),page:location.pathname,pageContext:assistantPageContext()})});
         let data={};
         try{data=await res.json()}catch{}
         if(!res.ok||data.error){issue=data.error||ASSISTANT_FALLBACK_ERROR}

@@ -169,7 +169,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
   .adm-toast{bottom:calc(92px + env(safe-area-inset-bottom));width:min(360px,calc(100% - 32px));text-align:center}
 }
 </style>
-<link rel="stylesheet" href="/admin-polish.css?v=2">
+<link rel="stylesheet" href="/admin-polish.css?v=3">
 </head><body>
 
 <!-- login ---------------------------------------------------------------- -->
@@ -233,6 +233,7 @@ html[data-theme="light"] .adm-note b{color:#151519}
         <button class="btn primary sm" id="newItem" type="button">add item <span class="arrow">↗</span></button>
       </div>
       <p class="adm-sub">These appear on the work page in this order. Drafts stay hidden from visitors until published.</p>
+      <p class="adm-field-help" id="featuredSummary" aria-live="polite"></p>
       <div class="adm-items" id="items"></div>
     </section>
 
@@ -262,6 +263,10 @@ html[data-theme="light"] .adm-note b{color:#151519}
             <select id="f-category">
               <option value="product">product</option>
               <option value="platform">platform</option>
+              <option value="web">web development</option>
+              <option value="product-design">product design</option>
+              <option value="branding">branding</option>
+              <option value="automation">automation</option>
               <option value="concept">concept</option>
             </select>
           </div>
@@ -269,7 +274,8 @@ html[data-theme="light"] .adm-note b{color:#151519}
         </div>
         <div><label for="f-summary">summary</label><textarea id="f-summary"></textarea></div>
         <div><label for="f-alt">image alt text</label><input type="text" id="f-alt" placeholder="Describe the image for screen readers"></div>
-        <label class="adm-switch"><input type="checkbox" id="f-featured"><span class="adm-switch-track" aria-hidden="true"></span><span>full width on the grid</span></label>
+        <label class="adm-switch"><input type="checkbox" id="f-featured"><span class="adm-switch-track" aria-hidden="true"></span><span>show on homepage</span></label>
+        <p class="adm-field-help" id="featuredHelp" aria-live="polite"></p>
         <label class="adm-switch"><input type="checkbox" id="f-published"><span class="adm-switch-track" aria-hidden="true"></span><span>published</span></label>
         <div class="adm-actions">
           <button class="btn primary" type="submit" id="saveItem">save <span class="arrow">↗</span></button>
@@ -292,12 +298,12 @@ html[data-theme="light"] .adm-note b{color:#151519}
       <p class="adm-sub">The chat bubble on the site. Behaviour and greeting are editable here.</p>
       <form class="adm-form" id="assistantForm">
         <label class="adm-switch"><input type="checkbox" id="a-enabled"><span class="adm-switch-track" aria-hidden="true"></span><span>show the assistant on the site</span></label>
-        <div><label for="a-greeting">opening message</label><textarea id="a-greeting"></textarea></div>
+        <div><label for="a-greeting">opening message</label><textarea id="a-greeting"></textarea><p class="adm-field-help">This is the first message in a new chat. Existing visitors keep their saved conversation until they clear it.</p></div>
         <div><label for="a-system">system prompt</label><textarea id="a-system" style="min-height:180px"></textarea></div>
         <div><label for="a-model">model</label><input type="text" id="a-model" placeholder="deepseek-v4-flash"></div>
         <div class="adm-note">
           <b>What the guide does, and does not do.</b><br>
-          It explains the site, work, pricing, process and how to contact Abat. It cannot access accounts, take payments, send messages, reveal private settings, provide code or hacking help, or make binding promises. Those boundaries are fixed in the server and cannot be weakened by this prompt. Rate limits and model failures automatically show visitors a retry action and a contact-support button.
+          It knows the visitor’s current page, the visible text on that page, published work, pricing, process and how to contact Abat. Page text is treated as untrusted context, never as instructions. It cannot access accounts, take payments, send messages, reveal private settings, provide code or hacking help, or make binding promises. Those boundaries are fixed in the server and cannot be weakened by this prompt. Rate limits and model failures automatically show visitors a retry action and a contact-support button.
         </div>
         <div class="adm-note">
           <b>The API key is not set here, on purpose.</b><br>
@@ -325,18 +331,18 @@ html[data-theme="light"] .adm-note b{color:#151519}
 <div class="adm-toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="/supabase-config.js?v=2"></script>
-<script src="/admin.js?v=3"></script>
+<script src="/admin.js?v=4"></script>
 <script src="/admin-runtime-fixes.js?v=1"></script>
-<script src="/admin-guided-controls.js?v=1"></script>
+<script src="/admin-guided-controls.js?v=2"></script>
 <script src="/admin-announcement-ux.js?v=2"></script>
 <script src="/admin-ux-fixes.js?v=3"></script>
 <script src="/admin-validation-fix.js?v=1"></script>
 <script src="/admin-pattern-fix.js?v=1"></script>
 <script src="/admin-password-toggle.js?v=1"></script>
-<script src="/admin-theme-sync.js?v=2"></script>
+<script src="/admin-theme-sync.js?v=3"></script>
 <script src="/admin-work-enhancements.js?v=5"></script>
-<script src="/admin-work-list.js?v=4"></script>
+<script src="/admin-work-list.js?v=5"></script>
 <script src="/admin-work-action-polish.js?v=4"></script>
-<script src="/faq-data.js?v=1"></script><script src="/faq-admin.js?v=8"></script>
+<script src="/faq-data.js?v=1"></script><script src="/faq-admin.js?v=9"></script>
 <script src="/admin-auth-gallery-fix.js?v=5"></script>
 </body></html>

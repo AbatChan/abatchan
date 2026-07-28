@@ -94,6 +94,8 @@
       ['automation platform','Automation platform'],
       ['hardware + software','Hardware + software'],
       ['web design + development','Web design + development'],
+      ['product design + UX','Product design + UX'],
+      ['brand identity + systems','Brand identity + systems'],
       ['e-commerce','E-commerce'],
       ['data + dashboards','Data + dashboards'],
       ['UI/UX + frontend','UI/UX + frontend']
@@ -102,7 +104,7 @@
     styleExistingSelect('f-category');
     const category=q('#f-category');
     if(category&&!q('#categoryHelp')){
-      const p=document.createElement('p');p.id='categoryHelp';p.className='adm-field-help';p.textContent='Used by the Work page filters. Product is software you own, platform is a larger client or connected system, and concept is exploratory work.';category.parentElement.after(p);
+      const p=document.createElement('p');p.id='categoryHelp';p.className='adm-field-help';p.textContent='Used by the Work page filters. Choose the main discipline visitors should use to find this project: product, platform, web development, product design, branding, automation, or concept.';category.parentElement.after(p);
     }
     enhanceSlug();
   };

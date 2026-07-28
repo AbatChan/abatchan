@@ -90,6 +90,12 @@
   const writeStored=items=>{
     try{localStorage.setItem(STORE,JSON.stringify(items.slice(-MAX_STORED)))}catch{}
   };
+  const currentPageContext=()=>{
+    const description=document.querySelector('meta[name="description"]')?.content||'';
+    const main=document.querySelector('main');
+    const text=(main?.innerText||'').replace(/\s+/g,' ').trim().slice(0,3500);
+    return {title:document.title.slice(0,160),description:description.slice(0,320),text};
+  };
 
   const waitForPanel=()=>new Promise(resolve=>{
     const now=document.querySelector('.assist-panel');if(now)return resolve(now);
@@ -222,7 +228,7 @@
       };
       const paint=()=>{frame=0;if(!answer)return;render(ensureBubble(),answer);log.scrollTop=log.scrollHeight};
       try{
-        const res=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:history.slice(-6),page:location.pathname})});
+        const res=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:history.slice(-6),page:location.pathname,pageContext:currentPageContext()})});
         const type=res.headers.get('content-type')||'';
         if(!res.ok){
           let message='Try again, or contact Abat directly.';
