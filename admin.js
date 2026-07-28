@@ -279,6 +279,8 @@
     workItems.forEach((item, index) => {
       const row = document.createElement('article');
       row.className = 'adm-item';
+      row.dataset.workId = String(item.id);
+      row.dataset.workTitle = item.title || 'project';
 
       const thumb = document.createElement('div');
       thumb.className = 'adm-thumb';
