@@ -322,7 +322,9 @@ const SOCIALS=[
   ['facebook','Facebook','https://www.facebook.com/abat.chan.2025'],
   ['behance','Behance','https://www.behance.net/abatchan'],
   ['dribbble','Dribbble','https://dribbble.com/abatchan'],
-  ['upwork','Upwork','https://www.upwork.com/freelancers/abatchan']
+  ['upwork','Upwork','https://www.upwork.com/freelancers/abatchan'],
+  // wa.me wants the number bare: no plus, spaces, or dashes.
+  ['whatsapp','WhatsApp','https://wa.me/2347041857921']
 ];
 const socialRail=()=>SOCIALS.map(([slug,label,href])=>
   `<a class="social-chip" href="${href}" target="_blank" rel="noreferrer noopener" aria-label="${label}" data-tip="${label}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${ICONS[slug]}"/></svg></a>`

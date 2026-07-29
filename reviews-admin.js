@@ -44,10 +44,11 @@
   const normalize=()=>items.map((item,position)=>({
     id:item.id,
     position,
-    role:(item.role||'').trim(),
-    org:(item.org||'').trim(),
-    place:(item.place||'').trim(),
     quote:(item.quote||'').trim(),
+    engagement:(item.engagement||'').trim(),
+    source:(item.source||'').trim(),
+    client:(item.client||'').trim(),
+    date:(item.date||'').trim(),
     project:(item.project||'').trim(),
     pages:item.pages||'home',
     featured:!!item.featured,
@@ -56,10 +57,10 @@
 
   const persist=(message='Saved')=>{
     saveQueue=saveQueue.then(async()=>{
-      const invalid=items.find(item=>!item.quote?.trim()||!item.role?.trim());
+      const invalid=items.find(item=>!item.quote?.trim()||!item.engagement?.trim());
       if(invalid){
         expanded=invalid.id;render();
-        status.textContent='Every review needs the quote and who said it.';
+        status.textContent='Every review needs the quote and what the work was.';
         status.classList.add('bad');setDirty(true);return false;
       }
       save.disabled=true;save.textContent='saving…';
@@ -123,7 +124,7 @@
       q('.faq-admin-title',toggle).textContent=item.quote?.trim()||'Untitled review';
       q('.faq-admin-meta',toggle).textContent=[
         item.published===false?'draft':'published',
-        [item.role,item.org].filter(Boolean).join(', ')
+        [item.engagement,item.source].filter(Boolean).join(' · ')
       ].filter(Boolean).join(' · ');
       toggle.addEventListener('click',()=>{expanded=open?null:item.id;render()});
 
@@ -143,15 +144,16 @@
       const panel=document.createElement('div');
       panel.className='faq-admin-panel';panel.hidden=!open;
       panel.innerHTML=`<div class="faq-admin-fields">
-        <div class="faq-admin-field"><label>what they said</label><textarea data-quote placeholder="Dispatch went from 40 minutes to 6."></textarea><p class="adm-field-help">One specific change. No quote marks needed, the layout supplies them.</p></div>
+        <div class="faq-admin-field"><label>what they said</label><textarea data-quote placeholder="Within 3 hours he was able to completely fix and complete it for me."></textarea><p class="adm-field-help">The client\u2019s own words. Trim to one continuous passage rather than stitching sentences together.</p></div>
         <div class="adm-two">
-          <div class="faq-admin-field"><label>their role</label><input data-role placeholder="operations lead"></div>
-          <div class="faq-admin-field"><label>company or sector</label><input data-org placeholder="logistics platform"></div>
+          <div class="faq-admin-field"><label>what the work was</label><input data-engagement placeholder="BookingKoala integration"></div>
+          <div class="faq-admin-field"><label>where they said it</label><input data-source placeholder="Upwork"></div>
         </div>
         <div class="adm-two">
-          <div class="faq-admin-field"><label>place (optional)</label><input data-place placeholder="Lagos"></div>
-          <div class="faq-admin-field"><label>links to project</label><div class="adm-select-wrap"><select data-project>${projectOptions(item.project||'')}</select></div></div>
+          <div class="faq-admin-field"><label>client name or handle (optional)</label><input data-client placeholder="missashleigh20"></div>
+          <div class="faq-admin-field"><label>when (optional)</label><input data-date placeholder="March 2026"></div>
         </div>
+        <div class="faq-admin-field"><label>links to project</label><div class="adm-select-wrap"><select data-project>${projectOptions(item.project||'')}</select></div></div>
         <div class="faq-admin-field"><label>show on</label><div class="adm-select-wrap"><select data-pages>
           <option value="home">homepage</option>
           <option value="pricing">pricing page</option>
@@ -171,9 +173,10 @@
       q('[data-down]',panel).addEventListener('click',()=>move(index,1));
 
       q('[data-quote]',panel).value=item.quote||'';
-      q('[data-role]',panel).value=item.role||'';
-      q('[data-org]',panel).value=item.org||'';
-      q('[data-place]',panel).value=item.place||'';
+      q('[data-engagement]',panel).value=item.engagement||'';
+      q('[data-source]',panel).value=item.source||'';
+      q('[data-client]',panel).value=item.client||'';
+      q('[data-date]',panel).value=item.date||'';
       q('[data-pages]',panel).value=item.pages||'home';
       q('[data-featured]',panel).checked=!!item.featured;
       q('[data-published]',panel).checked=item.published!==false;
@@ -183,7 +186,7 @@
         q('.faq-admin-title',toggle).textContent=e.target.value.trim()||'Untitled review';
         setDirty(true);
       });
-      ['role','org','place','project','pages'].forEach(key=>{
+      ['engagement','source','client','date','project','pages'].forEach(key=>{
         q(`[data-${key}]`,panel).addEventListener('input',e=>{item[key]=e.target.value;setDirty(true)});
       });
       q('[data-featured]',panel).addEventListener('change',e=>{
@@ -214,8 +217,9 @@
         sb.select('work_items','published=eq.true&select=slug,title&order=position.asc').catch(()=>[])
       ]);
       projects=Array.isArray(work)?work:[];
-      items=Array.isArray(rows?.[0]?.value)?rows[0].value:[];
-      status.textContent='';
+      const stored=Array.isArray(rows?.[0]?.value)&&rows[0].value.length;
+      items=stored?rows[0].value:(window.ABATCHAN_REVIEW_DEFAULTS||[]).map(x=>({...x}));
+      status.textContent=stored?'':`${items.length} site defaults loaded. Save an edit to start managing them here.`;
       setSaveState(false);
       render();
     }catch(err){
@@ -225,7 +229,7 @@
   };
 
   add.addEventListener('click',()=>{
-    const item={id:makeId(),role:'',org:'',place:'',quote:'',project:'',pages:'home',featured:false,published:true};
+    const item={id:makeId(),quote:'',engagement:'',source:'',client:'',date:'',project:'',pages:'home',featured:false,published:true};
     items.push(item);expanded=item.id;setDirty(true);render();
     requestAnimationFrame(()=>q(`[data-review-id="${CSS.escape(item.id)}"] textarea`,list)?.focus());
   });

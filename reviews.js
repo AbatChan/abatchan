@@ -29,6 +29,17 @@
     return el;
   };
 
+  // Who said it: the engagement first, then where it was said and when, so a
+  // reader can go and check it rather than take it on trust.
+  const attribution=item=>{
+    const source=[item.source,item.client].filter(Boolean).join(' · ');
+    return [
+      line('review-role',item.engagement||item.role),
+      line('review-meta',source||item.org),
+      line('review-meta',item.date||item.place)
+    ].filter(Boolean);
+  };
+
   const buildRow=item=>{
     const row=document.createElement('article');
     row.className='review-row reveal';
@@ -39,8 +50,7 @@
     dot.className='review-dot';
     dot.setAttribute('aria-hidden','true');
     const stack=document.createElement('div');
-    [line('review-role',item.role),line('review-meta',item.org),line('review-meta',item.place)]
-      .filter(Boolean).forEach(node=>stack.append(node));
+    attribution(item).forEach(node=>stack.append(node));
     who.append(dot,stack);
 
     const quote=document.createElement('blockquote');
@@ -62,9 +72,13 @@
   };
 
   const render=(container,items)=>{
+    // A page shows its strongest few in admin order; the rest stay in the
+    // collection rather than turning the page into a wall of praise.
+    const limit=Number(container.dataset.reviewsLimit)||Infinity;
     const live=items
       .filter(item=>item&&item.published!==false&&String(item.quote||'').trim()&&showsOn(item))
-      .sort((a,b)=>(a.position??0)-(b.position??0));
+      .sort((a,b)=>(a.position??0)-(b.position??0))
+      .slice(0,limit);
 
     if(!live.length){
       // Hide the whole section, not just the list, so no orphan heading remains.
@@ -91,7 +105,8 @@
     quote.textContent=pick.quote;
     const meta=document.createElement('span');
     meta.className='review-meta';
-    meta.textContent=[pick.role,pick.org,pick.place].filter(Boolean).join(' · ');
+    meta.textContent=[pick.engagement||pick.role,pick.source||pick.org,pick.date||pick.place]
+      .filter(Boolean).join(' · ');
     note.replaceChildren(quote,meta);
     note.hidden=false;
   };
@@ -100,20 +115,20 @@
     const ledgers=qa('[data-reviews]');
     const note=q('[data-review-note]');
     if(!ledgers.length&&!note)return;
-    if(!window.sb?.configured?.()){
-      ledgers.forEach(el=>{(el.closest('section')||el).hidden=true});
-      if(note)note.hidden=true;
-      return;
-    }
-    try{
-      const rows=await sb.select('settings','key=eq.reviews.items&is_public=eq.true&select=value');
-      const items=Array.isArray(rows?.[0]?.value)?rows[0].value:[];
+    const defaults=Array.isArray(window.ABATCHAN_REVIEW_DEFAULTS)?window.ABATCHAN_REVIEW_DEFAULTS:[];
+    const paint=items=>{
       ledgers.forEach(el=>render(el,items));
       if(note)renderNote(note,items);
+    };
+    if(!window.sb?.configured?.()){paint(defaults);return}
+    try{
+      const rows=await sb.select('settings','key=eq.reviews.items&is_public=eq.true&select=value');
+      // The dashboard's set wins once it exists; until then the authored
+      // defaults are what visitors see, so the section is never empty.
+      const stored=rows?.[0]?.value;
+      paint(Array.isArray(stored)&&stored.length?stored:defaults);
     }catch{
-      // A failed load must not leave an empty heading behind.
-      ledgers.forEach(el=>{(el.closest('section')||el).hidden=true});
-      if(note)note.hidden=true;
+      paint(defaults);
     }
   };
 
