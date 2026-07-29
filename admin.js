@@ -265,6 +265,14 @@
     return button;
   }
 
+  const workTools = window.admListTools && admListTools({
+    label: 'work',
+    text: item => [item.title, item.slug, item.kicker, item.status, item.category, item.summary].filter(Boolean).join(' '),
+    isDraft: item => !item.published,
+    onChange: () => renderWork()
+  });
+  if (workTools) itemsEl.before(workTools.element);
+
   function renderWork() {
     const featured = publishedFeatured();
     const featuredSummary = q('#featuredSummary');
@@ -272,11 +280,25 @@
       featuredSummary.textContent = `${featured.length} of ${FEATURED_LIMIT} homepage slots used${featured.length ? `: ${featured.map(item => item.title).join(', ')}` : ''}.`;
     }
     itemsEl.replaceChildren();
+    workTools?.sync(workItems.length);
     if (!workItems.length) {
       itemsEl.append(empty('No work items yet. Add the first project, keep it as a draft while editing, then publish it when it is ready.'));
       return;
     }
-    workItems.forEach((item, index) => {
+    // Index must stay the true position: moveItem reorders the real array, and
+    // a filtered view's neighbours are not the item's real neighbours.
+    const filtering = Boolean(workTools?.filtering);
+    // admin-work-list.js writes positions from DOM order on drop, so a filtered
+    // list must not be draggable or it would renumber only the visible rows.
+    itemsEl.dataset.filtered = filtering ? '1' : '';
+    const visible = workItems
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => !workTools || workTools.matches(item));
+    if (!visible.length) {
+      itemsEl.append(empty('Nothing matches that filter.'));
+      return;
+    }
+    visible.forEach(({ item, index }) => {
       const row = document.createElement('article');
       row.className = 'adm-item';
       row.dataset.workId = String(item.id);
@@ -309,8 +331,8 @@
       const actions = document.createElement('div');
       actions.className = 'adm-row-actions';
       actions.append(
-        iconButton(`Move ${item.title} up`, icons.up, () => moveItem(index, -1), { disabled: index === 0 }),
-        iconButton(`Move ${item.title} down`, icons.down, () => moveItem(index, 1), { disabled: index === workItems.length - 1 }),
+        iconButton(`Move ${item.title} up`, icons.up, () => moveItem(index, -1), { disabled: index === 0 || filtering }),
+        iconButton(`Move ${item.title} down`, icons.down, () => moveItem(index, 1), { disabled: index === workItems.length - 1 || filtering }),
         iconButton(`Edit ${item.title}`, icons.edit, () => openEditor(item)),
         iconButton(`Delete ${item.title}`, icons.trash, () => removeItem(item), { danger: true })
       );
@@ -741,11 +763,26 @@
     return wrap;
   }
 
+  let newsTools = null;
   function renderAnnouncements() {
     const list = q('#announcementList');
+    if (!newsTools && window.admListTools) {
+      newsTools = admListTools({
+        label: 'announcements',
+        text: item => [item.title, item.body, item.cta_label, item.cta_href].filter(Boolean).join(' '),
+        onChange: () => renderAnnouncements()
+      });
+      list.before(newsTools.element);
+    }
     list.replaceChildren();
+    newsTools?.sync(announcements.length);
     if (!announcements.length) list.append(empty('No announcement is active. Add one when there is something genuinely new to show.'));
-    announcements.forEach((item, index) => {
+    // Index must stay the true position: every handler writes announcements[index].
+    const shown = announcements
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => !newsTools || newsTools.matches(item));
+    if (announcements.length && !shown.length) list.append(empty('Nothing matches that filter.'));
+    shown.forEach(({ item, index }) => {
       const card = document.createElement('article');
       card.className = 'adm-news-item';
       card.dataset.index = index;

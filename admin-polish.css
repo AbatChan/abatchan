@@ -1026,3 +1026,27 @@ html body .faq-admin-drag:disabled:hover{background:transparent;color:var(--mute
   html body .adm-seg{width:100%}
   html body .adm-seg button{flex:1}
 }
+/* Drag is meaningless while a filter hides an item's real neighbours. */
+html body #items[data-filtered] .work-compact-drag{opacity:.3;cursor:not-allowed}
+
+/* Motion ------------------------------------------------------------------
+   Switching sections used to swap display outright, which reads as a jump.
+   The panels animate their real height from admin-ui.js; this covers the
+   view change and the rows arriving with it. */
+html body .adm-main>section:not(.adm-hide){animation:adm-view-in .3s var(--ease) both}
+@keyframes adm-view-in{from{opacity:0;transform:translateY(7px)}}
+
+html body .faq-admin-panel,
+html body .work-compact-panel{will-change:height}
+html body .faq-admin-item,
+html body .work-compact-item{transition:border-color .25s var(--ease),background .25s var(--ease)}
+html body .faq-admin-chevron,
+html body .work-compact-chevron{transition:transform .3s var(--ease),color .25s var(--ease),border-color .25s var(--ease)}
+
+@media(prefers-reduced-motion:reduce){
+  html body .adm-main>section:not(.adm-hide){animation:none}
+  html body .faq-admin-item,
+  html body .work-compact-item,
+  html body .faq-admin-chevron,
+  html body .work-compact-chevron{transition:none}
+}

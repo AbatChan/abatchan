@@ -12,7 +12,7 @@
 
   const q=(s,c=document)=>c.querySelector(s),qa=(s,c=document)=>[...c.querySelectorAll(s)];
   const tabs=q('#tabs'),main=q('.adm-main');if(!tabs||!main)return;
-  let items=[],projects=[],loaded=false,dirty=false,expanded=null,dragged=null,target=null,revision=0,saveQueue=Promise.resolve(),query='',statusFilter='all';
+  let items=[],projects=[],loaded=false,dirty=false,expanded=null,dragged=null,target=null,revision=0,saveQueue=Promise.resolve();
   const makeId=()=>`review-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
   const dragIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7" r="1"/><circle cx="16" cy="7" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="17" r="1"/><circle cx="16" cy="17" r="1"/></svg>';
   const chevron='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>';
@@ -30,7 +30,7 @@
   const section=document.createElement('section');
   section.id='view-reviews';
   section.className='adm-hide faq-admin-shell';
-  section.innerHTML=`<div class="adm-head"><h2>Reviews</h2><button class="btn primary sm" id="saveReviews" type="button">save <span class="arrow">↗</span></button></div><p class="adm-sub">What clients said the work changed. These read as a record, so keep them specific: what was broken, and what it is now.</p><div class="adm-list-tools"><label class="adm-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" id="reviewSearch" placeholder="Search reviews" aria-label="Search reviews"></label><div class="adm-seg" role="group" aria-label="Filter by status"><button type="button" data-status="all" aria-pressed="true">all</button><button type="button" data-status="published" aria-pressed="false">published</button><button type="button" data-status="draft" aria-pressed="false">drafts</button></div></div><div class="faq-admin-toolbar"><span class="faq-admin-count" id="reviewCount">0 reviews</span><button class="btn sm" id="addReview" type="button">add review <span class="arrow">↗</span></button></div><div class="faq-admin-status" id="reviewStatus"></div><div class="faq-admin-list" id="reviewList"></div>`;
+  section.innerHTML=`<div class="adm-head"><h2>Reviews</h2><button class="btn primary sm" id="saveReviews" type="button">save <span class="arrow">↗</span></button></div><p class="adm-sub">What clients said the work changed. These read as a record, so keep them specific: what was broken, and what it is now.</p><div class="faq-admin-toolbar"><span class="faq-admin-count" id="reviewCount">0 reviews</span><button class="btn sm" id="addReview" type="button">add review <span class="arrow">↗</span></button></div><div class="faq-admin-status" id="reviewStatus"></div><div class="faq-admin-list" id="reviewList"></div>`;
   main.append(section);
   if(new URLSearchParams(location.search).get('view')==='reviews')queueMicrotask(()=>window.__adminShowView?.('reviews',{routeMode:'replace'}));
 
@@ -118,21 +118,20 @@
     return options.join('');
   };
 
-  const matches=item=>{
-    if(statusFilter==='published'&&item.published===false)return false;
-    if(statusFilter==='draft'&&item.published!==false)return false;
-    if(!query)return true;
-    return [item.quote,item.engagement,item.source,item.client,item.date]
-      .filter(Boolean).join(' ').toLowerCase().includes(query);
-  };
+  const tools=admListTools({
+    label:'reviews',
+    text:item=>[item.quote,item.engagement,item.source,item.client,item.date].filter(Boolean).join(' '),
+    isDraft:item=>item.published===false,
+    onChange:()=>render()
+  });
+  q('.faq-admin-toolbar',section).before(tools.element);
 
   const render=()=>{
-    const filtering=Boolean(query)||statusFilter!=='all';
+    tools.sync(items.length);
+    const filtering=tools.filtering;
     // Keep the true index so ordering acts on the collection, not the view.
-    const view=items.map((item,index)=>({item,index})).filter(({item})=>matches(item));
-    count.textContent=filtering
-      ? `${view.length} of ${items.length} shown`
-      : `${items.length} review${items.length===1?'':'s'}`;
+    const view=items.map((item,index)=>({item,index})).filter(({item})=>tools.matches(item));
+    count.textContent=tools.countLabel(view.length,items.length,'review');
     if(!items.length){
       list.innerHTML='<div class="faq-admin-empty">No reviews yet. Add one once a client has told you what changed.</div>';
       return;
@@ -159,7 +158,23 @@
         item.published===false?'draft':'published',
         [item.engagement,item.source].filter(Boolean).join(' · ')
       ].filter(Boolean).join(' · ');
-      toggle.addEventListener('click',()=>{expanded=open?null:item.id;render()});
+      toggle.addEventListener('click',()=>{
+        const opening=expanded!==item.id;
+        // Toggle in place rather than re-rendering, so both directions animate
+        // and the row keeps its scroll position.
+        qa('.faq-admin-item.is-open',list).forEach(other=>{
+          if(other===card)return;
+          other.classList.remove('is-open');
+          q('.faq-admin-toggle',other)?.setAttribute('aria-expanded','false');
+          window.admToggleHeight?.(q(':scope>.faq-admin-panel',other),false);
+        });
+        expanded=opening?item.id:null;
+        card.classList.toggle('is-open',opening);
+        toggle.setAttribute('aria-expanded',String(opening));
+        const own=q(':scope>.faq-admin-panel',card);
+        if(window.admToggleHeight)window.admToggleHeight(own,opening);
+        else if(own)own.hidden=!opening;
+      });
 
       const rowOrder=document.createElement('div');
       rowOrder.className='faq-admin-row-order';
@@ -179,7 +194,7 @@
       if(filtering){drag.draggable=false;drag.disabled=true;drag.title='Clear the filter to reorder'}
       drag.addEventListener('dragstart',e=>{
         // Reordering a filtered view would move the wrong neighbours.
-        if(query||statusFilter!=='all'){e.preventDefault();status.textContent='Clear the filter to reorder.';return}
+        if(tools.filtering){e.preventDefault();status.textContent='Clear the filter to reorder.';return}
         dragged=item.id;card.classList.add('is-dragging');e.dataTransfer.effectAllowed='move';
       });
       drag.addEventListener('dragend',()=>{dragged=null;clearDrop()});
@@ -288,12 +303,6 @@
     items.push(item);expanded=item.id;setDirty(true);render();
     requestAnimationFrame(()=>q(`[data-review-id="${CSS.escape(item.id)}"] textarea`,list)?.focus());
   });
-  q('#reviewSearch').addEventListener('input',e=>{query=e.target.value.trim().toLowerCase();render()});
-  qa('.adm-seg button',section).forEach(button=>button.addEventListener('click',()=>{
-    statusFilter=button.dataset.status;
-    qa('.adm-seg button',section).forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
-    render();
-  }));
   save.addEventListener('click',()=>persist('Saved.'));
   tab.addEventListener('click',load);
   const wait=setInterval(()=>{if(!q('#app')?.classList.contains('adm-hide')){clearInterval(wait);load()}},300);

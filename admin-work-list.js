@@ -35,6 +35,7 @@
   };
 
   const saveOrder=async()=>{
+    if(list.dataset.filtered)return clearDropState();
     if(!draggedId||!dropTarget||draggedId===dropTarget.id)return clearDropState();
     const rows=qa(':scope>.work-compact-item',list);
     const ids=rows.map(row=>row.dataset.workId);
@@ -117,15 +118,18 @@
       qa(':scope>.work-compact-item',list).forEach(other=>{
         if(other===row)return;
         other.classList.remove('is-open');
-        q(':scope>.work-compact-panel',other)?.setAttribute('hidden','');
+        const otherPanel=q(':scope>.work-compact-panel',other);
+        if(window.admToggleHeight)window.admToggleHeight(otherPanel,false);
+        else otherPanel?.setAttribute('hidden','');
         q(':scope>.work-compact-head>.work-compact-toggle',other)?.setAttribute('aria-expanded','false');
       });
-      panel.hidden=!opening;
+      window.admToggleHeight?window.admToggleHeight(panel,opening):(panel.hidden=!opening);
       row.classList.toggle('is-open',opening);
       toggle.setAttribute('aria-expanded',String(opening));
     });
 
     drag.addEventListener('dragstart',event=>{
+      if(list.dataset.filtered){event.preventDefault();return}
       draggedId=row.dataset.workId;
       row.classList.add('is-dragging');
       event.dataTransfer.effectAllowed='move';

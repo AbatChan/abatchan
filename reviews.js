@@ -6,7 +6,7 @@
 // site with no reviews yet rather than shipping an empty heading.
 (function reviews(){
   'use strict';
-  const VERSION=2;
+  const VERSION=3;
   if((window.__ABATCHAN_REVIEWS_VERSION__||0)>=VERSION)return;
   window.__ABATCHAN_REVIEWS_VERSION__=VERSION;
 
@@ -62,7 +62,37 @@
     ].filter(Boolean);
   };
 
-  const buildRow=item=>{
+  const REDUCED=matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Measured after paint: only quotes that actually overflow get a control.
+  const applyClamp=body=>{
+    const quote=body.querySelector('.review-quote');
+    if(!quote)return;
+    quote.classList.add('is-clamped');
+    if(quote.scrollHeight-quote.clientHeight<4){quote.classList.remove('is-clamped');return}
+    const toggle=document.createElement('button');
+    toggle.type='button';
+    toggle.className='review-toggle';
+    toggle.setAttribute('aria-expanded','false');
+    const label=()=>{
+      const open=!quote.classList.contains('is-clamped');
+      toggle.textContent=open?'see less':'see more';
+      toggle.setAttribute('aria-expanded',String(open));
+    };
+    toggle.addEventListener('click',()=>{
+      const start=body.getBoundingClientRect().height;
+      quote.classList.toggle('is-clamped');
+      label();
+      if(REDUCED.matches)return;
+      const end=body.getBoundingClientRect().height;
+      body.animate([{height:`${start}px`},{height:`${end}px`}],
+        {duration:Math.min(520,220+Math.abs(end-start)*0.35),easing:'cubic-bezier(.2,.75,.2,1)'});
+    });
+    label();
+    body.append(toggle);
+  };
+
+  const buildRow=(item,collect)=>{
     const row=document.createElement('article');
     row.className='review-row reveal';
 
@@ -75,11 +105,16 @@
     attribution(item).forEach(node=>stack.append(node));
     who.append(dot,stack);
 
+    // Long reviews are clamped rather than cut: the whole thing is in the DOM
+    // and opens in place, so nothing is edited down to the flattering part.
+    const body=document.createElement('div');
+    body.className='review-body';
     const quote=document.createElement('blockquote');
     quote.className='review-quote';
     quote.textContent=item.quote||'';
-
-    row.append(who,quote);
+    body.append(quote);
+    row.append(who,body);
+    collect.push(body);
 
     // Only link when the review names a project that still exists.
     if(item.project){
@@ -110,7 +145,8 @@
       section.hidden=true;
       return;
     }
-    container.replaceChildren(...live.map(buildRow));
+    const bodies=[];
+    container.replaceChildren(...live.map(item=>buildRow(item,bodies)));
     container.hidden=false;
     const section=container.closest('section');
     if(section)section.hidden=false;
@@ -123,6 +159,9 @@
       const label=more.querySelector('[data-reviews-count]');
       if(label&&hasMore)label.textContent=String(published);
     }
+
+    // Clamping needs a laid-out element, so measure on the next frame.
+    requestAnimationFrame(()=>bodies.forEach(applyClamp));
 
     // script.js reveals on intersection; rows added later need observing too.
     if(window.__abatchanObserveReveal)qa('.reveal',container).forEach(window.__abatchanObserveReveal);

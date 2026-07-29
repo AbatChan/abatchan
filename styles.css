@@ -1103,3 +1103,28 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
 /* The reviews page runs long, so its rows are a touch tighter than the
    three-row summary on the homepage. */
 .review-archive .review-row{padding:28px 0}
+
+/* A long review is clamped, never cut. The whole quote is in the DOM and
+   opens in place, so a reader can always see what was actually written. */
+.review-body{overflow:hidden}
+.review-quote.is-clamped{
+  display:-webkit-box;
+  -webkit-line-clamp:4;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.review-toggle{
+  margin-top:10px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:var(--signal-ink,var(--signal));
+  font:inherit;
+  font-size:13px;
+  cursor:pointer;
+}
+.review-toggle:hover{text-decoration:underline;text-underline-offset:3px}
+.review-toggle:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:4px}
+@media(max-width:900px){
+  .review-quote.is-clamped{-webkit-line-clamp:5}
+}
