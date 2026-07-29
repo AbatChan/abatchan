@@ -91,34 +91,63 @@
    * Open or close a panel by animating its real height. Panels used `hidden`,
    * which snaps; this keeps the same markup and adds the motion.
    */
-  window.admToggleHeight=(panel,open,{duration=300}={})=>{
+  window.admToggleHeight=(panel,open,{duration=280}={})=>{
     if(!panel)return;
-    panel.__admAnim?.cancel();
-    const settle=()=>{panel.style.height='';panel.style.overflow='';panel.__admAnim=null};
-    if(REDUCED.matches){settle();panel.hidden=!open;return}
 
-    const start=panel.hidden?0:panel.getBoundingClientRect().height;
-    panel.hidden=false;
-    panel.style.height='';
-    panel.style.overflow='hidden';
-    const end=open?panel.scrollHeight:0;
-    if(start===end){settle();panel.hidden=!open;return}
-
-    // Park the inline height on the value the animation lands on. Without it
-    // the element reverts to its natural height for one frame when the
-    // animation finishes, which on close is a full-height flash that shoves
-    // every row below it down and back again.
-    panel.style.height=`${end}px`;
-    const animation=panel.animate(
-      [{height:`${start}px`,opacity:start===0?0:1},{height:`${end}px`,opacity:end===0?0:1}],
-      {duration:Math.min(duration+Math.abs(end-start)*0.18,520),easing:'cubic-bezier(.2,.75,.2,1)'}
-    );
-    panel.__admAnim=animation;
-    animation.onfinish=()=>{
-      if(panel.__admAnim!==animation)return;
-      settle();
-      panel.hidden=!open;
+    // Height alone cannot close these panels: the work rows carry a
+    // min-height, which outranks height entirely, and every panel has padding,
+    // which under border-box is a floor height can never get below. Both have
+    // to come down with it or the panel sits at full size for the whole
+    // animation and then vanishes, which reads as a hang before it closes.
+    const clear=()=>{
+      panel.style.transition='';panel.style.height='';panel.style.overflow='';
+      panel.style.minHeight='';panel.style.paddingTop='';panel.style.paddingBottom='';
     };
-    animation.oncancel=()=>{};
+    const stop=()=>{
+      clearTimeout(panel.__admTimer);
+      if(panel.__admEnd)panel.removeEventListener('transitionend',panel.__admEnd);
+      panel.__admTimer=null;panel.__admEnd=null;
+    };
+    stop();
+    if(REDUCED.matches){clear();panel.hidden=!open;return}
+
+    const from=panel.hidden?0:panel.getBoundingClientRect().height;
+
+    // Measure the resting size with nothing of ours applied, so opening
+    // restores exactly what the stylesheet asks for.
+    panel.style.transition='none';
+    clear();
+    panel.hidden=false;
+    const style=getComputedStyle(panel);
+    const padTop=style.paddingTop,padBottom=style.paddingBottom;
+    const to=open?panel.scrollHeight:0;
+    if(from===to&&!open){clear();panel.hidden=true;return}
+
+    // Opening decelerates into place; closing accelerates away, because the
+    // same ease-out in both directions leaves the last pixels crawling.
+    const ease=open?'cubic-bezier(.2,.75,.2,1)':'cubic-bezier(.5,0,.85,.4)';
+    const ms=Math.round(Math.min((open?duration:duration*0.8)+Math.abs(to-from)*0.15,460));
+
+    panel.style.overflow='hidden';
+    panel.style.minHeight='0px';
+    panel.style.height=`${from}px`;
+    panel.style.paddingTop=open?'0px':padTop;
+    panel.style.paddingBottom=open?'0px':padBottom;
+
+    // Flush the start state, or the browser folds both into a single frame
+    // and there is no transition to watch.
+    void panel.offsetHeight;
+
+    panel.style.transition=`height ${ms}ms ${ease},padding-top ${ms}ms ${ease},padding-bottom ${ms}ms ${ease},opacity ${Math.round(ms*0.7)}ms ${ease}`;
+    panel.style.height=`${to}px`;
+    panel.style.paddingTop=open?padTop:'0px';
+    panel.style.paddingBottom=open?padBottom:'0px';
+
+    const finish=()=>{stop();clear();panel.hidden=!open};
+    panel.__admEnd=event=>{if(event.target===panel&&event.propertyName==='height')finish()};
+    panel.addEventListener('transitionend',panel.__admEnd);
+    // transitionend never arrives if the transition is interrupted or the tab
+    // is backgrounded, so the panel must never be left stuck mid-collapse.
+    panel.__admTimer=setTimeout(finish,ms+140);
   };
 })();

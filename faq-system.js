@@ -39,7 +39,7 @@
     const current=state.get(details)||{open:details.open,animation:null};current.animation?.cancel();current.open=open;state.set(details,current);details.dataset.state=open?'open':'closed';summary.setAttribute('aria-expanded',String(open));
     const start=details.getBoundingClientRect().height;if(open&&!details.open)details.open=true;const end=summary.getBoundingClientRect().height+(open?answer.scrollHeight:0);
     if(reduceMotion.matches){details.open=open;details.style.height='';return}
-    details.style.height=`${start}px`;details.style.overflow='hidden';const animation=details.animate([{height:`${start}px`},{height:`${end}px`}],{duration:open?340:260,easing:'cubic-bezier(.2,.75,.2,1)'});current.animation=animation;
+    details.style.height=`${start}px`;details.style.overflow='hidden';const animation=details.animate([{height:`${start}px`},{height:`${end}px`}],{duration:open?340:250,easing:open?'cubic-bezier(.2,.75,.2,1)':'cubic-bezier(.5,0,.85,.4)'});current.animation=animation;
     animation.onfinish=()=>{if(state.get(details)?.animation!==animation)return;details.open=open;details.style.height='';details.style.overflow='';current.animation=null};animation.oncancel=()=>{};
   };
   const number=group=>[...group.querySelectorAll(':scope>details')].forEach((details,index)=>{decorate(details);const badge=details.querySelector(':scope>summary>.faq-index');if(badge)badge.textContent=String(index+1).padStart(2,'0')});
