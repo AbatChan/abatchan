@@ -1069,11 +1069,29 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
    a card that resizes next to a form people are filling in is worse than a
    little unused space. */
 .review-note{
-  margin-top:22px;
-  padding-top:18px;
-  border-top:1px solid var(--line);
+  /* .contact-facts already closes with a rule of its own, so this needs
+     spacing, not a second line under the first. */
+  margin-top:20px;
 }
 .review-note[hidden]{display:none}
+.review-note-link{
+  display:block;
+  color:inherit;
+  border-radius:12px;
+  transition:opacity .22s var(--ease);
+}
+.review-note-link:hover{opacity:.72}
+.review-note-link:focus-visible{outline:2px solid var(--signal);outline-offset:6px}
+.review-note-more{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:10px;
+  color:var(--signal-ink,var(--signal));
+  font-size:12px;
+}
+.review-note-more .arrow{transition:transform .25s var(--ease)}
+.review-note-link:hover .review-note-more .arrow{transform:translate(3px,-3px)}
 .review-note-stage{
   display:grid;
   align-content:start;

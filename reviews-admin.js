@@ -30,7 +30,7 @@
   const section=document.createElement('section');
   section.id='view-reviews';
   section.className='adm-hide faq-admin-shell';
-  section.innerHTML=`<div class="adm-head"><h2>Reviews</h2><button class="btn primary sm" id="saveReviews" type="button">save <span class="arrow">↗</span></button></div><p class="adm-sub">What clients said the work changed. These read as a record, so keep them specific: what was broken, and what it is now.</p><div class="faq-admin-toolbar"><span class="faq-admin-count" id="reviewCount">0 reviews</span><button class="btn sm" id="addReview" type="button">add review <span class="arrow">↗</span></button></div><div class="faq-admin-status" id="reviewStatus"></div><div class="faq-admin-list" id="reviewList"></div>`;
+  section.innerHTML=`<div class="adm-head"><h2>Reviews</h2><button class="btn primary sm" id="saveReviews" type="button">save <span class="arrow">↗</span></button></div><p class="adm-sub">The homepage and pricing page show the five most recent on their own, so the date matters. This order sets the reviews page and the quote beside the contact form.</p><div class="faq-admin-toolbar"><span class="faq-admin-count" id="reviewCount">0 reviews</span><button class="btn sm" id="addReview" type="button">add review <span class="arrow">↗</span></button></div><div class="faq-admin-status" id="reviewStatus"></div><div class="faq-admin-list" id="reviewList"></div>`;
   main.append(section);
   if(new URLSearchParams(location.search).get('view')==='reviews')queueMicrotask(()=>window.__adminShowView?.('reviews',{routeMode:'replace'}));
 
@@ -51,8 +51,6 @@
     client:(item.client||'').trim(),
     date:(item.date||'').trim(),
     project:(item.project||'').trim(),
-    pages:item.pages||'home',
-    featured:!!item.featured,
     published:item.published!==false
   }));
 
@@ -228,12 +226,6 @@
           <div class="faq-admin-field"><label>when (optional)</label><input data-date placeholder="March 2026"></div>
         </div>
         <div class="faq-admin-field"><label>links to project</label><div class="adm-select-wrap"><select data-project>${projectOptions(item.project||'')}</select></div></div>
-        <div class="faq-admin-field"><label>show on</label><div class="adm-select-wrap"><select data-pages>
-          <option value="home">homepage</option>
-          <option value="pricing">pricing page</option>
-          <option value="both">both</option>
-        </select></div></div>
-        <label class="adm-switch"><input data-featured type="checkbox"><span class="adm-switch-track" aria-hidden="true"></span><span>use beside the contact form</span></label>
       </div>
       <div class="faq-admin-footer">
         <div class="faq-admin-order"><button class="faq-admin-move" data-up type="button" aria-label="Move review up">${upIcon}</button><button class="faq-admin-move" data-down type="button" aria-label="Move review down">${downIcon}</button></div>
@@ -251,8 +243,6 @@
       q('[data-source]',panel).value=item.source||'';
       q('[data-client]',panel).value=item.client||'';
       q('[data-date]',panel).value=item.date||'';
-      q('[data-pages]',panel).value=item.pages||'home';
-      q('[data-featured]',panel).checked=!!item.featured;
       q('[data-published]',panel).checked=item.published!==false;
 
       q('[data-quote]',panel).addEventListener('input',e=>{
@@ -260,14 +250,8 @@
         q('.faq-admin-title',toggle).textContent=e.target.value.trim()||'Untitled review';
         setDirty(true);
       });
-      ['engagement','source','client','date','project','pages'].forEach(key=>{
+      ['engagement','source','client','date','project'].forEach(key=>{
         q(`[data-${key}]`,panel).addEventListener('input',e=>{item[key]=e.target.value;setDirty(true)});
-      });
-      q('[data-featured]',panel).addEventListener('change',e=>{
-        item.featured=e.target.checked;
-        // Only one review sits beside the contact form.
-        if(e.target.checked)items.forEach(other=>{if(other!==item)other.featured=false});
-        setDirty(true);render();persist('Contact review updated.');
       });
       q('[data-published]',panel).addEventListener('change',e=>{
         item.published=e.target.checked;setDirty(true);render();persist('Visibility updated.');
@@ -303,7 +287,7 @@
   };
 
   add.addEventListener('click',()=>{
-    const item={id:makeId(),quote:'',engagement:'',source:'',client:'',date:'',project:'',pages:'home',featured:false,published:true};
+    const item={id:makeId(),quote:'',engagement:'',source:'',client:'',date:'',project:'',published:true};
     items.push(item);expanded=item.id;setDirty(true);render();
     requestAnimationFrame(()=>q(`[data-review-id="${CSS.escape(item.id)}"] textarea`,list)?.focus());
   });

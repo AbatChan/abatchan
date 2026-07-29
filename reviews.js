@@ -6,23 +6,21 @@
 // site with no reviews yet rather than shipping an empty heading.
 (function reviews(){
   'use strict';
-  const VERSION=3;
+  const VERSION=4;
   if((window.__ABATCHAN_REVIEWS_VERSION__||0)>=VERSION)return;
   window.__ABATCHAN_REVIEWS_VERSION__=VERSION;
 
   const q=(s,c=document)=>c.querySelector(s),qa=(s,c=document)=>[...c.querySelectorAll(s)];
   const page=(String(location.pathname||'/').replace(/\/index(?:\.html)?$/,'/').replace(/\.html$/,'').replace(/\/+$/,'')||'/');
 
-  // A review targets the homepage, the pricing page, both, or the reviews
-  // page alone. The reviews page itself carries every published review, so a
-  // container marked data-reviews-all ignores targeting entirely.
-  const showsOn=(item,all)=>{
-    if(all)return true;
-    const where=item.pages||item.page||'home';
-    if(where==='both')return page==='/'||page==='/pricing';
-    if(where==='pricing')return page==='/pricing';
-    if(where==='archive')return false;
-    return page==='/';
+  // "March 2026" -> a sortable number. Marketplace reviews with no date sort
+  // last rather than pretending to be recent.
+  const MONTHS='january february march april may june july august september october november december'.split(' ');
+  const when=item=>{
+    const parts=String(item.date||'').trim().toLowerCase().split(/\s+/);
+    if(parts.length<2)return 0;
+    const month=MONTHS.indexOf(parts[0]),year=Number(parts[1]);
+    return month<0||!year?0:year*12+month+1;
   };
 
   const STAR='M12 3.6 14.5 9l5.9.8-4.3 4.1 1.1 5.9-5.2-2.9-5.2 2.9 1.1-5.9L3.6 9.8 9.5 9Z';
@@ -132,10 +130,14 @@
     // A page shows its strongest few in admin order; the rest stay in the
     // collection rather than turning the page into a wall of praise.
     const limit=Number(container.dataset.reviewsLimit)||Infinity;
-    const all='reviewsAll' in container.dataset;
+    // Home and pricing take the newest few automatically; the reviews page
+    // keeps the order set in the dashboard.
+    const newest='reviewsLatest' in container.dataset;
     const eligible=items
-      .filter(item=>item&&item.published!==false&&String(item.quote||'').trim()&&showsOn(item,all))
-      .sort((a,b)=>(a.position??0)-(b.position??0));
+      .filter(item=>item&&item.published!==false&&String(item.quote||'').trim())
+      .sort(newest
+        ? (a,b)=>when(b)-when(a)||(a.position??0)-(b.position??0)
+        : (a,b)=>(a.position??0)-(b.position??0));
     const live=eligible.slice(0,limit);
     const published=items.filter(item=>item&&item.published!==false&&String(item.quote||'').trim()).length;
 
@@ -171,17 +173,26 @@
   const renderNote=(note,items)=>{
     const live=items
       .filter(item=>item&&item.published!==false&&String(item.quote||'').trim())
-      .sort((a,b)=>(b.featured?1:0)-(a.featured?1:0)||(a.position??0)-(b.position??0));
+      .sort((a,b)=>(a.position??0)-(b.position??0));
     if(!live.length){note.hidden=true;return}
 
+    // The quote is the way through to the rest of them.
+    const link=document.createElement('a');
+    link.className='review-note-link';
+    link.href='/reviews';
+    link.setAttribute('aria-label',`Read all ${live.length} client reviews`);
     const stage=document.createElement('div');
     stage.className='review-note-stage';
     const quote=document.createElement('blockquote');
     quote.className='review-quote';
     const meta=document.createElement('span');
     meta.className='review-meta';
+    const more=document.createElement('span');
+    more.className='review-note-more';
+    more.innerHTML=`read all ${live.length} reviews <span class="arrow">\u2197</span>`;
     stage.append(quote,meta);
-    note.replaceChildren(stage);
+    link.append(stage,more);
+    note.replaceChildren(link);
     note.hidden=false;
 
     const paint=item=>{
