@@ -113,6 +113,45 @@ const PAGE={
 };
 
 const hits=new Map();
+
+// The per-IP counter below is in-memory, so it dies with the instance and
+// counts nothing across the several Vercel runs concurrently. It filters
+// obvious hammering cheaply; it cannot cap what the day costs. This does, by
+// keeping one counter in the settings table every instance shares.
+const DAILY_MAX=Number(process.env.ASSISTANT_DAILY_MAX||600);
+const USAGE_KEY='assistant.usage';
+const today=()=>new Date().toISOString().slice(0,10);
+
+function serviceHeaders(){
+  const secret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_KEY;
+  if(!secret)return null;
+  const headers={apikey:secret,'Content-Type':'application/json'};
+  if(!secret.startsWith('sb_secret_'))headers.Authorization=`Bearer ${secret}`;
+  return headers;
+}
+
+// Returns {allowed, used, remaining}. A counter that cannot be read is not a
+// reason to refuse a visitor, so failure here opens rather than closes.
+async function countDay(){
+  const headers=serviceHeaders();
+  if(!headers)return {allowed:true,used:0,remaining:DAILY_MAX};
+  try{
+    const day=today();
+    const read=await fetch(`${SUPABASE_URL}/rest/v1/settings?key=eq.${USAGE_KEY}&select=value`,{headers,cache:'no-store'});
+    const rows=read.ok?await read.json():[];
+    const stored=rows?.[0]?.value;
+    const used=stored&&stored.day===day?Number(stored.count)||0:0;
+    if(used>=DAILY_MAX)return {allowed:false,used,remaining:0};
+    await fetch(`${SUPABASE_URL}/rest/v1/settings`,{
+      method:'POST',
+      headers:{...headers,Prefer:'resolution=merge-duplicates'},
+      body:JSON.stringify([{key:USAGE_KEY,value:{day,count:used+1},is_public:false}])
+    });
+    return {allowed:true,used:used+1,remaining:Math.max(0,DAILY_MAX-used-1)};
+  }catch{
+    return {allowed:true,used:0,remaining:DAILY_MAX};
+  }
+}
 const RATE={max:20,windowMs:10*60*1000};
 function allowed(ip){
   const now=Date.now(),record=hits.get(ip);
@@ -159,6 +198,10 @@ export default async function handler(req,res){
   if(!contentType.includes('application/json')||contentLength>24*1024)return sendError(res,413,'invalid_request','Send a shorter question.');
   const ip=String(req.headers['x-forwarded-for']||'').split(',')[0].trim()||'unknown';
   if(!allowed(ip))return sendError(res,429,'rate_limited','There have been many questions from this connection. Try again in a few minutes.');
+
+  // The ceiling that actually bounds the bill.
+  const usage=await countDay();
+  if(!usage.allowed)return sendError(res,429,'daily_limit','The guide has answered all it can today. Send the question through the contact page and Abat will reply directly.');
   if(!process.env.DEEPSEEK_API_KEY)return sendError(res,503,'not_configured','The live model is not connected right now.');
 
   let body={};
@@ -170,9 +213,9 @@ export default async function handler(req,res){
   const pageContext=body.pageContext&&typeof body.pageContext==='object'?{
     title:String(body.pageContext.title||'').slice(0,160),
     description:String(body.pageContext.description||'').slice(0,320),
-    text:String(body.pageContext.text||'').slice(0,3500)
+    text:String(body.pageContext.text||'').slice(0,1200)
   }:null;
-  const history=Array.isArray(body.history)?body.history.slice(-6).filter(item=>item&&['user','assistant'].includes(item.role)&&typeof item.content==='string').map(item=>({role:item.role,content:item.content.slice(0,1000)})):[];
+  const history=Array.isArray(body.history)?body.history.slice(-4).filter(item=>item&&['user','assistant'].includes(item.role)&&typeof item.content==='string').map(item=>({role:item.role,content:item.content.slice(0,600)})):[];
 
   try{
     const [settings,work]=await Promise.all([privateSettings(),workContext()]);
@@ -191,6 +234,8 @@ export default async function handler(req,res){
     }
 
     res.statusCode=200;
+    // Lets the browser warn before it hits the wall rather than after.
+    res.setHeader('X-Guide-Remaining',String(usage.remaining));
     res.setHeader('Content-Type','text/plain; charset=utf-8');
     res.setHeader('Cache-Control','no-cache, no-store, no-transform');
     res.setHeader('X-Content-Type-Options','nosniff');

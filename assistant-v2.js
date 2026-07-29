@@ -191,7 +191,19 @@
       };
       const paint=()=>{frame=0;if(!answer)return;render(ensureBubble(),answer);log.scrollTop=log.scrollHeight};
       try{
-        const res=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:history.slice(-6),page:location.pathname,pageContext:currentPageContext()})});
+        const res=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:history.slice(-4),page:location.pathname,pageContext:currentPageContext()})});
+        // The server reports what is left of today's budget. Say so once,
+        // while there is still room to ask, rather than after the wall.
+        const left=Number(res.headers.get('X-Guide-Remaining'));
+        if(Number.isFinite(left)&&left>0&&left<=25&&!panel.dataset.budgetWarned){
+          panel.dataset.budgetWarned='1';
+          const note=document.createElement('div');
+          note.className='assist-note';
+          note.setAttribute('role','status');
+          note.textContent='The guide is near its limit for today. For anything it cannot answer, the contact page reaches Abat directly.';
+          log.append(note);
+          log.scrollTop=log.scrollHeight;
+        }
         const type=res.headers.get('content-type')||'';
         if(!res.ok){
           let message='Try again, or contact Abat directly.';

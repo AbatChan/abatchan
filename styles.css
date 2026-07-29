@@ -1167,3 +1167,16 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
 @media(max-width:900px){
   .review-quote.is-clamped{-webkit-line-clamp:5}
 }
+
+/* Said once when the guide is near its daily budget, so a visitor learns it
+   while there is still room to ask rather than after being refused. */
+.assist-note{
+  margin:6px 2px 2px;
+  padding:10px 12px;
+  border:1px solid rgba(99,102,241,.28);
+  border-radius:12px;
+  background:rgba(99,102,241,.07);
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.55;
+}
