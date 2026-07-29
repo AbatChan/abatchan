@@ -144,7 +144,7 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
   .compact-footer{grid-template-columns:1fr;justify-items:center;text-align:center;gap:16px}
   /* nine chips just fit eight per row, which strands the ninth on its own.
      Cap the rail at five so it breaks 5 + 4 and justify-content centres both. */
-  .social-rail{max-width:calc(5 * 38px + 4 * 8px)}
+  .social-rail{max-width:calc(6 * 38px + 5 * 8px)}
   .footer-meta{white-space:normal;justify-content:center}
   /* self-sizing so the injected pricing tab cannot wrap the row */
   .mobile-tabs{bottom:max(12px,env(safe-area-inset-bottom));width:min(440px,calc(100% - 24px));min-height:66px;padding:7px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
