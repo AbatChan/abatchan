@@ -1037,8 +1037,6 @@ html body #items[data-filtered] .work-compact-drag{opacity:.3;cursor:not-allowed
    original rules never did. */
 html body .adm-main>section:not(.adm-hide){animation:adm-view-in .3s var(--ease) both}
 @keyframes adm-view-in{from{opacity:0;transform:translateY(7px)}}
-html body .faq-admin-panel,
-html body .work-compact-panel{will-change:height}
 
 @media(prefers-reduced-motion:reduce){
   html body .adm-main>section:not(.adm-hide){animation:none}

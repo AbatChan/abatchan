@@ -94,14 +94,21 @@
   window.admToggleHeight=(panel,open,{duration=300}={})=>{
     if(!panel)return;
     panel.__admAnim?.cancel();
-    if(REDUCED.matches){panel.hidden=!open;return}
+    const settle=()=>{panel.style.height='';panel.style.overflow='';panel.__admAnim=null};
+    if(REDUCED.matches){settle();panel.hidden=!open;return}
 
     const start=panel.hidden?0:panel.getBoundingClientRect().height;
     panel.hidden=false;
+    panel.style.height='';
     panel.style.overflow='hidden';
     const end=open?panel.scrollHeight:0;
-    if(start===end&&open){panel.style.overflow='';return}
+    if(start===end){settle();panel.hidden=!open;return}
 
+    // Park the inline height on the value the animation lands on. Without it
+    // the element reverts to its natural height for one frame when the
+    // animation finishes, which on close is a full-height flash that shoves
+    // every row below it down and back again.
+    panel.style.height=`${end}px`;
     const animation=panel.animate(
       [{height:`${start}px`,opacity:start===0?0:1},{height:`${end}px`,opacity:end===0?0:1}],
       {duration:Math.min(duration+Math.abs(end-start)*0.18,520),easing:'cubic-bezier(.2,.75,.2,1)'}
@@ -109,9 +116,9 @@
     panel.__admAnim=animation;
     animation.onfinish=()=>{
       if(panel.__admAnim!==animation)return;
-      panel.style.overflow='';
+      settle();
       panel.hidden=!open;
-      panel.__admAnim=null;
     };
+    animation.oncancel=()=>{};
   };
 })();
