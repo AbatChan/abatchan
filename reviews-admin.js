@@ -12,8 +12,9 @@
 
   const q=(s,c=document)=>c.querySelector(s),qa=(s,c=document)=>[...c.querySelectorAll(s)];
   const tabs=q('#tabs'),main=q('.adm-main');if(!tabs||!main)return;
-  let items=[],projects=[],loaded=false,dirty=false,expanded=null,revision=0,saveQueue=Promise.resolve();
+  let items=[],projects=[],loaded=false,dirty=false,expanded=null,dragged=null,target=null,revision=0,saveQueue=Promise.resolve(),query='',statusFilter='all';
   const makeId=()=>`review-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const dragIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="7" r="1"/><circle cx="16" cy="7" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="17" r="1"/><circle cx="16" cy="17" r="1"/></svg>';
   const chevron='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>';
   const trash='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 3h6l1 4H8l1-4ZM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>';
   const upIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 14 5-5 5 5"/></svg>';
@@ -29,7 +30,7 @@
   const section=document.createElement('section');
   section.id='view-reviews';
   section.className='adm-hide faq-admin-shell';
-  section.innerHTML=`<div class="adm-head"><h2>Reviews</h2><button class="btn primary sm" id="saveReviews" type="button">save <span class="arrow">↗</span></button></div><p class="adm-sub">What clients said the work changed. These read as a record, so keep them specific: what was broken, and what it is now.</p><div class="faq-admin-toolbar"><span class="faq-admin-count" id="reviewCount">0 reviews</span><button class="btn sm" id="addReview" type="button">add review <span class="arrow">↗</span></button></div><div class="faq-admin-status" id="reviewStatus"></div><div class="faq-admin-list" id="reviewList"></div>`;
+  section.innerHTML=`<div class="adm-head"><h2>Reviews</h2><button class="btn primary sm" id="saveReviews" type="button">save <span class="arrow">↗</span></button></div><p class="adm-sub">What clients said the work changed. These read as a record, so keep them specific: what was broken, and what it is now.</p><div class="adm-list-tools"><label class="adm-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input type="search" id="reviewSearch" placeholder="Search reviews" aria-label="Search reviews"></label><div class="adm-seg" role="group" aria-label="Filter by status"><button type="button" data-status="all" aria-pressed="true">all</button><button type="button" data-status="published" aria-pressed="false">published</button><button type="button" data-status="draft" aria-pressed="false">drafts</button></div></div><div class="faq-admin-toolbar"><span class="faq-admin-count" id="reviewCount">0 reviews</span><button class="btn sm" id="addReview" type="button">add review <span class="arrow">↗</span></button></div><div class="faq-admin-status" id="reviewStatus"></div><div class="faq-admin-list" id="reviewList"></div>`;
   main.append(section);
   if(new URLSearchParams(location.search).get('view')==='reviews')queueMicrotask(()=>window.__adminShowView?.('reviews',{routeMode:'replace'}));
 
@@ -89,6 +90,21 @@
     expanded=items[next].id;setDirty(true);render();persist('Order saved.');
   };
 
+  const clearDrop=()=>{
+    qa('.is-dragging,.drop-before,.drop-after',list).forEach(node=>node.classList.remove('is-dragging','drop-before','drop-after'));
+    target=null;
+  };
+  const reorder=()=>{
+    if(!dragged||!target||dragged===target.id)return clearDrop();
+    const from=items.findIndex(x=>x.id===dragged);
+    if(from<0)return clearDrop();
+    const [moving]=items.splice(from,1);
+    let to=items.findIndex(x=>x.id===target.id);
+    if(to<0)to=items.length; else if(target.after)to++;
+    items.splice(to,0,moving);
+    clearDrop();setDirty(true);render();persist('Order saved.');
+  };
+
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const projectOptions=selected=>{
     const options=['<option value="">no project link</option>'];
@@ -102,13 +118,30 @@
     return options.join('');
   };
 
+  const matches=item=>{
+    if(statusFilter==='published'&&item.published===false)return false;
+    if(statusFilter==='draft'&&item.published!==false)return false;
+    if(!query)return true;
+    return [item.quote,item.engagement,item.source,item.client,item.date]
+      .filter(Boolean).join(' ').toLowerCase().includes(query);
+  };
+
   const render=()=>{
-    count.textContent=`${items.length} review${items.length===1?'':'s'}`;
+    const filtering=Boolean(query)||statusFilter!=='all';
+    // Keep the true index so ordering acts on the collection, not the view.
+    const view=items.map((item,index)=>({item,index})).filter(({item})=>matches(item));
+    count.textContent=filtering
+      ? `${view.length} of ${items.length} shown`
+      : `${items.length} review${items.length===1?'':'s'}`;
     if(!items.length){
       list.innerHTML='<div class="faq-admin-empty">No reviews yet. Add one once a client has told you what changed.</div>';
       return;
     }
-    list.replaceChildren(...items.map((item,index)=>{
+    if(!view.length){
+      list.innerHTML='<div class="faq-admin-empty">Nothing matches that filter.</div>';
+      return;
+    }
+    list.replaceChildren(...view.map(({item,index})=>{
       item.id=item.id||makeId();
       const open=expanded===item.id;
       const card=document.createElement('article');
@@ -131,15 +164,37 @@
       const rowOrder=document.createElement('div');
       rowOrder.className='faq-admin-row-order';
       const rowUp=document.createElement('button');
-      rowUp.type='button';rowUp.className='faq-admin-move';rowUp.disabled=index===0;
+      rowUp.type='button';rowUp.className='faq-admin-move';rowUp.disabled=index===0||filtering;
       rowUp.setAttribute('aria-label','Move review up');rowUp.innerHTML=upIcon;
       rowUp.addEventListener('click',()=>move(index,-1));
       const rowDown=document.createElement('button');
-      rowDown.type='button';rowDown.className='faq-admin-move';rowDown.disabled=index===items.length-1;
+      rowDown.type='button';rowDown.className='faq-admin-move';rowDown.disabled=index===items.length-1||filtering;
       rowDown.setAttribute('aria-label','Move review down');rowDown.innerHTML=downIcon;
       rowDown.addEventListener('click',()=>move(index,1));
       rowOrder.append(rowUp,rowDown);
-      head.append(toggle,rowOrder);
+
+      const drag=document.createElement('button');
+      drag.type='button';drag.className='faq-admin-drag';drag.draggable=true;
+      drag.innerHTML=dragIcon;drag.setAttribute('aria-label','Drag to reorder');
+      if(filtering){drag.draggable=false;drag.disabled=true;drag.title='Clear the filter to reorder'}
+      drag.addEventListener('dragstart',e=>{
+        // Reordering a filtered view would move the wrong neighbours.
+        if(query||statusFilter!=='all'){e.preventDefault();status.textContent='Clear the filter to reorder.';return}
+        dragged=item.id;card.classList.add('is-dragging');e.dataTransfer.effectAllowed='move';
+      });
+      drag.addEventListener('dragend',()=>{dragged=null;clearDrop()});
+      head.append(toggle,rowOrder,drag);
+
+      card.addEventListener('dragover',e=>{
+        e.preventDefault();
+        if(!dragged||dragged===item.id)return;
+        qa('.drop-before,.drop-after',list).forEach(n=>n.classList.remove('drop-before','drop-after'));
+        const rect=card.getBoundingClientRect();
+        const after=e.clientY>rect.top+rect.height/2;
+        card.classList.add(after?'drop-after':'drop-before');
+        target={id:item.id,after};
+      });
+      card.addEventListener('drop',e=>{e.preventDefault();reorder()});
 
       const panel=document.createElement('div');
       panel.className='faq-admin-panel';panel.hidden=!open;
@@ -167,8 +222,8 @@
         <label class="adm-switch"><input data-published type="checkbox"><span class="adm-switch-track" aria-hidden="true"></span><span>published</span></label>
       </div>`;
 
-      q('[data-up]',panel).disabled=index===0;
-      q('[data-down]',panel).disabled=index===items.length-1;
+      q('[data-up]',panel).disabled=index===0||filtering;
+      q('[data-down]',panel).disabled=index===items.length-1||filtering;
       q('[data-up]',panel).addEventListener('click',()=>move(index,-1));
       q('[data-down]',panel).addEventListener('click',()=>move(index,1));
 
@@ -233,6 +288,12 @@
     items.push(item);expanded=item.id;setDirty(true);render();
     requestAnimationFrame(()=>q(`[data-review-id="${CSS.escape(item.id)}"] textarea`,list)?.focus());
   });
+  q('#reviewSearch').addEventListener('input',e=>{query=e.target.value.trim().toLowerCase();render()});
+  qa('.adm-seg button',section).forEach(button=>button.addEventListener('click',()=>{
+    statusFilter=button.dataset.status;
+    qa('.adm-seg button',section).forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+    render();
+  }));
   save.addEventListener('click',()=>persist('Saved.'));
   tab.addEventListener('click',load);
   const wait=setInterval(()=>{if(!q('#app')?.classList.contains('adm-hide')){clearInterval(wait);load()}},300);

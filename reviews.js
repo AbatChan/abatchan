@@ -6,19 +6,40 @@
 // site with no reviews yet rather than shipping an empty heading.
 (function reviews(){
   'use strict';
-  const VERSION=1;
+  const VERSION=2;
   if((window.__ABATCHAN_REVIEWS_VERSION__||0)>=VERSION)return;
   window.__ABATCHAN_REVIEWS_VERSION__=VERSION;
 
   const q=(s,c=document)=>c.querySelector(s),qa=(s,c=document)=>[...c.querySelectorAll(s)];
   const page=(String(location.pathname||'/').replace(/\/index(?:\.html)?$/,'/').replace(/\.html$/,'').replace(/\/+$/,'')||'/');
 
-  // A review targets the homepage, the pricing page, or both.
-  const showsOn=item=>{
+  // A review targets the homepage, the pricing page, both, or the reviews
+  // page alone. The reviews page itself carries every published review, so a
+  // container marked data-reviews-all ignores targeting entirely.
+  const showsOn=(item,all)=>{
+    if(all)return true;
     const where=item.pages||item.page||'home';
     if(where==='both')return page==='/'||page==='/pricing';
     if(where==='pricing')return page==='/pricing';
+    if(where==='archive')return false;
     return page==='/';
+  };
+
+  const STAR='M12 3.6 14.5 9l5.9.8-4.3 4.1 1.1 5.9-5.2-2.9-5.2 2.9 1.1-5.9L3.6 9.8 9.5 9Z';
+  const stars=rating=>{
+    const value=Number(rating);
+    if(!(value>0))return null;
+    const clamped=Math.max(0,Math.min(5,value));
+    const wrap=document.createElement('span');
+    wrap.className='review-stars';
+    wrap.style.setProperty('--rating',`${Math.round((clamped/5)*1000)/10}%`);
+    wrap.setAttribute('role','img');
+    wrap.setAttribute('aria-label',`Rated ${clamped} out of 5`);
+    // Two identical rows: the stylesheet outlines the lower one and fills the
+    // upper, which is clipped to --rating so 4.9 reads as 4.9 and not 5.
+    const row=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}"/></svg>`.repeat(5);
+    wrap.innerHTML=`${row}<span class="review-stars-on">${row}</span>`;
+    return wrap;
   };
 
   const line=(cls,text)=>{
@@ -35,6 +56,7 @@
     const source=[item.source,item.client].filter(Boolean).join(' · ');
     return [
       line('review-role',item.engagement||item.role),
+      stars(item.rating),
       line('review-meta',source||item.org),
       line('review-meta',item.date||item.place)
     ].filter(Boolean);
@@ -75,10 +97,12 @@
     // A page shows its strongest few in admin order; the rest stay in the
     // collection rather than turning the page into a wall of praise.
     const limit=Number(container.dataset.reviewsLimit)||Infinity;
-    const live=items
-      .filter(item=>item&&item.published!==false&&String(item.quote||'').trim()&&showsOn(item))
-      .sort((a,b)=>(a.position??0)-(b.position??0))
-      .slice(0,limit);
+    const all='reviewsAll' in container.dataset;
+    const eligible=items
+      .filter(item=>item&&item.published!==false&&String(item.quote||'').trim()&&showsOn(item,all))
+      .sort((a,b)=>(a.position??0)-(b.position??0));
+    const live=eligible.slice(0,limit);
+    const published=items.filter(item=>item&&item.published!==false&&String(item.quote||'').trim()).length;
 
     if(!live.length){
       // Hide the whole section, not just the list, so no orphan heading remains.
@@ -90,6 +114,15 @@
     container.hidden=false;
     const section=container.closest('section');
     if(section)section.hidden=false;
+
+    // Only offer the full list when there is more to see than is shown here.
+    const more=section?.querySelector('[data-reviews-more]');
+    if(more){
+      const hasMore=published>live.length;
+      more.hidden=!hasMore;
+      const label=more.querySelector('[data-reviews-count]');
+      if(label&&hasMore)label.textContent=String(published);
+    }
 
     // script.js reveals on intersection; rows added later need observing too.
     if(window.__abatchanObserveReveal)qa('.reveal',container).forEach(window.__abatchanObserveReveal);

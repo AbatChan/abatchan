@@ -1084,3 +1084,22 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
 @media(prefers-reduced-motion:reduce){
   .review-dot{transition:none}
 }
+
+/* Star ratings. Two identical rows of five: the lower outlined, the upper
+   filled and clipped to --rating, so a 4.9 reads as 4.9 rather than rounding
+   up to a full set. */
+.review-stars{position:relative;display:inline-flex;gap:3px;margin:6px 0 2px;line-height:0}
+.review-stars svg{width:12px;height:12px;display:block;fill:none;stroke:var(--muted);stroke-width:1.6;stroke-linejoin:round}
+.review-stars-on{
+  position:absolute;left:0;top:0;display:inline-flex;gap:3px;
+  clip-path:inset(0 calc(100% - var(--rating,100%)) 0 0);
+}
+.review-stars-on svg{fill:var(--signal-ink,var(--signal));stroke:var(--signal-ink,var(--signal))}
+
+/* The way through to the full list, shown only when there is more to see. */
+.review-more{margin-top:34px}
+.review-more[hidden]{display:none}
+
+/* The reviews page runs long, so its rows are a touch tighter than the
+   three-row summary on the homepage. */
+.review-archive .review-row{padding:28px 0}
