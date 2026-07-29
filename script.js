@@ -335,6 +335,7 @@ const socialRail=()=>SOCIALS.map(([slug,label,href])=>
 const FOOTER_NAV=[
   ['/brand','brand'],
   ['/process','process'],
+  ['/reviews','reviews'],
   ['/pricing','pricing'],
   ['/privacy','privacy'],
   ['/terms','terms']
