@@ -169,18 +169,55 @@
   };
 
   const renderNote=(note,items)=>{
-    const live=items.filter(item=>item&&item.published!==false&&String(item.quote||'').trim());
-    const pick=live.find(item=>item.featured)||live[0];
-    if(!pick){note.hidden=true;return}
+    const live=items
+      .filter(item=>item&&item.published!==false&&String(item.quote||'').trim())
+      .sort((a,b)=>(b.featured?1:0)-(a.featured?1:0)||(a.position??0)-(b.position??0));
+    if(!live.length){note.hidden=true;return}
+
+    const stage=document.createElement('div');
+    stage.className='review-note-stage';
     const quote=document.createElement('blockquote');
     quote.className='review-quote';
-    quote.textContent=pick.quote;
     const meta=document.createElement('span');
     meta.className='review-meta';
-    meta.textContent=[pick.engagement||pick.role,pick.source||pick.org,pick.date||pick.place]
-      .filter(Boolean).join(' · ');
-    note.replaceChildren(quote,meta);
+    stage.append(quote,meta);
+    note.replaceChildren(stage);
     note.hidden=false;
+
+    const paint=item=>{
+      quote.textContent=item.quote;
+      meta.textContent=[item.engagement||item.role,item.source||item.org,item.date||item.place]
+        .filter(Boolean).join(' · ');
+    };
+    paint(live[0]);
+
+    // One quote is a fact; a rotation is a fact you can keep reading. It only
+    // earns the motion when there is more than one and the visitor wants it.
+    if(live.length<2||REDUCED.matches)return;
+
+    let index=0,timer=null,swapping=false;
+    const advance=()=>{
+      if(swapping)return;
+      swapping=true;
+      stage.classList.add('is-out');
+      setTimeout(()=>{
+        index=(index+1)%live.length;
+        paint(live[index]);
+        stage.classList.remove('is-out');
+        swapping=false;
+      },280);
+    };
+    const start=()=>{if(!timer)timer=setInterval(advance,7000)};
+    const stop=()=>{clearInterval(timer);timer=null};
+
+    // Never rotate a quote out from under someone reading it, and never run
+    // the timer for a tab nobody is looking at.
+    note.addEventListener('pointerenter',stop);
+    note.addEventListener('pointerleave',start);
+    note.addEventListener('focusin',stop);
+    note.addEventListener('focusout',start);
+    document.addEventListener('visibilitychange',()=>{document.hidden?stop():start()});
+    start();
   };
 
   const load=async()=>{

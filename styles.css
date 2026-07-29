@@ -1064,15 +1064,36 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
 .review-link:hover .arrow,.review-link:focus-visible .arrow{transform:translate(3px,-3px)}
 .review-link:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:4px}
 
-/* One line beside the contact form, not a section. */
+/* One line beside the contact form, not a section. It cycles through the
+   reviews, so the box is a fixed three lines and only the words cross-fade:
+   a card that resizes next to a form people are filling in is worse than a
+   little unused space. */
 .review-note{
   margin-top:22px;
   padding-top:18px;
   border-top:1px solid var(--line);
 }
 .review-note[hidden]{display:none}
-.review-note .review-quote{font-size:15px;line-height:1.65}
-.review-note .review-meta{margin-top:8px}
+.review-note-stage{
+  display:grid;
+  align-content:start;
+  gap:8px;
+  min-height:98px;
+  transition:opacity .28s var(--ease),transform .28s var(--ease);
+}
+.review-note-stage.is-out{opacity:0;transform:translateY(-6px)}
+.review-note .review-quote{
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  font-size:15px;
+  line-height:1.65;
+}
+.review-note .review-meta{margin-top:0}
+@media(prefers-reduced-motion:reduce){
+  .review-note-stage{transition:none}
+}
 
 @media(max-width:900px){
   .review-ledger{grid-template-columns:minmax(0,1fr)}
