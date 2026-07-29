@@ -13,7 +13,7 @@
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
         { "key": "X-Permitted-Cross-Domain-Policies", "value": "none" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://fdubcelrwfpzjjnqipku.supabase.co; connect-src 'self' https://fdubcelrwfpzjjnqipku.supabase.co https://cdn.jsdelivr.net; font-src 'self' data:; media-src 'self' blob:; upgrade-insecure-requests" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://fdubcelrwfpzjjnqipku.supabase.co; connect-src 'self' https://fdubcelrwfpzjjnqipku.supabase.co https://cdn.jsdelivr.net; font-src 'self' data:; media-src 'self' blob:; upgrade-insecure-requests" }
       ]
     },
     {

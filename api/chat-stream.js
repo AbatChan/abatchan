@@ -69,8 +69,15 @@ Page directory:
 - [Process](/process): Discovery, Scope, Build, Launch and Support.
 - [Brand](/brand): name, slogan, symbol, colours, typography, voice and downloads.
 - [Contact](/contact): project enquiry and direct email.
+- [Reviews](/reviews): client reviews from Upwork and Fiverr.
 - [Privacy](/privacy): privacy information.
-- [Terms](/terms): website and project terms.`;
+- [Terms](/terms): website and project terms.
+
+Contact routes the website publishes. Offer whichever the visitor asks for:
+- Direct email, given above, and the enquiry form on [contact](/contact).
+- WhatsApp: https://wa.me/2347041857921
+- Profiles in the site footer: LinkedIn, GitHub, X, Instagram, TikTok, YouTube, Facebook, Behance, Dribbble and Upwork.
+These are already public on every page, so they can be shared freely. Do not invent any other number, address or handle.`;
 
 const PAGE={
   '/':'The visitor is on the homepage.',
@@ -80,6 +87,7 @@ const PAGE={
   '/process':'The visitor is reading the delivery process.',
   '/brand':'The visitor is viewing the brand system.',
   '/contact':'The visitor is on the project enquiry page.',
+  '/reviews':'The visitor is reading client reviews.',
   '/privacy':'The visitor is reading the privacy notice.',
   '/terms':'The visitor is reading the terms.'
 };

@@ -1051,3 +1051,29 @@ html body .work-compact-panel{will-change:height}
   html body .adm-item,
   html body .adm-news-item{transition:none}
 }
+
+/* Work row actions carry a visible caption inside the expanded panel. The
+   labels the old CSS tried to add through ::after were invisible to screen
+   readers and untranslatable, so they are real text now. */
+html body #items .work-compact-panel .adm-icon{
+  width:auto;
+  min-width:44px;
+  gap:8px;
+  padding:0 12px;
+  grid-auto-flow:column;
+}
+/* Hidden by default so the caption cannot leak into the icon-only buttons
+   elsewhere, and shown only where there is room for it. */
+html body .adm-icon-text{display:none}
+html body #items .work-compact-panel .adm-icon-text{
+  display:block;
+  font-size:12px;
+  font-weight:600;
+  line-height:1;
+  letter-spacing:0;
+  white-space:nowrap;
+}
+@media(max-width:620px){
+  html body #items .work-compact-panel .adm-icon{padding:0 10px}
+  html body .adm-icon-text{font-size:11px}
+}

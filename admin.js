@@ -260,6 +260,14 @@
     button.className = `adm-icon${options.danger ? ' danger' : ''}`;
     button.setAttribute('aria-label', label);
     button.innerHTML = icon;
+    // Real text, not ::after content: a pseudo-element is not in the
+    // accessibility tree and cannot be selected or translated.
+    if (options.text) {
+      const caption = document.createElement('span');
+      caption.className = 'adm-icon-text';
+      caption.textContent = options.text;
+      button.append(caption);
+    }
     button.disabled = !!options.disabled;
     button.addEventListener('click', handler);
     return button;
@@ -331,10 +339,10 @@
       const actions = document.createElement('div');
       actions.className = 'adm-row-actions';
       actions.append(
-        iconButton(`Move ${item.title} up`, icons.up, () => moveItem(index, -1), { disabled: index === 0 || filtering }),
-        iconButton(`Move ${item.title} down`, icons.down, () => moveItem(index, 1), { disabled: index === workItems.length - 1 || filtering }),
-        iconButton(`Edit ${item.title}`, icons.edit, () => openEditor(item)),
-        iconButton(`Delete ${item.title}`, icons.trash, () => removeItem(item), { danger: true })
+        iconButton(`Move ${item.title} up`, icons.up, () => moveItem(index, -1), { disabled: index === 0 || filtering, text: 'Up' }),
+        iconButton(`Move ${item.title} down`, icons.down, () => moveItem(index, 1), { disabled: index === workItems.length - 1 || filtering, text: 'Down' }),
+        iconButton(`Edit ${item.title}`, icons.edit, () => openEditor(item), { text: 'Edit' }),
+        iconButton(`Delete ${item.title}`, icons.trash, () => removeItem(item), { danger: true, text: 'Delete' })
       );
       row.append(thumb, copy, actions);
       itemsEl.append(row);

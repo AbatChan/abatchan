@@ -92,6 +92,11 @@ Pages:
 
 When useful, give the relevant relative page link. Keep answers short enough for
 a small chat panel.
+Contact routes the website publishes. Offer whichever the visitor asks for:
+- Direct email, given above, and the enquiry form on [contact](/contact).
+- WhatsApp: https://wa.me/2347041857921
+- Profiles in the site footer: LinkedIn, GitHub, X, Instagram, TikTok, YouTube, Facebook, Behance, Dribbble and Upwork.
+These are already public on every page, so they can be shared freely. Do not invent any other number, address or handle.
 `.trim();
 
 const PAGE_NOTES = {
@@ -109,6 +114,8 @@ const PAGE_NOTES = {
   '/brand.html': 'The visitor is viewing the brand system.',
   '/contact': 'The visitor is on the project enquiry page.',
   '/contact.html': 'The visitor is on the project enquiry page.',
+  '/reviews': 'The visitor is reading client reviews.',
+  '/reviews.html': 'The visitor is reading client reviews.',
   '/privacy': 'The visitor is reading the privacy notice.',
   '/privacy.html': 'The visitor is reading the privacy notice.',
   '/terms': 'The visitor is reading the website and project terms.',
