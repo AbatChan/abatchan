@@ -118,7 +118,11 @@
     return options.join('');
   };
 
-  const tools=admListTools({
+  // Degrade to an unfiltered list rather than taking the editor down with it
+  // if the shared module is missing.
+  const tools=(window.admListTools||(()=>({element:document.createComment('no list tools'),
+    filtering:false,matches:()=>true,sync:()=>false,
+    countLabel:(s,t,n)=>`${t} ${n}${t===1?'':'s'}`})))({
     label:'reviews',
     text:item=>[item.quote,item.engagement,item.source,item.client,item.date].filter(Boolean).join(' '),
     isDraft:item=>item.published===false,

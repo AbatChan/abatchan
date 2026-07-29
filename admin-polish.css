@@ -1031,22 +1031,23 @@ html body #items[data-filtered] .work-compact-drag{opacity:.3;cursor:not-allowed
 
 /* Motion ------------------------------------------------------------------
    Switching sections used to swap display outright, which reads as a jump.
-   The panels animate their real height from admin-ui.js; this covers the
-   view change and the rows arriving with it. */
+   Panels animate their real height from admin-ui.js. The cards and chevrons
+   already carry their own transitions, so nothing is re-declared here; the
+   only additions are the view change and honouring reduced motion, which the
+   original rules never did. */
 html body .adm-main>section:not(.adm-hide){animation:adm-view-in .3s var(--ease) both}
 @keyframes adm-view-in{from{opacity:0;transform:translateY(7px)}}
-
 html body .faq-admin-panel,
 html body .work-compact-panel{will-change:height}
-html body .faq-admin-item,
-html body .work-compact-item{transition:border-color .25s var(--ease),background .25s var(--ease)}
-html body .faq-admin-chevron,
-html body .work-compact-chevron{transition:transform .3s var(--ease),color .25s var(--ease),border-color .25s var(--ease)}
 
 @media(prefers-reduced-motion:reduce){
   html body .adm-main>section:not(.adm-hide){animation:none}
+  /* Each selector has to out-specify the rule that set the transition:
+     the compact row is styled through #items, so a plain class loses. */
   html body .faq-admin-item,
-  html body .work-compact-item,
   html body .faq-admin-chevron,
-  html body .work-compact-chevron{transition:none}
+  html body .work-compact-chevron,
+  html body #items>.adm-item.work-compact-item,
+  html body .adm-item,
+  html body .adm-news-item{transition:none}
 }

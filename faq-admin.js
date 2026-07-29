@@ -51,7 +51,11 @@
   const reorder=()=>{if(!dragged||!target||dragged===target.id)return clearDrop();const from=items.findIndex(x=>x.id===dragged);if(from<0)return clearDrop();const [moving]=items.splice(from,1);let to=items.findIndex(x=>x.id===target.id);if(to<0)to=items.length;else if(target.after)to++;items.splice(to,0,moving);clearDrop();setDirty(true);render();persist('Order saved.')};
   const move=(index,delta)=>{const next=index+delta;if(!items[index]||!items[next])return;[items[index],items[next]]=[items[next],items[index]];expanded=items[next].id;setDirty(true);render();persist('Order saved.')};
 
-  const tools=admListTools({
+  // Degrade to an unfiltered list rather than taking the editor down with it
+  // if the shared module is missing.
+  const tools=(window.admListTools||(()=>({element:document.createComment('no list tools'),
+    filtering:false,matches:()=>true,sync:()=>false,
+    countLabel:(s,t,n)=>`${t} ${n}${t===1?'':'s'}`})))({
     label:'FAQs',
     text:item=>[item.question,item.answer].filter(Boolean).join(' '),
     isDraft:item=>item.published===false,
