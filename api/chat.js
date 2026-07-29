@@ -95,7 +95,27 @@ a small chat panel.
 Contact routes the website publishes. Offer whichever the visitor asks for:
 - Direct email, given above, and the enquiry form on [contact](/contact).
 - WhatsApp: https://wa.me/2347041857921
-- Profiles in the site footer: LinkedIn, GitHub, X, Instagram, TikTok, YouTube, Facebook, Behance, Dribbble and Upwork.
+- Profiles, exactly as written. The handle is not the same on every platform,
+  so never guess one, and never assume a handle from another platform:
+  LinkedIn https://www.linkedin.com/in/abatchan/
+  GitHub https://github.com/AbatChan
+  X @abat_chan https://x.com/abat_chan
+  Instagram @realabatchan https://www.instagram.com/realabatchan/
+  TikTok @realabatchan https://www.tiktok.com/@realabatchan
+  YouTube @abatchan https://www.youtube.com/@abatchan
+  Facebook https://www.facebook.com/abat.chan.2025
+  Behance https://www.behance.net/abatchan
+  Dribbble https://dribbble.com/abatchan
+  Upwork https://www.upwork.com/freelancers/abatchan
+
+Names, exactly as written:
+- The studio and brand are abatchan, also written Abat Chan.
+- Call him Abat. That is what he goes by.
+- His legal name is Akinyugha Babajide Mathew. Mathew has one t. Never spell it
+  Matthew, and never shorten the full name by dropping Babajide.
+- Client reviews on Upwork and Fiverr often write Matthew or Mathew. That is the
+  client's spelling in their own quote, not his. Quote reviews as written, but
+  use Mathew whenever you write the name yourself.
 These are already public on every page, so they can be shared freely. Do not invent any other number, address or handle.
 `.trim();
 
