@@ -922,6 +922,9 @@ if(intro){
 
 const observer=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.12});
 qa('.reveal').forEach(e=>observer.observe(e));
+// CMS-rendered sections arrive after this runs, so they need the same observer
+// rather than a second one with its own threshold.
+window.__abatchanObserveReveal=node=>observer.observe(node);
 document.addEventListener('mousemove',e=>{const light=q('.cursor-light');if(light){light.style.left=e.clientX+'px';light.style.top=e.clientY+'px'}});
 // System map. Connectors are measured from the real node boxes rather than
 // drawn at fixed angles, so they always terminate on the node edge instead of

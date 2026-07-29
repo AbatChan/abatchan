@@ -1012,3 +1012,75 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
 :is(.faq-list,[data-faq],.faq-group)>details[data-state="open"] .faq-toggle::after{opacity:0;transform:translate(-50%,-50%)}
 .faq-answer{overflow:hidden}.faq-answer-inner{max-width:800px;padding:0 76px 25px;color:var(--muted);font-size:15px;line-height:1.75}.faq-answer-inner p{margin:0}
 @media(max-width:700px){:is(.faq-list,[data-faq],.faq-group){gap:10px!important}:is(.faq-list,[data-faq],.faq-group)>details{border-radius:18px!important}:is(.faq-list,[data-faq],.faq-group)>details>summary{grid-template-columns:34px minmax(0,1fr) 36px!important;gap:11px!important;min-height:72px!important;padding:15px 14px!important}.faq-index{width:34px;height:34px;border-radius:10px;font-size:10px}.faq-toggle{width:36px;height:36px}.faq-question{font-size:16px}.faq-answer-inner{padding:0 15px 20px 59px;font-size:14px}}
+
+/* Client outcome ledger ---------------------------------------------------
+   Rows, not cards: the same hairline-separated structure as .service and
+   .principle, so a review reads as a record rather than a testimonial wall.
+   The signal dot is the only colour, and it lights as each row reveals. */
+.review-ledger{
+  display:grid;
+  grid-template-columns:minmax(180px,.3fr) minmax(0,1fr) max-content;
+  border-top:1px solid var(--line);
+}
+.review-ledger[hidden]{display:none}
+.review-row{
+  grid-column:1/-1;
+  display:grid;
+  /* Rows share the ledger's tracks, so the quotes align down the column even
+     when only some reviews carry a project link. The explicit value stays
+     first as the fallback where subgrid is unavailable. */
+  grid-template-columns:minmax(180px,.3fr) minmax(0,1fr) max-content;
+  grid-template-columns:subgrid;
+  gap:40px;
+  align-items:start;
+  padding:34px 0;
+  border-bottom:1px solid var(--line);
+}
+.review-who{display:grid;grid-template-columns:8px minmax(0,1fr);gap:14px;align-items:start}
+.review-dot{
+  width:8px;height:8px;margin-top:9px;border-radius:50%;
+  background:var(--muted);
+  transition:background .55s var(--ease) .18s,box-shadow .55s var(--ease) .18s;
+}
+.review-row.visible .review-dot{background:var(--signal);box-shadow:0 0 18px rgba(99,102,241,.75)}
+.review-role{display:block;color:var(--paper);font-size:14px;line-height:1.45}
+.review-meta{display:block;color:var(--muted);font-size:13px;line-height:1.55}
+.review-quote{
+  margin:0;
+  color:var(--paper);
+  font-size:clamp(18px,1.6vw,21px);
+  line-height:1.5;
+  letter-spacing:-.02em;
+}
+.review-link{
+  /* Sits on the quote's first line rather than centring in a tall row. */
+  align-self:start;
+  padding-top:7px;
+  white-space:nowrap;
+  color:var(--signal-ink,var(--signal));
+  font-size:13px;
+}
+.review-link .arrow{display:inline-block;transition:transform .25s var(--ease)}
+.review-link:hover .arrow,.review-link:focus-visible .arrow{transform:translate(3px,-3px)}
+.review-link:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:4px}
+
+/* One line beside the contact form, not a section. */
+.review-note{
+  margin-top:22px;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+}
+.review-note[hidden]{display:none}
+.review-note .review-quote{font-size:15px;line-height:1.65}
+.review-note .review-meta{margin-top:8px}
+
+@media(max-width:900px){
+  .review-ledger{grid-template-columns:minmax(0,1fr)}
+  .review-row{grid-template-columns:minmax(0,1fr);gap:14px;padding:26px 0}
+  .review-who{gap:12px}
+  .review-dot{margin-top:7px}
+  .review-link{padding-top:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .review-dot{transition:none}
+}

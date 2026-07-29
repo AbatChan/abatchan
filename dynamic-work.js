@@ -94,6 +94,7 @@
     const card = document.createElement('article');
     card.className = 'work-card reveal visible home-managed-card home-slot-card';
     card.dataset.type = item.category || 'product';
+    if (item.slug) card.id = `work-${item.slug}`;
 
     const visual = document.createElement('div');
     visual.className = 'card-visual managed';
@@ -158,8 +159,11 @@
       const apply = () => {
         rows.forEach(item => {
           const extra = extras[item.slug] || {};
-          if (!Array.isArray(extra.gallery_paths) || !extra.gallery_paths.length) return;
           const card = qa('.work-card').find(element => q('.card-info h3', element)?.textContent.trim() === item.title);
+          // Anchor every matched card, not just the ones with galleries, so a
+          // review elsewhere on the site can link straight to the project.
+          if (card && item.slug && !card.id) card.id = `work-${item.slug}`;
+          if (!Array.isArray(extra.gallery_paths) || !extra.gallery_paths.length) return;
           const visual = card && q('.card-visual', card);
           if (!visual || visual.dataset.galleryReady) return;
           const gallery = makeGallery(item, extra);

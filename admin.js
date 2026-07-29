@@ -13,7 +13,7 @@
   const resetMsg = q('#resetMsg');
   const toastEl = q('#toast');
   const dirty = new Set();
-  const ROUTE_VIEWS = new Set(['work', 'copy', 'assistant', 'announcements', 'faqs']);
+  const ROUTE_VIEWS = new Set(['work', 'copy', 'assistant', 'announcements', 'faqs', 'reviews']);
   let activeView = 'work';
   let toastTimer;
 
