@@ -198,7 +198,7 @@
         if(Number.isFinite(left)&&left>0&&left<=25&&!panel.dataset.budgetWarned){
           panel.dataset.budgetWarned='1';
           const note=document.createElement('div');
-          note.className='assist-note';
+          note.className='assist-budget';
           note.setAttribute('role','status');
           note.textContent='The guide is near its limit for today. For anything it cannot answer, the contact page reaches Abat directly.';
           log.append(note);
