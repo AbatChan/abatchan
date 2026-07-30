@@ -672,12 +672,22 @@
   ];
   const PLATFORM = Object.fromEntries(SOCIAL_PLATFORMS.map(p => [p[0], { label: p[1], pattern: p[2], sample: p[3] }]));
 
-  // wa.me wants bare digits. A local 0-prefixed Nigerian number is the thing
-  // most likely to be typed, so it is converted rather than rejected.
+  // wa.me wants bare digits with a country code and no plus.
+  //
+  // "+44 7700 900123" and "0044 7700 900123" both already carry their country,
+  // so they work anywhere. A bare "0704…" does not, and the only sane guess is
+  // the country the studio is in — which is the one assumption here. Any other
+  // country needs the + or 00 form, and the preview under the field shows the
+  // result either way, so a wrong guess is visible before it is saved.
+  const HOME_DIALLING_CODE = '234';
   const waDigits = value => {
-    let digits = String(value).replace(/\D/g, '');
-    if (digits.startsWith('00')) digits = digits.slice(2);
-    else if (digits.startsWith('0')) digits = `234${digits.slice(1)}`;
+    // "+44 (0)7700 900123" means dial 07700 at home or +44 7700 abroad. Keeping
+    // that bracketed trunk 0 produces a number that does not exist.
+    const raw = String(value).trim().replace(/\(\s*0\s*\)/g, '');
+    let digits = raw.replace(/\D/g, '');
+    if (raw.startsWith('+')) return digits;
+    if (digits.startsWith('00')) return digits.slice(2);
+    if (digits.startsWith('0')) return `${HOME_DIALLING_CODE}${digits.slice(1)}`;
     return digits;
   };
 
@@ -761,6 +771,12 @@
       tag.setAttribute('for', field.id);
       tag.textContent = slug === 'whatsapp' ? `${label} number` : `${label} username`;
       wrap.append(tag, field, preview);
+      if (slug === 'whatsapp') {
+        const hint = document.createElement('p');
+        hint.className = 'adm-field-help';
+        hint.textContent = `A number starting 0 is read as +${HOME_DIALLING_CODE}. For any other country, start with + or 00.`;
+        wrap.append(hint);
+      }
       form.append(wrap);
     }
     saveState(q('#saveSocials'), false);
