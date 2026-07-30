@@ -313,10 +313,13 @@ node --check api/quota.js && node --check api/chat-stream.js \
   && node --check script.js && node --check admin.js
 ```
 
-There are three suites covering the quota ladder, the streaming handler's error
-payloads, and the graduated cap. They stub `fetch` and do not touch Supabase or
-spend budget. They currently live outside the repo — **move them into
-`tests/` and commit them**, otherwise the next person has nothing to run.
+The three offline suites covering the quota ladder, the streaming handler's
+error payloads, and the graduated cap live in `tests/`. They stub `fetch`, do
+not touch Supabase or spend budget, and run together with:
+
+```bash
+node tests/run.mjs
+```
 
 For the assistant's refusals there is an adversarial battery of 38 probes
 (prompt extraction, secret extraction, free engineering, claimed authority,
@@ -324,7 +327,8 @@ persona switching, commercial integrity, page-content injection). Each probe
 declares a regex that must *not* appear in the reply. Re-run it after any prompt
 change. Note that some failures are **intermittent** — one probe leaked 5/5 on
 one deploy and 0/5 on the next, so a single passing run proves nothing. Run
-repeats.
+repeats. These live-network checks are in `tests/live/` and refuse to start
+unless `LIVE_ASSISTANT_TESTS=1` is set. Confirm the calling IP is exempt first.
 
 ---
 

@@ -8,6 +8,7 @@
 
 audit/
 supabase/
+tests/
 
 *.md
 BRAND_GUIDE.txt
