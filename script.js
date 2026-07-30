@@ -625,7 +625,7 @@ window.ASSISTANT_CANNED=CANNED;
     '<div class="assist-log" role="log" aria-live="polite"></div>'+
     '<div class="assist-chips">'+ASSISTANT.chips.map(c=>`<button type="button">${c}</button>`).join('')+'</div>'+
     '<form class="assist-form">'+
-      '<input type="text" name="q" autocomplete="off" maxlength="1000" placeholder="Ask a question…" aria-label="Your question">'+
+      '<textarea name="q" rows="1" autocomplete="off" maxlength="1000" placeholder="Ask a question…" aria-label="Your question"></textarea>'+
       '<button class="assist-send" type="submit" aria-label="Send">'+
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 2.6 10.9 13.1"/><path d="M21.4 2.6 14.7 21.4l-3.8-8.3-8.3-3.8Z"/></svg>'+
       '</button>'+
@@ -634,7 +634,7 @@ window.ASSISTANT_CANNED=CANNED;
 
   document.body.append(launch,panel);
 
-  const log=q('.assist-log',panel), form=q('.assist-form',panel), input=q('input',form);
+  const log=q('.assist-log',panel), form=q('.assist-form',panel), input=q('textarea,input',form);
   const chips=q('.assist-chips',panel);
   const history=[];
   let greeted=false,pending=false,lastQuestion='';

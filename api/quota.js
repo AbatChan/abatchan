@@ -7,6 +7,9 @@
 //   assistant.usage      one row, the whole site's day
 //   assistant.ip.<hash>  one row per connection per day
 //
+// Both gain a .<env> suffix outside production, so a preview cannot spend or
+// reset the live counters. The sweep pattern still matches either form.
+//
 // The per-connection row is the one that matters. Without it a single visitor
 // can spend the entire site's day on their own, because the burst limiter
 // forgives them every ten minutes.
@@ -20,7 +23,14 @@ import { createHash } from 'node:crypto';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://fdubcelrwfpzjjnqipku.supabase.co';
 const DAILY_MAX = Number(process.env.ASSISTANT_DAILY_MAX || 600);
 const IP_DAILY_MAX = Number(process.env.ASSISTANT_IP_DAILY_MAX || 30);
-const USAGE_KEY = 'assistant.usage';
+// Preview and production share one Supabase project, so without a namespace
+// they share one counter — and because assistant_consume clamps with
+// least(count + 1, max + 1), a preview running a smaller limit does not just
+// read that counter, it drags the stored value down to its own ceiling.
+// Production keeps the bare keys so today's numbers carry over.
+const ENV = process.env.VERCEL_ENV || 'development';
+const SUFFIX = ENV === 'production' ? '' : `.${ENV}`;
+const USAGE_KEY = `assistant.usage${SUFFIX}`;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -34,7 +44,7 @@ function serviceHeaders() {
 
 function ipKey(ip, day) {
   const salt = process.env.ASSISTANT_IP_SALT || process.env.SUPABASE_SECRET_KEY || 'abatchan';
-  return 'assistant.ip.' + createHash('sha256').update(`${salt}:${day}:${ip}`).digest('hex').slice(0, 16);
+  return `assistant.ip${SUFFIX}.` + createHash('sha256').update(`${salt}:${day}:${ip}`).digest('hex').slice(0, 16);
 }
 
 const open = () => ({ allowed: true, reason: null, remaining: DAILY_MAX, personal: IP_DAILY_MAX });

@@ -458,6 +458,13 @@ html[data-theme="light"] .assist-msg.bot{color:#151519;background:rgba(21,21,25,
 .assist-error-actions button:focus-visible,.assist-error-actions a:focus-visible{
   outline:3px solid rgba(129,132,255,.45);outline-offset:2px}
 .assist-error-actions a{color:#fff;border-color:transparent;background:var(--signal)}
+/* Two contact routes, so they must not look like one button repeated. Email
+   keeps the primary fill; WhatsApp is outlined in its own green. */
+.assist-error-actions a.assist-wa{
+  color:#25D366;background:rgba(37,211,102,.10);border-color:rgba(37,211,102,.45)}
+.assist-error-actions a.assist-wa:hover{
+  background:rgba(37,211,102,.18);border-color:rgba(37,211,102,.7)}
+html[data-theme="light"] .assist-error-actions a.assist-wa{color:#128C4A}
 html[data-theme="light"] .assist-error-actions button{color:#151519}
 .assist-typing{display:flex;gap:4px;align-self:flex-start;padding:13px}
 .assist-typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:assistBlink 1.1s infinite}
@@ -473,13 +480,23 @@ html[data-theme="light"] .assist-error-actions button{color:#151519}
 .assist-chips button:hover{color:var(--paper);border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.1)}
 html[data-theme="light"] .assist-chips button:hover{color:#151519}
 
-.assist-form{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line)}
-.assist-form input{flex:1;min-width:0;padding:11px 13px;border-radius:13px;
+.assist-form{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line);align-items:flex-end}
+.assist-form input,.assist-form textarea{flex:1;min-width:0;padding:11px 13px;border-radius:13px;
   border:1px solid var(--edge);background:transparent;color:var(--paper);font:inherit;outline:none}
-.assist-form input:focus{border-color:var(--signal)}
-.assist-form input:disabled{opacity:.6;cursor:wait}
-html[data-theme="light"] .assist-form input{color:#151519}
-.assist-send{width:42px;flex:0 0 42px;display:grid;place-items:center;border:0;border-radius:13px;cursor:pointer;
+/* Sized by JS up to a ceiling. resize:none keeps the drag handle from fighting
+   that; the line-height must match the JS measurement or the first row jumps. */
+.assist-form textarea{resize:none;overflow-y:hidden;line-height:1.45;max-height:132px;display:block}
+.assist-form input:focus,.assist-form textarea:focus{border-color:var(--signal)}
+.assist-form input:disabled,.assist-form textarea:disabled{opacity:.6;cursor:wait}
+html[data-theme="light"] .assist-form input,
+html[data-theme="light"] .assist-form textarea{color:#151519}
+
+.assist-count{padding:0 16px;color:var(--muted);font-size:11px;line-height:1.45;min-height:0}
+.assist-count:empty{display:none}
+.assist-count.is-warn{color:var(--signal-ink,var(--signal))}
+/* The form aligns to flex-end so the textarea can grow downward, which means
+   this no longer stretches to the row height. It has to state its own. */
+.assist-send{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border:0;border-radius:13px;cursor:pointer;
   color:#fff;background:var(--signal);transition:transform .2s,opacity .2s}
 .assist-send:hover{transform:translateY(-2px)}
 .assist-send:disabled{opacity:.45;transform:none;cursor:default}
@@ -596,7 +613,10 @@ html[data-theme="light"] .news-x:hover{color:#151519;background:rgba(21,21,25,.0
 .assist-msg.bot li{line-height:1.5}.assist-msg.bot li::marker{color:var(--signal)}
 .assist-msg.bot strong{font-weight:720;color:var(--paper)}
 html[data-theme="light"] .assist-msg.bot strong{color:#151519}
-.assist-msg.bot a{color:var(--signal-ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+/* Links the model writes into an answer. The error block is also a .bot
+   message, so without :not(.btn) this repaints its action buttons as underlined
+   indigo text and beats .assist-error-actions .btn on the trailing element. */
+.assist-msg.bot a:not(.btn){color:var(--signal-ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .assist-msg.bot a:hover{color:var(--paper)}html[data-theme="light"] .assist-msg.bot a:hover{color:#151519}
 .assist-msg.bot code{font:500 .88em/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;padding:.14em .38em;border-radius:6px;background:rgba(99,102,241,.12);color:var(--signal-ink);overflow-wrap:anywhere;word-break:break-word}
 .assist-msg.bot pre{max-width:100%;overflow:auto;margin:.7em 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.22);scrollbar-width:thin;scrollbar-color:rgba(99,102,241,.56) transparent}
@@ -669,7 +689,8 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
   padding:0 10px!important;
   white-space:nowrap;
 }
-.assist-form input{font-size:16px!important}
+/* 16px is the threshold below which iOS zooms the page on focus. */
+.assist-form input,.assist-form textarea{font-size:16px!important}
 .assist-backdrop{
   position:fixed;
   inset:0;

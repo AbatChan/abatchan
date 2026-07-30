@@ -9,6 +9,7 @@
   };
   const STORE='abatchanGuideHistoryV1';
   const MAX_STORED=24;
+  const WHATSAPP='https://wa.me/2347041857921';
 
   const loadScript=src=>new Promise((resolve,reject)=>{
     if([...document.scripts].some(s=>s.src===src))return resolve();
@@ -75,7 +76,44 @@
 
     const form=oldForm.cloneNode(true);oldForm.replaceWith(form);
     const chips=oldChips?.cloneNode(true);if(oldChips&&chips)oldChips.replaceWith(chips);
-    const input=form.querySelector('input');const send=form.querySelector('.assist-send');
+    const input=form.querySelector('textarea,input');const send=form.querySelector('.assist-send');
+    const LIMIT=Number(input.getAttribute('maxlength'))||1000;
+
+    // The field grows with the question up to a ceiling, then scrolls, so a
+    // long paste never pushes the send button off the panel.
+    const GROW_MAX=132;
+    const grow=()=>{
+      if(input.tagName!=='TEXTAREA')return;
+      input.style.height='auto';
+      input.style.height=Math.min(input.scrollHeight,GROW_MAX)+'px';
+      input.style.overflowY=input.scrollHeight>GROW_MAX?'auto':'hidden';
+    };
+
+    // maxlength silently truncates a big paste, which reads as the field
+    // eating your text. Say what happened instead.
+    const counter=document.createElement('div');
+    counter.className='assist-count';counter.setAttribute('aria-live','polite');
+    form.after(counter);
+    const meter=truncated=>{
+      const left=LIMIT-input.value.length;
+      counter.textContent=truncated
+        ? `That was longer than ${LIMIT} characters, so it was trimmed to fit. Send the rest through the contact page.`
+        : left<=120?`${left} character${left===1?'':'s'} left`:'';
+      counter.classList.toggle('is-warn',truncated||left<=0);
+    };
+    input.addEventListener('paste',e=>{
+      const pasted=(e.clipboardData||window.clipboardData)?.getData('text')||'';
+      const room=LIMIT-input.value.length+String(input.value).slice(input.selectionStart,input.selectionEnd).length;
+      setTimeout(()=>{grow();meter(pasted.length>room)},0);
+    });
+    input.addEventListener('input',()=>{grow();meter(false)});
+    // Enter sends, Shift+Enter starts a new line.
+    input.addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
+        e.preventDefault();
+        form.requestSubmit?form.requestSubmit():form.dispatchEvent(new Event('submit',{cancelable:true}));
+      }
+    });
     let transcript=readStored();
     const history=transcript.slice(-8);
     let pending=false,audioCtx=null,peekTimer=0,confirmTimer=0;
@@ -200,8 +238,12 @@
         const retry=document.createElement('button');retry.type='button';retry.className='btn sm';retry.textContent='Try again';retry.onclick=()=>reply(question);
         actions.append(retry);
       }
-      const contact=document.createElement('a');contact.href='/contact';contact.className='btn primary sm';contact.textContent='Contact Abat ↗';
-      actions.append(contact);el.append(title,body,actions);log.appendChild(el);log.scrollTop=log.scrollHeight;
+      // Two routes, because a visitor the guide just turned away should not
+      // also have to pick the one channel that suits Abat.
+      const contact=document.createElement('a');contact.href='/contact';contact.className='btn primary sm';contact.textContent='Email Abat ↗';
+      const whatsapp=document.createElement('a');whatsapp.href=WHATSAPP;whatsapp.className='btn sm assist-wa';
+      whatsapp.target='_blank';whatsapp.rel='noopener noreferrer';whatsapp.textContent='WhatsApp ↗';
+      actions.append(contact,whatsapp);el.append(title,body,actions);log.appendChild(el);log.scrollTop=log.scrollHeight;
     };
 
     const reply=async text=>{
@@ -274,7 +316,7 @@
       const clean=String(text||'').trim();if(!clean||pending)return;
       ensureAudio()?.resume().catch(()=>{});
       add(clean,'me',true);transcript.push({role:'user',content:clean});writeStored(transcript);
-      if(chips)chips.hidden=true;input.value='';reply(clean);
+      if(chips)chips.hidden=true;input.value='';grow();meter(false);reply(clean);
     };
     form.addEventListener('submit',e=>{e.preventDefault();ask(input.value)});
     chips?.addEventListener('click',e=>{const button=e.target.closest('button');if(button)ask(button.textContent)});
