@@ -142,9 +142,17 @@ where key = 'copy.pricing.website'
 -- update. The REST fallback in api/quota.js does the same work with a read
 -- then a write, which undercounts under load; this does not.
 --
--- Counts are clamped one past the ceiling so a sustained flood cannot run the
--- stored number away.
+-- The per-visitor cap tightens as the pool drains. A flat cap lets the first
+-- arrivals take a full allowance each and leaves nothing for the tail of the
+-- day; this spends the same budget but keeps late visitors served. The tiers
+-- mirror capFor() in api/quota.js — change both together.
+--
+-- The usage key is a parameter because preview and production namespace their
+-- counters; a shared row let a preview's smaller ceiling clamp the live count.
+drop function if exists public.assistant_consume(text, text, int, int);
+
 create or replace function public.assistant_consume(
+  p_usage_key  text,
   p_ip_key     text,
   p_day        text,
   p_global_max int,
@@ -155,9 +163,23 @@ security definer
 set search_path = public
 as $$
 declare
-  mine int;
-  used int;
+  spent int;
+  cap   int;
+  mine  int;
+  used  int;
 begin
+  -- Pool state before spending, so the cap reflects what is left.
+  select coalesce((value->>'count')::int, 0) into spent
+  from public.settings
+  where key = p_usage_key and value->>'day' = p_day;
+  spent := coalesce(spent, 0);
+
+  cap := case
+    when spent < p_global_max * 0.5 then p_ip_max
+    when spent < p_global_max * 0.8 then greatest(1, round(p_ip_max * 0.4)::int)
+    else                                 greatest(1, round(p_ip_max * 0.17)::int)
+  end;
+
   -- Per-connection first: one visitor must not be able to spend the day.
   insert into public.settings (key, value, is_public)
   values (p_ip_key, jsonb_build_object('day', p_day, 'count', 1), false)
@@ -168,16 +190,20 @@ begin
         case when settings.value->>'day' = p_day
              then coalesce((settings.value->>'count')::int, 0) + 1
              else 1 end,
-        p_ip_max + 1))
+        cap + 1))
   returning (value->>'count')::int into mine;
 
-  if mine > p_ip_max then
+  if mine > cap then
     return jsonb_build_object('allowed', false, 'reason', 'ip_daily',
-                              'used', 0, 'remaining', 0, 'personal', 0);
+                              'used', 0, 'remaining', greatest(p_global_max - spent, 0),
+                              'personal', 0, 'cap', cap);
   end if;
 
+  -- The site's day. When the date rolls over the finished day is filed into
+  -- history rather than overwritten, so there is something to size the ceiling
+  -- against instead of guesswork.
   insert into public.settings (key, value, is_public)
-  values ('assistant.usage', jsonb_build_object('day', p_day, 'count', 1), false)
+  values (p_usage_key, jsonb_build_object('day', p_day, 'count', 1, 'history', '{}'::jsonb), false)
   on conflict (key) do update
     set value = jsonb_build_object(
       'day', p_day,
@@ -185,22 +211,30 @@ begin
         case when settings.value->>'day' = p_day
              then coalesce((settings.value->>'count')::int, 0) + 1
              else 1 end,
-        p_global_max + 1))
+        p_global_max + 1),
+      'history', case
+        when settings.value->>'day' = p_day
+          then coalesce(settings.value->'history', '{}'::jsonb)
+        else coalesce(settings.value->'history', '{}'::jsonb)
+             || jsonb_build_object(settings.value->>'day',
+                                   coalesce(settings.value->'count', '0'::jsonb))
+      end)
   returning (value->>'count')::int into used;
 
   if used > p_global_max then
     return jsonb_build_object('allowed', false, 'reason', 'daily',
                               'used', used, 'remaining', 0,
-                              'personal', greatest(p_ip_max - mine, 0));
+                              'personal', greatest(cap - mine, 0), 'cap', cap);
   end if;
 
   return jsonb_build_object('allowed', true, 'reason', null,
                             'used', used,
                             'remaining', greatest(p_global_max - used, 0),
-                            'personal', greatest(p_ip_max - mine, 0));
+                            'personal', greatest(cap - mine, 0),
+                            'cap', cap);
 end $$;
 
 -- Only the service key may spend the budget. The publishable key is in every
 -- browser on the site, so it must never be able to call this.
-revoke all on function public.assistant_consume(text, text, int, int)
+revoke all on function public.assistant_consume(text, text, text, int, int)
   from public, anon, authenticated;

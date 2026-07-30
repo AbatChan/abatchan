@@ -49,6 +49,23 @@ function ipKey(ip, day) {
 
 const open = () => ({ allowed: true, reason: null, remaining: DAILY_MAX, personal: IP_DAILY_MAX });
 
+// A flat per-visitor cap is the wrong shape: the first ten arrivals can each
+// take their full allowance while the pool is healthy, and the eleventh gets
+// nothing. Tightening as the pool drains spends the same budget but keeps the
+// tail of the day open, so a late visitor asking three questions is still
+// served. Mirrored in assistant_consume; change both together.
+export function capFor(used) {
+  const spent = used / DAILY_MAX;
+  if (spent < 0.5) return IP_DAILY_MAX;
+  if (spent < 0.8) return Math.max(1, Math.round(IP_DAILY_MAX * 0.4));
+  return Math.max(1, Math.round(IP_DAILY_MAX * 0.17));
+}
+
+// Testing and demos should not spend what visitors need. Comma-separated.
+const EXEMPT = new Set(
+  String(process.env.ASSISTANT_EXEMPT_IPS || '').split(',').map(s => s.trim()).filter(Boolean)
+);
+
 // Yesterday's per-connection rows are dead weight the moment the date rolls, so
 // the first request of a new day clears them. Fire-and-forget: a failed sweep
 // costs storage, never a visitor.
@@ -66,7 +83,7 @@ async function viaRpc(headers, day, key) {
     method: 'POST',
     headers: { ...headers, Accept: 'application/json' },
     cache: 'no-store',
-    body: JSON.stringify({ p_ip_key: key, p_day: day, p_global_max: DAILY_MAX, p_ip_max: IP_DAILY_MAX })
+    body: JSON.stringify({ p_usage_key: USAGE_KEY, p_ip_key: key, p_day: day, p_global_max: DAILY_MAX, p_ip_max: IP_DAILY_MAX })
   });
   if (!res.ok) return null;
   const data = await res.json();
@@ -90,10 +107,11 @@ async function viaRest(headers, day, key) {
   };
   const used = at(USAGE_KEY);
   const mine = at(key);
+  const cap = capFor(used);
 
   // Personal ceiling first: it is the cheaper refusal and the fairer one.
-  if (mine >= IP_DAILY_MAX) return { allowed: false, reason: 'ip_daily', remaining: Math.max(0, DAILY_MAX - used), personal: 0 };
-  if (used >= DAILY_MAX) return { allowed: false, reason: 'daily', remaining: 0, personal: Math.max(0, IP_DAILY_MAX - mine) };
+  if (mine >= cap) return { allowed: false, reason: 'ip_daily', remaining: Math.max(0, DAILY_MAX - used), personal: 0 };
+  if (used >= DAILY_MAX) return { allowed: false, reason: 'daily', remaining: 0, personal: Math.max(0, cap - mine) };
 
   await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
     method: 'POST',
@@ -104,7 +122,7 @@ async function viaRest(headers, day, key) {
     ])
   });
   if (used === 0) sweep(headers, day);
-  return { allowed: true, reason: null, remaining: Math.max(0, DAILY_MAX - used - 1), personal: Math.max(0, IP_DAILY_MAX - mine - 1) };
+  return { allowed: true, reason: null, remaining: Math.max(0, DAILY_MAX - used - 1), personal: Math.max(0, cap - mine - 1) };
 }
 
 // Returns {allowed, reason, remaining, personal}. A counter that cannot be read
@@ -112,7 +130,7 @@ async function viaRest(headers, day, key) {
 // closes — the same call the original counter made.
 export async function consume(ip) {
   const headers = serviceHeaders();
-  if (!headers) return open();
+  if (!headers || EXEMPT.has(ip)) return open();
   const day = today();
   const key = ipKey(ip, day);
   try {
