@@ -91,7 +91,7 @@
     q('#who').textContent = user.email || '';
     gate.classList.add('adm-hide');
     app.classList.remove('adm-hide');
-    await Promise.all([loadWork(), loadCopy(), loadAssistant(), loadAnnouncements()]);
+    await Promise.all([loadWork(), loadCopy(), loadSocials(), loadAssistant(), loadAnnouncements()]);
     const route = routeFromUrl();
     if (route.view === 'work' && route.item) {
       if (route.item === 'new') {
@@ -642,6 +642,156 @@
     }
   });
 
+  // ------------------------------------------------------- exempt addresses
+  // Accepts newlines or commas, because both are what people actually paste.
+  // Anything that is not an IPv4 or IPv6 address is dropped rather than saved,
+  // since a typo here silently fails to exempt rather than announcing itself.
+  const IP_SHAPE = /^(\d{1,3}(\.\d{1,3}){3}|[0-9a-f:]{3,45})$/i;
+  const exemptList = value => [...new Set(
+    String(value || '').split(/[\s,]+/).map(s => s.trim()).filter(s => IP_SHAPE.test(s))
+  )];
+
+  // ------------------------------------------------------------- socials
+  // Icons ship with the site, so the platforms are fixed. You type the handle;
+  // the full URL is built from the pattern. Pasting a whole URL still works and
+  // is kept verbatim, which is the escape hatch for a profile that does not fit
+  // the usual shape. What gets stored is always the finished link, so the site
+  // and the guide never need to know about any of this.
+  const SOCIAL_PLATFORMS = [
+    ['linkedin',  'LinkedIn',  'https://www.linkedin.com/in/%s/',        'abatchan'],
+    ['github',    'GitHub',    'https://github.com/%s',                  'AbatChan'],
+    ['x',         'X',         'https://x.com/%s',                       'abat_chan'],
+    ['instagram', 'Instagram', 'https://www.instagram.com/%s/',          'realabatchan'],
+    ['tiktok',    'TikTok',    'https://www.tiktok.com/@%s',             'realabatchan'],
+    ['youtube',   'YouTube',   'https://www.youtube.com/@%s',            'abatchan'],
+    ['facebook',  'Facebook',  'https://www.facebook.com/%s',            'abat.chan.2025'],
+    ['behance',   'Behance',   'https://www.behance.net/%s',             'abatchan'],
+    ['dribbble',  'Dribbble',  'https://dribbble.com/%s',                'abatchan'],
+    ['upwork',    'Upwork',    'https://www.upwork.com/freelancers/%s',  'abatchan'],
+    ['whatsapp',  'WhatsApp',  'https://wa.me/%s',                       '0704 185 7921']
+  ];
+  const PLATFORM = Object.fromEntries(SOCIAL_PLATFORMS.map(p => [p[0], { label: p[1], pattern: p[2], sample: p[3] }]));
+
+  // wa.me wants bare digits. A local 0-prefixed Nigerian number is the thing
+  // most likely to be typed, so it is converted rather than rejected.
+  const waDigits = value => {
+    let digits = String(value).replace(/\D/g, '');
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    else if (digits.startsWith('0')) digits = `234${digits.slice(1)}`;
+    return digits;
+  };
+
+  const socialHref = (slug, raw) => {
+    const value = String(raw || '').trim();
+    if (!value) return '';
+    if (/^https?:\/\//i.test(value)) return value;
+    if (slug === 'whatsapp') {
+      const digits = waDigits(value);
+      return digits ? `https://wa.me/${digits}` : '';
+    }
+    const handle = value.replace(/^@+/, '').replace(/^\/+|\/+$/g, '');
+    return handle ? PLATFORM[slug].pattern.replace('%s', encodeURIComponent(handle)) : '';
+  };
+
+  // Show the saved link back as the handle it came from, so the field reads the
+  // way it was typed rather than as a URL that has to be re-parsed by eye.
+  const socialHandle = (slug, href) => {
+    if (!href) return '';
+    if (slug === 'whatsapp') return (href.match(/wa\.me\/(\d+)/) || [, href])[1];
+    const [prefix, suffix] = PLATFORM[slug].pattern.split('%s');
+    if (!href.startsWith(prefix)) return href;
+    let rest = href.slice(prefix.length);
+    if (suffix && rest.endsWith(suffix)) rest = rest.slice(0, -suffix.length);
+    try { rest = decodeURIComponent(rest); } catch { /* leave as written */ }
+    return rest;
+  };
+
+  async function loadSocials() {
+    const form = q('#socialsForm');
+    if (!form) return;
+    let saved = {};
+    try {
+      const rows = await sb.select('settings', 'key=eq.social.links&select=value');
+      const stored = rows?.[0]?.value;
+      if (Array.isArray(stored)) {
+        saved = Object.fromEntries(stored
+          .map(row => Array.isArray(row) ? row : [row?.slug, row?.label, row?.href])
+          .filter(([slug]) => slug)
+          .map(([slug, , href]) => [slug, href || '']));
+      }
+    } catch (err) {
+      toast(`Social links could not be loaded. ${err.message}`, true);
+      return;
+    }
+    // Nothing saved yet means the site is rendering its built-in list, so the
+    // fields start on those handles. Showing them empty would claim every
+    // profile is hidden while the footer is plainly displaying all of them.
+    const unsaved = !Object.keys(saved).length;
+
+    form.innerHTML = '';
+    for (const [slug, label, , sample] of SOCIAL_PLATFORMS) {
+      const wrap = document.createElement('div');
+      const field = document.createElement('input');
+      field.type = 'text';
+      field.id = `soc-${slug}`;
+      field.dataset.slug = slug;
+      field.dataset.label = label;
+      field.placeholder = slug === 'whatsapp' ? sample : `@${sample}`;
+      field.value = unsaved ? sample : socialHandle(slug, saved[slug] ?? '');
+      field.autocomplete = 'off';
+      field.spellcheck = false;
+
+      // The built link, shown as you type, so there is no guessing about what
+      // a handle turns into or whether it is the right one.
+      const preview = document.createElement('p');
+      preview.className = 'adm-field-help adm-social-preview';
+      const paint = () => {
+        const href = socialHref(slug, field.value);
+        preview.textContent = href || (field.value.trim() ? 'not a usable handle yet' : 'hidden');
+        preview.classList.toggle('is-off', !href);
+      };
+      field.addEventListener('input', () => {
+        paint();
+        dirty.add('socials');
+        saveState(q('#saveSocials'), true);
+      });
+      paint();
+
+      const tag = document.createElement('label');
+      tag.setAttribute('for', field.id);
+      tag.textContent = slug === 'whatsapp' ? `${label} number` : `${label} username`;
+      wrap.append(tag, field, preview);
+      form.append(wrap);
+    }
+    saveState(q('#saveSocials'), false);
+  }
+
+  q('#saveSocials')?.addEventListener('click', async () => {
+    const button = q('#saveSocials');
+    const bad = qa('#socialsForm input').find(el => el.value.trim() && !socialHref(el.dataset.slug, el.value));
+    if (bad) {
+      toast(bad.dataset.slug === 'whatsapp'
+        ? 'WhatsApp needs a phone number.'
+        : `${bad.dataset.label} needs a username, or a full https:// link.`, true);
+      bad.focus();
+      return;
+    }
+    pending(button, true);
+    try {
+      const links = qa('#socialsForm input')
+        .map(el => ({ slug: el.dataset.slug, label: el.dataset.label, href: socialHref(el.dataset.slug, el.value) }))
+        .filter(row => row.href);
+      await sb.upsert('settings', [{ key: 'social.links', value: links, is_public: true }]);
+      dirty.delete('socials');
+      toast(links.length ? 'Social profiles saved.' : 'All social profiles hidden.');
+    } catch (err) {
+      toast(`Social profiles were not saved. ${err.message}`, true);
+    } finally {
+      pending(button, false);
+      saveState(button, dirty.has('socials'));
+    }
+  });
+
   // ------------------------------------------------------------ assistant
   let assistantRows = {};
   const CANONICAL_GREETING = "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?";
@@ -667,6 +817,8 @@
       q('#a-model').value = assistantRows['assistant.model'] === 'deepseek-chat'
         ? 'deepseek-v4-flash'
         : (assistantRows['assistant.model'] || 'deepseek-v4-flash');
+      const exempt = assistantRows['assistant.exempt_ips'];
+      q('#a-exempt').value = Array.isArray(exempt) ? exempt.join('\n') : String(exempt || '');
       qa('#assistantForm input,#assistantForm textarea').forEach(el => {
         if (el === q('#a-enabled') || el === q('#a-test')) return;
         el.addEventListener('input', () => {
@@ -702,7 +854,9 @@
         { key: 'assistant.enabled', value: q('#a-enabled').checked, is_public: true },
         { key: 'assistant.greeting', value: q('#a-greeting').value.trim(), is_public: true },
         { key: 'assistant.system', value: q('#a-system').value.trim(), is_public: false },
-        { key: 'assistant.model', value: q('#a-model').value.trim(), is_public: false }
+        { key: 'assistant.model', value: q('#a-model').value.trim(), is_public: false },
+        // Private: this list is what turns the daily ceiling off.
+        { key: 'assistant.exempt_ips', value: exemptList(q('#a-exempt').value), is_public: false }
       ]);
       dirty.delete('assistant');
       toast('Assistant settings saved.');

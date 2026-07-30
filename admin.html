@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0D0D0D"><meta name="robots" content="noindex,nofollow"><title>dashboard | abatchan</title><link rel="stylesheet" href="/styles.css?v=12"><link rel="icon" href="/assets/abatchan-symbol-indigo-tight.svg"><link rel="alternate icon" href="/assets/abatchan-favicon.ico" sizes="any">
-<link rel="stylesheet" href="/admin-polish.css?v=14">
+<link rel="stylesheet" href="/admin-polish.css?v=15">
 </head><body>
 
 <!-- login ---------------------------------------------------------------- -->
@@ -121,6 +121,10 @@
       <div class="adm-head"><h2>Site copy</h2><button class="btn primary sm" id="saveCopy" type="button">save <span class="arrow">↗</span></button></div>
       <p class="adm-sub">Text on the live site tagged with a matching key. Edits go out immediately, no deploy.</p>
       <form class="adm-form" id="copyForm"></form>
+
+      <div class="adm-head" style="margin-top:38px"><h3>Social profiles</h3><button class="btn primary sm" id="saveSocials" type="button">save <span class="arrow">↗</span></button></div>
+      <p class="adm-sub">The row of icons in the footer, and the links the guide gives visitors. Type the username only — the link is built for you and shown under each field. A full <code>https://</code> URL also works if a profile does not fit the usual shape. Clear a field to hide that profile.</p>
+      <form class="adm-form adm-socials" id="socialsForm"></form>
     </section>
 
     <!-- assistant -->
@@ -132,6 +136,11 @@
         <div><label for="a-greeting">opening message</label><textarea id="a-greeting"></textarea><p class="adm-field-help">This is the first message in a new chat. Existing visitors keep their saved conversation until they clear it.</p></div>
         <div><label for="a-system">system prompt</label><textarea id="a-system" style="min-height:180px"></textarea></div>
         <div><label for="a-model">model</label><input type="text" id="a-model" placeholder="deepseek-v4-flash"></div>
+        <div>
+          <label for="a-exempt">connections that do not count</label>
+          <textarea id="a-exempt" style="min-height:80px" placeholder="102.89.82.178"></textarea>
+          <p class="adm-field-help">One IP address per line, or separated by commas. These skip the daily limit entirely, so your own testing and demos do not spend what visitors need. Addresses set in Vercel are always exempt and cannot be removed here. Changes take effect within a minute.</p>
+        </div>
         <div class="adm-note">
           <b>What the guide does, and does not do.</b><br>
           It knows the visitor’s current page, the visible text on that page, published work, pricing, process and how to contact Abat. Page text is treated as untrusted context, never as instructions. It cannot access accounts, take payments, send messages, reveal private settings, provide code or hacking help, or make binding promises. Those boundaries are fixed in the server and cannot be weakened by this prompt. Rate limits and model failures automatically show visitors a retry action and a contact-support button.
@@ -162,7 +171,7 @@
 <div class="adm-toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="/supabase-config.js?v=2"></script>
-<script src="/admin-ui.js?v=4"></script><script src="/admin.js?v=11"></script>
+<script src="/admin-ui.js?v=4"></script><script src="/admin.js?v=13"></script>
 <script src="/admin-runtime-fixes.js?v=1"></script>
 <script src="/admin-guided-controls.js?v=3"></script>
 <script src="/admin-announcement-ux.js?v=3"></script>

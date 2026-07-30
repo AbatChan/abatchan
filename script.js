@@ -330,8 +330,21 @@ const SOCIALS=[
   // wa.me wants the number bare: no plus, spaces, or dashes.
   ['whatsapp','WhatsApp','https://wa.me/2347041857921']
 ];
-const socialRail=()=>SOCIALS.map(([slug,label,href])=>
-  `<a class="social-chip" href="${href}" target="_blank" rel="noreferrer noopener" aria-label="${label}" data-tip="${label}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${ICONS[slug]}"/></svg></a>`
+// The dashboard can override these. A slug with no href is hidden, and a slug
+// with no icon is dropped rather than rendered as an empty chip. The list above
+// stays the fallback, so a missing or broken setting cannot empty the footer.
+let socialLinks=SOCIALS;
+window.setSocialLinks=rows=>{
+  if(!Array.isArray(rows)||!rows.length)return;
+  const next=rows
+    .map(row=>Array.isArray(row)?row:[row?.slug,row?.label,row?.href])
+    .filter(([slug,,href])=>slug&&href&&ICONS[slug])
+    .map(([slug,label,href])=>[slug,label||slug,href]);
+  if(next.length)socialLinks=next;
+};
+const escapeAttr=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const socialRail=()=>socialLinks.map(([slug,label,href])=>
+  `<a class="social-chip" href="${escapeAttr(href)}" target="_blank" rel="noreferrer noopener" aria-label="${escapeAttr(label)}" data-tip="${escapeAttr(label)}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${ICONS[slug]}"/></svg></a>`
 ).join('');
 
 // Secondary pages live down here as a plain text menu, so the header can stay
@@ -510,6 +523,17 @@ const loadPublicSettings=()=>{
     .catch(()=>null);
   return publicSettingsPromise;
 };
+
+// The footer is built before settings arrive, so the rail is repainted once
+// they do. Only when the dashboard actually holds a list — otherwise the
+// markup already on the page is the right answer and is left alone.
+(async function applySocialLinks(){
+  const settings=await loadPublicSettings();
+  const rows=settings?.['social.links'];
+  if(!Array.isArray(rows)||!rows.length)return;
+  window.setSocialLinks(rows);
+  qa('.social-rail').forEach(rail=>{rail.innerHTML=socialRail()});
+})();
 
 (async function applyPublicCopy(){
   const settings=await loadPublicSettings();

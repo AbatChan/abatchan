@@ -61,10 +61,37 @@ export function capFor(used) {
   return Math.max(1, Math.round(IP_DAILY_MAX * 0.17));
 }
 
-// Testing and demos should not spend what visitors need. Comma-separated.
-const EXEMPT = new Set(
-  String(process.env.ASSISTANT_EXEMPT_IPS || '').split(',').map(s => s.trim()).filter(Boolean)
-);
+// Testing and demos should not spend what visitors need. The env var is the
+// floor and cannot be edited away from the dashboard; assistant.exempt_ips
+// adds to it so an address can be added without a redeploy. Private, because
+// it is the one list that turns the ceiling off.
+const ENV_EXEMPT = String(process.env.ASSISTANT_EXEMPT_IPS || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+// Cached because this runs before every answer, and an address added in the
+// dashboard does not need to take effect within the same second.
+const EXEMPT_TTL = 60_000;
+let exemptCache = null, exemptAt = 0;
+
+async function exemptIps(headers) {
+  const now = Date.now();
+  if (exemptCache && now - exemptAt < EXEMPT_TTL) return exemptCache;
+  let extra = [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/settings?key=eq.assistant.exempt_ips&select=value`,
+      { headers, cache: 'no-store' }
+    );
+    if (res.ok) {
+      const stored = (await res.json())?.[0]?.value;
+      const list = Array.isArray(stored) ? stored : String(stored || '').split(',');
+      extra = list.map(s => String(s).trim()).filter(Boolean);
+    }
+  } catch { /* the env floor still stands */ }
+  exemptCache = new Set([...ENV_EXEMPT, ...extra]);
+  exemptAt = now;
+  return exemptCache;
+}
 
 // Yesterday's per-connection rows are dead weight the moment the date rolls, so
 // the first request of a new day clears them. Fire-and-forget: a failed sweep
@@ -130,7 +157,8 @@ async function viaRest(headers, day, key) {
 // closes — the same call the original counter made.
 export async function consume(ip) {
   const headers = serviceHeaders();
-  if (!headers || EXEMPT.has(ip)) return open();
+  if (!headers) return open();
+  if (ENV_EXEMPT.includes(ip) || (await exemptIps(headers)).has(ip)) return open();
   const day = today();
   const key = ipKey(ip, day);
   try {

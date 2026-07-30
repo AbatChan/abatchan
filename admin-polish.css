@@ -1075,3 +1075,18 @@ html body #items .work-compact-panel .adm-icon-text{
   html body #items .work-compact-panel .adm-icon{padding:0 10px}
   html body .adm-icon-text{font-size:11px}
 }
+
+/* Social profiles: eleven URL fields read better in columns than as a long
+   single-file list. Collapses to one column where there is no room. */
+.adm-socials{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:14px 18px;
+}
+.adm-socials input{width:100%}
+.adm-social-preview{
+  margin-top:6px;
+  word-break:break-all;
+  font-variant-numeric:tabular-nums;
+}
+.adm-social-preview.is-off{opacity:.55;font-style:italic}
