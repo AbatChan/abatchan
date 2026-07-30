@@ -1,0 +1,11 @@
+{
+  "name": "abatchan-site",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Static site for abatchan.com. No framework and no bundler — the build step only writes content into the HTML that visitors currently receive from JavaScript, so crawlers see it too.",
+  "scripts": {
+    "vercel-build": "node build/prerender.mjs",
+    "build": "node build/prerender.mjs"
+  }
+}

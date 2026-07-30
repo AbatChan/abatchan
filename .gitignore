@@ -28,3 +28,8 @@ cmp.html
 footcheck.html
 faqonly.html
 .vercel
+
+# npm never installs anything here — there are no dependencies — but a stray
+# lockfile or module tree would still be uploaded to the deploy.
+node_modules/
+package-lock.json
