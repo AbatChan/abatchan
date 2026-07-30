@@ -1,6 +1,7 @@
 // POST /api/chat-stream
 // Streams plain UTF-8 text while keeping provider and Supabase secrets private.
 import { COMMERCIAL_GUIDE } from './commercial-guide.js';
+import { consume } from './quota.js';
 
 const API_URL='https://api.deepseek.com/chat/completions';
 const DEFAULT_MODEL='deepseek-v4-flash';
@@ -116,42 +117,9 @@ const hits=new Map();
 
 // The per-IP counter below is in-memory, so it dies with the instance and
 // counts nothing across the several Vercel runs concurrently. It filters
-// obvious hammering cheaply; it cannot cap what the day costs. This does, by
-// keeping one counter in the settings table every instance shares.
-const DAILY_MAX=Number(process.env.ASSISTANT_DAILY_MAX||600);
-const USAGE_KEY='assistant.usage';
-const today=()=>new Date().toISOString().slice(0,10);
-
-function serviceHeaders(){
-  const secret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_KEY;
-  if(!secret)return null;
-  const headers={apikey:secret,'Content-Type':'application/json'};
-  if(!secret.startsWith('sb_secret_'))headers.Authorization=`Bearer ${secret}`;
-  return headers;
-}
-
-// Returns {allowed, used, remaining}. A counter that cannot be read is not a
-// reason to refuse a visitor, so failure here opens rather than closes.
-async function countDay(){
-  const headers=serviceHeaders();
-  if(!headers)return {allowed:true,used:0,remaining:DAILY_MAX};
-  try{
-    const day=today();
-    const read=await fetch(`${SUPABASE_URL}/rest/v1/settings?key=eq.${USAGE_KEY}&select=value`,{headers,cache:'no-store'});
-    const rows=read.ok?await read.json():[];
-    const stored=rows?.[0]?.value;
-    const used=stored&&stored.day===day?Number(stored.count)||0:0;
-    if(used>=DAILY_MAX)return {allowed:false,used,remaining:0};
-    await fetch(`${SUPABASE_URL}/rest/v1/settings`,{
-      method:'POST',
-      headers:{...headers,Prefer:'resolution=merge-duplicates'},
-      body:JSON.stringify([{key:USAGE_KEY,value:{day,count:used+1},is_public:false}])
-    });
-    return {allowed:true,used:used+1,remaining:Math.max(0,DAILY_MAX-used-1)};
-  }catch{
-    return {allowed:true,used:0,remaining:DAILY_MAX};
-  }
-}
+// obvious hammering cheaply; it cannot cap what the day costs. api/quota.js
+// does, with counters in the settings table every instance shares — one for
+// the site's day and one for each connection's day.
 const RATE={max:20,windowMs:10*60*1000};
 function allowed(ip){
   const now=Date.now(),record=hits.get(ip);
@@ -161,9 +129,18 @@ function allowed(ip){
   return true;
 }
 
+// A wall the visitor cannot wait out is not retryable, whatever its status.
+// Offering "try again" on a spent day only loops them.
+const TITLES={
+  daily_limit:'The guide is done for today.',
+  ip_daily_limit:'That is your limit for today.',
+  rate_limited:'Too many questions at once.'
+};
+const NO_RETRY=new Set(['daily_limit','ip_daily_limit']);
+
 function sendError(res,status,code,message){
   res.setHeader('Cache-Control','no-store');
-  return res.status(status).json({error:{code,title:'The guide is unavailable.',message,retryable:status>=429,contact:{label:'Contact Abat',href:'/contact'}}});
+  return res.status(status).json({error:{code,title:TITLES[code]||'The guide is unavailable.',message,retryable:status>=429&&!NO_RETRY.has(code),contact:{label:'Contact Abat',href:'/contact'}}});
 }
 
 async function privateSettings(){
@@ -200,8 +177,12 @@ export default async function handler(req,res){
   if(!allowed(ip))return sendError(res,429,'rate_limited','There have been many questions from this connection. Try again in a few minutes.');
 
   // The ceiling that actually bounds the bill.
-  const usage=await countDay();
-  if(!usage.allowed)return sendError(res,429,'daily_limit','The guide has answered all it can today. Send the question through the contact page and Abat will reply directly.');
+  const usage=await consume(ip);
+  if(!usage.allowed){
+    return usage.reason==='ip_daily'
+      ? sendError(res,429,'ip_daily_limit','This connection has used its questions for today. The contact page reaches Abat directly and has no limit.')
+      : sendError(res,429,'daily_limit','The guide has answered all it can today. Send the question through the contact page and Abat will reply directly.');
+  }
   if(!process.env.DEEPSEEK_API_KEY)return sendError(res,503,'not_configured','The live model is not connected right now.');
 
   let body={};
@@ -236,6 +217,7 @@ export default async function handler(req,res){
     res.statusCode=200;
     // Lets the browser warn before it hits the wall rather than after.
     res.setHeader('X-Guide-Remaining',String(usage.remaining));
+    res.setHeader('X-Guide-Personal',String(usage.personal));
     res.setHeader('Content-Type','text/plain; charset=utf-8');
     res.setHeader('Cache-Control','no-cache, no-store, no-transform');
     res.setHeader('X-Content-Type-Options','nosniff');

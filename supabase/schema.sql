@@ -136,3 +136,71 @@ update public.settings
 set value = '"$150"'::jsonb
 where key = 'copy.pricing.website'
   and value = '"$750"'::jsonb;
+
+-- ------------------------------------------------- assistant spend ceiling
+-- Both counters in one statement so concurrent instances cannot lose an
+-- update. The REST fallback in api/quota.js does the same work with a read
+-- then a write, which undercounts under load; this does not.
+--
+-- Counts are clamped one past the ceiling so a sustained flood cannot run the
+-- stored number away.
+create or replace function public.assistant_consume(
+  p_ip_key     text,
+  p_day        text,
+  p_global_max int,
+  p_ip_max     int
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  mine int;
+  used int;
+begin
+  -- Per-connection first: one visitor must not be able to spend the day.
+  insert into public.settings (key, value, is_public)
+  values (p_ip_key, jsonb_build_object('day', p_day, 'count', 1), false)
+  on conflict (key) do update
+    set value = jsonb_build_object(
+      'day', p_day,
+      'count', least(
+        case when settings.value->>'day' = p_day
+             then coalesce((settings.value->>'count')::int, 0) + 1
+             else 1 end,
+        p_ip_max + 1))
+  returning (value->>'count')::int into mine;
+
+  if mine > p_ip_max then
+    return jsonb_build_object('allowed', false, 'reason', 'ip_daily',
+                              'used', 0, 'remaining', 0, 'personal', 0);
+  end if;
+
+  insert into public.settings (key, value, is_public)
+  values ('assistant.usage', jsonb_build_object('day', p_day, 'count', 1), false)
+  on conflict (key) do update
+    set value = jsonb_build_object(
+      'day', p_day,
+      'count', least(
+        case when settings.value->>'day' = p_day
+             then coalesce((settings.value->>'count')::int, 0) + 1
+             else 1 end,
+        p_global_max + 1))
+  returning (value->>'count')::int into used;
+
+  if used > p_global_max then
+    return jsonb_build_object('allowed', false, 'reason', 'daily',
+                              'used', used, 'remaining', 0,
+                              'personal', greatest(p_ip_max - mine, 0));
+  end if;
+
+  return jsonb_build_object('allowed', true, 'reason', null,
+                            'used', used,
+                            'remaining', greatest(p_global_max - used, 0),
+                            'personal', greatest(p_ip_max - mine, 0));
+end $$;
+
+-- Only the service key may spend the budget. The publishable key is in every
+-- browser on the site, so it must never be able to call this.
+revoke all on function public.assistant_consume(text, text, int, int)
+  from public, anon, authenticated;

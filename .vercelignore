@@ -1,0 +1,14 @@
+# Everything uploaded here gets a public URL, so the bundle carries the site
+# and its API and nothing else.
+#
+# schema.sql in particular published the table structure, the RLS policy logic
+# and every settings key at /supabase/schema.sql — no credentials, but a map of
+# exactly what to probe. The audit folder additionally served a fake admin
+# login form from the real domain.
+
+audit/
+supabase/
+
+*.md
+BRAND_GUIDE.txt
+design-qa.md

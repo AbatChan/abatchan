@@ -168,14 +168,40 @@
 
     launch.addEventListener('click',()=>{if(panel.classList.contains('is-open'))clearUnread()});
 
-    const fail=(message,question)=>{
+    // The static answers script.js hands over. When the guide cannot answer,
+    // the common questions still get a real reply instead of a red box.
+    const canned=question=>{
+      const list=window.ASSISTANT_CANNED;
+      if(!Array.isArray(list))return '';
+      return list.find(([pattern])=>pattern.test(question))?.[1]||'';
+    };
+
+    // The server says whether waiting helps. A spent day does not come back in
+    // a minute, so offering "try again" on one only loops the visitor.
+    const fail=(error,question)=>{
+      const message=typeof error==='string'?error:error?.message;
+      const heading=(typeof error==='object'&&error?.title)||'The guide lost its connection.';
+      const retryable=typeof error==='object'&&error?.retryable!==undefined?!!error.retryable:true;
+      const offline=retryable?'':canned(question);
+
+      if(offline){
+        const answer=add(offline,'bot',true);
+        answer.classList.add('assist-offline');
+        const note=document.createElement('div');note.className='assist-offline-note';
+        note.textContent='Answered from the site’s own notes, because the live guide cannot reply right now.';
+        answer.append(note);
+      }
+
       const el=document.createElement('div');el.className='assist-msg bot assist-error';el.setAttribute('role','alert');
-      const title=document.createElement('b');title.textContent='The guide lost its connection.';
+      const title=document.createElement('b');title.textContent=heading;
       const body=document.createElement('span');body.textContent=message||'Try again, or contact Abat directly.';
       const actions=document.createElement('div');actions.className='assist-error-actions';
-      const retry=document.createElement('button');retry.type='button';retry.className='btn sm';retry.textContent='Try again';retry.onclick=()=>reply(question);
+      if(retryable){
+        const retry=document.createElement('button');retry.type='button';retry.className='btn sm';retry.textContent='Try again';retry.onclick=()=>reply(question);
+        actions.append(retry);
+      }
       const contact=document.createElement('a');contact.href='/contact';contact.className='btn primary sm';contact.textContent='Contact Abat ↗';
-      actions.append(retry,contact);el.append(title,body,actions);log.appendChild(el);log.scrollTop=log.scrollHeight;
+      actions.append(contact);el.append(title,body,actions);log.appendChild(el);log.scrollTop=log.scrollHeight;
     };
 
     const reply=async text=>{
@@ -195,21 +221,30 @@
         // The server reports what is left of today's budget. Say so once,
         // while there is still room to ask, rather than after the wall.
         const left=Number(res.headers.get('X-Guide-Remaining'));
-        if(Number.isFinite(left)&&left>0&&left<=25&&!panel.dataset.budgetWarned){
+        const mine=Number(res.headers.get('X-Guide-Personal'));
+        // Whichever wall is nearer is the one worth naming.
+        const warning=Number.isFinite(mine)&&mine>0&&mine<=5
+          ? 'You have a few questions left with the guide today. For anything after that, the contact page reaches Abat directly.'
+          : Number.isFinite(left)&&left>0&&left<=25
+            ? 'The guide is near its limit for today. For anything it cannot answer, the contact page reaches Abat directly.'
+            : '';
+        if(warning&&!panel.dataset.budgetWarned){
           panel.dataset.budgetWarned='1';
           const note=document.createElement('div');
           note.className='assist-budget';
           note.setAttribute('role','status');
-          note.textContent='The guide is near its limit for today. For anything it cannot answer, the contact page reaches Abat directly.';
+          note.textContent=warning;
           log.append(note);
           log.scrollTop=log.scrollHeight;
         }
         const type=res.headers.get('content-type')||'';
         if(!res.ok){
-          let message='Try again, or contact Abat directly.';
-          if(type.includes('application/json')){try{message=(await res.json())?.error?.message||message}catch{}}
+          let detail=null,message='Try again, or contact Abat directly.';
+          if(type.includes('application/json')){try{detail=(await res.json())?.error||null;message=detail?.message||message}catch{}}
           else{try{message=(await res.text())||message}catch{}}
-          throw new Error(message);
+          const error=new Error(message);
+          error.detail={title:detail?.title,message,retryable:detail?.retryable};
+          throw error;
         }
         if(!res.body)throw new Error('The browser did not receive a response stream.');
         const reader=res.body.getReader(),decoder=new TextDecoder();
@@ -228,7 +263,7 @@
         notifyClosed(answer);
       }catch(err){
         if(frame)cancelAnimationFrame(frame);
-        loader.remove();bubble?.remove();fail(err.message,text);
+        loader.remove();bubble?.remove();fail(err.detail||err.message,text);
       }finally{
         pending=false;input.disabled=false;send.disabled=false;log.setAttribute('aria-busy','false');
         if(panel.classList.contains('is-open'))input.focus();

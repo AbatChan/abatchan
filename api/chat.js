@@ -8,6 +8,8 @@
 // tone/instruction notes from the dashboard. The fixed safety boundary below
 // is always applied and cannot be replaced from the browser.
 
+import { consume } from './quota.js';
+
 const API_URL = 'https://api.deepseek.com/chat/completions';
 const DEFAULT_MODEL = 'deepseek-v4-flash';
 const LEGACY_OWNER_NOTES = 'You are the assistant on abatchan.com, an independent digital engineering studio. Answer briefly and concretely about services, pricing, work, and process. Focused landing pages start at $150, platforms at $1,500, and connected systems at $3,500. Always say these are starting points, not quotes. Never invent a firm quote, delivery date, client, or result. If you do not know, say so and point to the contact page.';
@@ -167,6 +169,16 @@ const PUBLIC_ERRORS = {
     message: 'There have been a lot of questions from this connection. Try again in a few minutes.',
     retryable: true
   },
+  daily_limit: {
+    title: 'I am done for today.',
+    message: 'The guide has answered all it can today. Send the question through the contact page and Abat will reply directly.',
+    retryable: false
+  },
+  ip_daily_limit: {
+    title: 'That is your limit for today.',
+    message: 'This connection has used its questions for today. The contact page reaches Abat directly and has no limit.',
+    retryable: false
+  },
   not_configured: {
     title: 'I am off duty for a moment.',
     message: 'The live assistant is not connected right now, but Abat can still help you directly.',
@@ -300,6 +312,13 @@ export default async function handler(req, res) {
   const limit = allowance(ip);
   if (!limit.ok) {
     return publicError(res, 429, 'rate_limited', limit.retryAfter);
+  }
+
+  // Same shared ceiling as /api/chat-stream. Without this the daily budget is
+  // only a suggestion, because this route answers the identical question.
+  const usage = await consume(ip);
+  if (!usage.allowed) {
+    return publicError(res, 429, usage.reason === 'ip_daily' ? 'ip_daily_limit' : 'daily_limit');
   }
 
   if (!process.env.DEEPSEEK_API_KEY) {

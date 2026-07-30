@@ -577,7 +577,9 @@ const assistantPageContext=()=>{
   return {title:document.title.slice(0,160),description:description.slice(0,320),text};
 };
 const CANNED=[
-  [/price|cost|budget|charge|quote/i,"Focused landing pages start at $150, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes. The real number comes from scope, with the full breakdown on the pricing page."],
+  // "pric" not "price", so pricing and prices match too — the words visitors
+  // actually type. Same reason "how much" is here.
+  [/pric|cost|budget|charge|quote|afford|how much|expensive/i,"Focused landing pages start at $150, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes. The real number comes from scope, with the full breakdown on the pricing page."],
   [/how long|timeline|deadline|when/i,"It depends on scope, but work is split into milestones so you see something usable at each one. The process page walks through all five stages."],
   [/what.*(build|do)|services|offer/i,"Connected web and mobile products, automation and workflow systems, APIs and integrations, dashboards, and the infrastructure under them."],
   [/small|tiny|fix|quick/i,"Yes. Small fixes and consultations are quoted separately, usually from $100, and ongoing work is $30/hour when project pricing does not fit."],
@@ -585,6 +587,11 @@ const CANNED=[
   [/what can you help|can you do|your limits|do.?s|don.?ts/i,"I can explain the site, work, pricing, process, and how to start a project. I cannot access accounts, take payments, send messages, write code for visitors, or make binding promises."],
   [/hello|hi|hey|good (morning|afternoon|evening)/i,"Hello. What are you building?"]
 ];
+
+// assistant-v2.js replaces the form below to stream, which detaches these
+// answers with it. Hand them over so a capped or unreachable guide can still
+// answer the questions visitors actually ask.
+window.ASSISTANT_CANNED=CANNED;
 
 (async function assistant(){
   if(q('.assist-launch'))return;

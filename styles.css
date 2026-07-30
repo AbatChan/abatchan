@@ -1183,3 +1183,15 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
   font-size:11.5px;
   line-height:1.5;
 }
+
+/* A canned answer is a real answer, so it reads as one. The footnote is what
+   marks it as coming from the site rather than the live guide. */
+.assist-offline-note{
+  margin-top:8px;
+  padding-top:7px;
+  border-top:1px solid color-mix(in srgb,currentColor 14%,transparent);
+  color:var(--signal-ink,var(--signal));
+  font-size:11px;
+  line-height:1.45;
+  opacity:.85;
+}
