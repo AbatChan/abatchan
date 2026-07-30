@@ -559,7 +559,10 @@ const loadPublicSettings=()=>{
 // The endpoint is server-side so the provider key never reaches the browser.
 // Canned answers remain a useful fallback if the endpoint is unavailable.
 const ASSISTANT={
-  endpoint:'/api/chat',
+  // assistant-v2.js owns the network and replaces the form below on load.
+  // This path only runs if that never happens, so it answers from CANNED
+  // rather than calling an endpoint whose shape it no longer parses.
+  endpoint:null,
   greeting:"Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?",
   chips:['What do you build?','How much does it cost?','How long does it take?','What can you help with?']
 };

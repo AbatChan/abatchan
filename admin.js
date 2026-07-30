@@ -721,14 +721,14 @@
     pending(button, true, 'sending');
     q('#a-test-output').textContent = 'Waiting for the assistant…';
     try {
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        const issue = data.error && typeof data.error === 'object' ? data.error : {};
+      const res = await fetch('/api/chat-stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, page: '/' }) });
+      if (!res.ok) {
+        let issue = {};
+        try { issue = (await res.json())?.error || {}; } catch {}
         q('#a-test-output').textContent = [issue.title, issue.message].filter(Boolean).join(' ') || 'The assistant could not reply just now.';
         return;
       }
-      q('#a-test-output').textContent = data.reply || 'No reply returned.';
+      q('#a-test-output').textContent = (await res.text()).trim() || 'No reply returned.';
     } catch (err) {
       q('#a-test-output').textContent = err.message;
     } finally {
