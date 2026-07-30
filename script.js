@@ -335,12 +335,12 @@ const SOCIALS=[
 // stays the fallback, so a missing or broken setting cannot empty the footer.
 let socialLinks=SOCIALS;
 window.setSocialLinks=rows=>{
-  if(!Array.isArray(rows)||!rows.length)return;
+  if(!Array.isArray(rows))return;
   const next=rows
     .map(row=>Array.isArray(row)?row:[row?.slug,row?.label,row?.href])
     .filter(([slug,,href])=>slug&&href&&ICONS[slug])
     .map(([slug,label,href])=>[slug,label||slug,href]);
-  if(next.length)socialLinks=next;
+  socialLinks=next;
 };
 const escapeAttr=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const socialRail=()=>socialLinks.map(([slug,label,href])=>
@@ -530,9 +530,29 @@ const loadPublicSettings=()=>{
 (async function applySocialLinks(){
   const settings=await loadPublicSettings();
   const rows=settings?.['social.links'];
-  if(!Array.isArray(rows)||!rows.length)return;
+  if(!Array.isArray(rows))return;
   window.setSocialLinks(rows);
   qa('.social-rail').forEach(rail=>{rail.innerHTML=socialRail()});
+  // Search engines and link previews should see the same identity graph as
+  // visitors. Without this, changing a handle in the dashboard repaints the
+  // footer but leaves every page's JSON-LD pointing at the old profile.
+  const sameAs=rows
+    .map(row=>Array.isArray(row)?{slug:row[0],href:row[2]}:row)
+    .filter(row=>row?.href&&row.slug!=='whatsapp')
+    .map(row=>row.href);
+  qa('script[type="application/ld+json"]').forEach(tag=>{
+    try{
+      const data=JSON.parse(tag.textContent);
+      const nodes=Array.isArray(data)?data:[data];
+      nodes.forEach(node=>{
+        const types=[].concat(node?.['@type']||[]);
+        if(types.some(type=>['ProfessionalService','Organization','Person'].includes(type))){
+          node.sameAs=sameAs;
+        }
+      });
+      tag.textContent=JSON.stringify(data);
+    }catch{/* A malformed schema block should not affect the footer. */}
+  });
 })();
 
 (async function applyPublicCopy(){

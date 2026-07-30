@@ -720,10 +720,12 @@
     const form = q('#socialsForm');
     if (!form) return;
     let saved = {};
+    let hasSaved = false;
     try {
       const rows = await sb.select('settings', 'key=eq.social.links&select=value');
       const stored = rows?.[0]?.value;
       if (Array.isArray(stored)) {
+        hasSaved = true;
         saved = Object.fromEntries(stored
           .map(row => Array.isArray(row) ? row : [row?.slug, row?.label, row?.href])
           .filter(([slug]) => slug)
@@ -736,7 +738,7 @@
     // Nothing saved yet means the site is rendering its built-in list, so the
     // fields start on those handles. Showing them empty would claim every
     // profile is hidden while the footer is plainly displaying all of them.
-    const unsaved = !Object.keys(saved).length;
+    // An explicitly saved [] is different: it means the owner hid every link.
 
     form.innerHTML = '';
     for (const [slug, label, , sample] of SOCIAL_PLATFORMS) {
@@ -747,7 +749,7 @@
       field.dataset.slug = slug;
       field.dataset.label = label;
       field.placeholder = slug === 'whatsapp' ? sample : `@${sample}`;
-      field.value = unsaved ? sample : socialHandle(slug, saved[slug] ?? '');
+      field.value = hasSaved ? socialHandle(slug, saved[slug] ?? '') : sample;
       field.autocomplete = 'off';
       field.spellcheck = false;
 
