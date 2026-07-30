@@ -90,7 +90,7 @@ Working and verified:
 ## The work
 
 Items 1–4 share one root cause and should be done together. Item 5 is separate.
-Item 6 is owner-only.
+Item 6 is the positioning gap and depends on 1 and 3. Item 7 is owner-only.
 
 ---
 
@@ -253,7 +253,60 @@ redeclaring it differently per page.
 
 ---
 
-### 6. Google Search Console — owner only
+### 6. Say what the studio actually does
+
+**This is the biggest missed opportunity on the site, and it is not technical.**
+
+Searched Google on 31 July 2026 across brand, local and service terms. Findings:
+
+| Query | Where abatchan.com sits | Who wins |
+|---|---|---|
+| `abatchan` | **#1**, `/about` #2 | — |
+| `web developer Akure Nigeria` | not in top 20 | Directories (TechBehemoths, Sabi Programmers, StarOfService), Upwork, local agencies |
+| `BookingKoala developer customization` | absent | BookingKoala's own docs, YouTube, **one** Upwork profile |
+| `hire BookingKoala expert cleaning service website` | absent | BookingKoala's own pages, **Fiverr and Upwork gigs only** |
+| `GoHighLevel automation developer for cleaning business` | absent | `hireghldeveloper.com`, `hiregohighleveldeveloper.com`, `cleaningservicesghlsnapshot.com` |
+
+**The gap.** For BookingKoala, page one is the vendor's own documentation plus
+marketplace listings. **No independent studio or agency site ranks at all.** By
+contrast the GoHighLevel + cleaning niche is already contested by purpose-built
+exact-match-domain sites, so it is much harder.
+
+**What the 26 reviews actually evidence** (counted from `reviews-data.js`):
+
+- BookingKoala — 4 separate engagements, 6 mentions in quotes
+- GoHighLevel / GHL — 8 mentions
+- Cleaning-service businesses — 3 engagements
+- Plus WordPress, Wix, Kartra, OwnerRez, Elementor, Bandzoogle migrations
+
+**What the site says about any of that: nothing.** `BookingKoala` appears only
+inside `reviews.html`. `GoHighLevel`, `cleaning`, `Kartra`, `OwnerRez` and
+`Elementor` appear on **no page at all**. The homepage sells "web products,
+dashboards, automation, APIs, and the infrastructure behind them" — which
+competes with every agency on earth and matches no specific search.
+
+So the studio has demonstrable, review-backed expertise in a niche where nobody
+owns the search term, and the website does not mention it.
+
+**Approach.** Add a dedicated, genuinely useful service page — e.g.
+`/bookingkoala` — covering setup, customisation, integration and repair, with
+the real BookingKoala reviews shown as proof. Not a thin landing page; the
+competition is vendor documentation, so it has to be worth reading. Consider a
+second page for cleaning-service websites.
+
+**Sequencing matters:** this depends on items 1 and 3. A page whose proof is
+invisible to crawlers cannot rank on the strength of that proof. Server-render
+the reviews first.
+
+**Also worth doing, cheap:** the directories that beat you locally
+(TechBehemoths, Sortlist, StarOfService, Sabi Programmers) take submissions.
+Listings there are both local visibility and backlinks. The Behance profile
+already ranks for "Website Designer in Akure, Nigeria" — make sure it links to
+abatchan.com.
+
+---
+
+### 7. Google Search Console — owner only
 
 **Cannot be delegated.** It needs the owner's Google account.
 
@@ -340,7 +393,8 @@ unless `LIVE_ASSISTANT_TESTS=1` is set. Confirm the calling IP is exempt first.
 4. Review + AggregateRating schema (item 3) — only after 1 is live
 5. FAQPage on pricing (item 4) — independent, can be done any time
 6. Per-page schema (item 5)
-7. Owner: Search Console (item 6), then re-inspect the pages above
+7. Service page for the BookingKoala niche (item 6) — after 1 and 3 are live
+8. Owner: Search Console (item 7), then re-inspect the pages above
 
 Do not batch 1–4 into a single deploy. Ship item 1, confirm with `curl` that the
 review text is in the served HTML, and only then add the schema that depends on
