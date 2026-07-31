@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0D0D0D"><meta name="robots" content="noindex,nofollow"><title>dashboard | abatchan</title><link rel="stylesheet" href="/styles.css?v=13"><link rel="icon" href="/assets/abatchan-symbol-indigo-tight.svg"><link rel="alternate icon" href="/assets/abatchan-favicon.ico" sizes="any">
-<link rel="stylesheet" href="/admin-polish.css?v=15">
+<link rel="stylesheet" href="/admin-polish.css?v=16">
 </head><body>
 
 <!-- login ---------------------------------------------------------------- -->
@@ -66,6 +66,14 @@
       <p class="adm-sub">These appear on the work page in this order. Drafts stay hidden from visitors until published.</p>
       <p class="adm-field-help" id="featuredSummary" aria-live="polite"></p>
       <div class="adm-items" id="items"></div>
+      <div class="adm-note adm-refresh">
+        <b>Visitors see changes straight away. Google does not.</b><br>
+        Search engines read the copy of the site written at the last deploy, so a newly published project stays invisible to them until the site rebuilds. This does that.
+        <div class="adm-refresh-row">
+          <button class="btn sm" id="refreshSnapshot" type="button">rebuild for search</button>
+          <span class="adm-field-help" id="refreshStatus" role="status" aria-live="polite"></span>
+        </div>
+      </div>
     </section>
 
     <!-- work editor -->

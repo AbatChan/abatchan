@@ -642,6 +642,32 @@
     }
   });
 
+  // ------------------------------------------------- rebuild for search
+  // Publishing reaches visitors immediately and search engines only at the
+  // next deploy, so this closes that gap without leaving the dashboard.
+  q('#refreshSnapshot')?.addEventListener('click', async () => {
+    const button = q('#refreshSnapshot');
+    const status = q('#refreshStatus');
+    status.textContent = '';
+    pending(button, true, 'starting');
+    try {
+      const res = await fetch('/api/refresh', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${sb.session.token || ''}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error?.message || 'The rebuild could not be started.');
+      status.textContent = data.message || 'Rebuild started.';
+      toast('Rebuild started.');
+    } catch (err) {
+      status.textContent = err.message;
+      toast(err.message, true);
+    } finally {
+      pending(button, false);
+      button.disabled = false;
+    }
+  });
+
   // ------------------------------------------------------- exempt addresses
   // Accepts newlines or commas, because both are what people actually paste.
   // Anything that is not an IPv4 or IPv6 address is dropped rather than saved,

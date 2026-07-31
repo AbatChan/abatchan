@@ -1090,3 +1090,15 @@ html body #items .work-compact-panel .adm-icon-text{
   font-variant-numeric:tabular-nums;
 }
 .adm-social-preview.is-off{opacity:.55;font-style:italic}
+
+/* Rebuild-for-search control. Sits under the work list because that is where
+   publishing happens and where the gap it closes is felt. */
+.adm-refresh{margin-top:22px}
+.adm-refresh-row{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+  margin-top:14px;
+}
+.adm-refresh-row .adm-field-help{margin:0}
