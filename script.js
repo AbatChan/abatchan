@@ -377,6 +377,17 @@ qa('footer').forEach(footer=>{
     <nav class="footer-nav" aria-label="More pages">${footerNav()}</nav>
   </div>`;
 });
+qa('.footer-submenu').forEach(menu=>{
+  document.addEventListener('pointerdown',event=>{
+    if(menu.open&&!menu.contains(event.target))menu.open=false;
+  });
+  menu.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&menu.open){
+      menu.open=false;
+      q('summary',menu)?.focus();
+    }
+  });
+});
 
 // The glass rim. Chrome drops url(#svg-filter) from backdrop-filter, so real
 // feDisplacementMap refraction is off the table; instead each strip samples the
