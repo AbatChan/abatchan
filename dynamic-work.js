@@ -37,7 +37,13 @@
   const gallerySrcset = path =>
     GALLERY_WIDTHS.map(w => `${sb.imageUrl('work', path, w)} ${w}w`).join(', ');
 
-  const makeGallery = (item, extra) => {
+  // `adopt` is the image the build already wrote into the card. The first
+  // gallery slide is that same picture, so building a fresh <img> here meant
+  // the browser downloaded it, then had it thrown away with the markup it
+  // replaced — on /work that was most of the images on the page. Reusing the
+  // element keeps the bytes and shows an already-decoded image, so the card
+  // does not blink on hydration.
+  const makeGallery = (item, extra, adopt) => {
     const slides = imagePaths(item, extra);
     if (!slides.length) return null;
 
@@ -49,13 +55,17 @@
     slides.forEach((path, index) => {
       const slide = document.createElement('div');
       slide.className = 'managed-gallery-slide';
-      const img = document.createElement('img');
-      img.src = sb.imageUrl('work', path, 1024);
-      img.srcset = gallerySrcset(path);
-      img.sizes = '(max-width:900px) 100vw, 620px';
+      const src = sb.imageUrl('work', path, 1024);
+      const reuse = index === 0 && adopt && adopt.getAttribute('src') === src ? adopt : null;
+      const img = reuse || document.createElement('img');
+      if (!reuse) {
+        img.src = src;
+        img.srcset = gallerySrcset(path);
+        img.sizes = '(max-width:900px) 100vw, 620px';
+        img.alt = index === 0 ? (item.image_alt || '') : '';
+        img.loading = 'lazy';
+      }
       img.dataset.full = sb.imageUrl('work', path, 1600);
-      img.alt = index === 0 ? (item.image_alt || '') : '';
-      img.loading = 'lazy';
       slide.append(img);
       track.append(slide);
     });
@@ -175,7 +185,9 @@
           if (!Array.isArray(extra.gallery_paths) || !extra.gallery_paths.length) return;
           const visual = card && q('.card-visual', card);
           if (!visual || visual.dataset.galleryReady) return;
-          const gallery = makeGallery(item, extra);
+          // Hand the build's own image over to the gallery rather than
+          // replacing it and re-downloading the same picture.
+          const gallery = makeGallery(item, extra, q('img', visual));
           if (!gallery) return;
           visual.replaceChildren(gallery);
           visual.dataset.galleryReady = '1';
