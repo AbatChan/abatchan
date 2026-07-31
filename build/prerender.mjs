@@ -98,6 +98,15 @@ const STAR = 'M12 3.6 14.5 9l5.9.8-4.3 4.1 1.1 5.9-5.2-2.9-5.2 2.9 1.1-5.9L3.6 9
 // must be visible without JavaScript — `.reveal` starts at opacity 0 and only
 // becomes visible when the intersection observer runs, which would hand a
 // crawler content that is technically present and visually hidden.
+// reviews.js clamps long quotes to four lines and hangs a "see more" on them.
+// It can measure; this cannot, so it guesses from length — roughly four lines
+// of ~62 characters in the review column. Getting a borderline quote wrong
+// costs one line of shift on that row. Getting it right for the long ones is
+// what matters: an unclamped 1,500-character quote is about twenty lines tall,
+// and collapsing that after paint used to shove the rest of the page upward.
+const CLAMP_CHARS = 250;
+const willOverflow = quote => String(quote || '').length > CLAMP_CHARS;
+
 function reviewRow(item) {
   const rating = Number(item.rating);
   const stars = rating > 0
@@ -119,7 +128,10 @@ function reviewRow(item) {
     + (role ? `<span class="review-role">${escapeHtml(role)}</span>` : '')
     + stars + meta
     + `</div></div>`
-    + `<div class="review-body"><blockquote class="review-quote">${escapeHtml(item.quote)}</blockquote></div>`
+    + `<div class="review-body">`
+    + `<blockquote class="review-quote is-clamped">${escapeHtml(item.quote)}</blockquote>`
+    + (willOverflow(item.quote) ? `<button type="button" class="review-toggle" aria-expanded="false">see more</button>` : '')
+    + `</div>`
     + link
     + `</article>`;
 }
@@ -170,14 +182,22 @@ async function footerMarkup() {
     + `</div>`;
 }
 
-const storageUrl = path => path
-  ? `${SUPABASE_URL}/storage/v1/object/public/work/${String(path).split('/').map(encodeURIComponent).join('/')}`
+// Mirrors sb.imageUrl in supabase-config.js: /img is rewritten to Supabase's
+// transform endpoint, so the served image is a resized WebP rather than the
+// original upload, it caches, and it is not hidden from Google Images by
+// storage's "x-robots-tag: none".
+const IMAGE_WIDTHS = [640, 1024, 1600];
+const storageUrl = (path, width = 1024) => path
+  ? `/img/w${width}/work/${String(path).split('/').map(encodeURIComponent).join('/')}`
   : '';
 
 function workCard(item) {
   const image = storageUrl(item.image_path);
+  const srcset = item.image_path
+    ? IMAGE_WIDTHS.map(w => `${storageUrl(item.image_path, w)} ${w}w`).join(', ')
+    : '';
   const visual = image
-    ? `<div class="card-visual managed"><img class="work-art" src="${escapeHtml(image)}" loading="lazy" alt="${escapeHtml(item.image_alt || '')}"></div>`
+    ? `<div class="card-visual managed"><img class="work-art" src="${escapeHtml(image)}" srcset="${escapeHtml(srcset)}" sizes="(max-width:900px) 100vw, 620px" loading="lazy" alt="${escapeHtml(item.image_alt || '')}"></div>`
     : `<div class="card-visual managed"></div>`;
   const link = typeof item.link_url === 'string' && /^(https:\/\/|\/)/.test(item.link_url)
     ? `<a class="btn sm" href="${escapeHtml(item.link_url)}"${item.link_url.startsWith('https://') ? ' target="_blank" rel="noopener noreferrer"' : ''}>view project <span class="arrow">↗</span></a>`
@@ -283,8 +303,10 @@ function workSchema(items) {
         url: projectUrl,
         creator: { '@id': 'https://abatchan.com/#studio' }
       };
-      const image = storageUrl(item.image_path);
-      if (image) node.image = image;
+      // Structured data is read off-site, so the image has to be absolute here
+      // even though the same helper is a site-relative src in the markup.
+      const image = storageUrl(item.image_path, 1600);
+      if (image) node.image = `https://abatchan.com${image}`;
       return { '@type': 'ListItem', position: index + 1, item: node };
     })
   };
@@ -380,6 +402,23 @@ function replaceWorkGrid(html, inner) {
 const read = file => readFile(join(ROOT, file), 'utf8');
 const write = (file, html) => writeFile(join(ROOT, file), html);
 
+// The reviews section is authored hidden so the page never flashes an empty
+// heading while reviews.js is still fetching. Once the rows are written into
+// the HTML there is nothing to wait for, and leaving it hidden was costing
+// twice over: visitors saw the section pop in and shove the page down — the
+// whole of this page's layout-shift score — and a crawler was handed 26
+// reviews inside a hidden element, which is exactly what prerendering them
+// was meant to avoid.
+// Matched by what it wraps rather than by its exact attributes, so restyling
+// the section does not silently turn the fix off. After the first build the
+// attribute is gone and this is a no-op, which is why a miss is not a warning.
+function unhideReviewSection(html) {
+  return html.replace(
+    /<section([^>]*?)\s+hidden([^>]*)>(\s*<div class="review-ledger review-archive")/,
+    '<section$1$2>$3'
+  );
+}
+
 async function run() {
   const reviews = await loadReviews();
   const published = reviews.filter(item =>
@@ -395,7 +434,7 @@ async function run() {
       .map(reviewRow).join('');
     const injected = injectInto(html, /<div class="review-ledger review-archive"[^>]*>/, 'reviews', rows);
     if (injected.ok) {
-      html = addSchema(injected.html, 'reviewschema', reviewSchema(published));
+      html = addSchema(unhideReviewSection(injected.html), 'reviewschema', reviewSchema(published));
       await write('reviews.html', html);
       note(`reviews.html: ${published.length} rows written`);
     } else {

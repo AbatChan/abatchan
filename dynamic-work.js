@@ -28,7 +28,7 @@
         if (path && !paths.includes(path)) paths.push(path);
       });
     }
-    return paths.map(path => sb.publicUrl('work', path));
+    return paths.map(path => sb.imageUrl('work', path, 1024));
   };
 
   const makeGallery = (item, extra) => {

@@ -77,7 +77,13 @@ window.SUPABASE = {
       xhr.setRequestHeader('apikey', cfg.anonKey);
       if (session.token) xhr.setRequestHeader('Authorization', `Bearer ${session.token}`);
       else if (!cfg.anonKey.startsWith('sb_publishable_')) xhr.setRequestHeader('Authorization', `Bearer ${cfg.anonKey}`);
-      if (method === 'POST') xhr.setRequestHeader('x-upsert', 'true');
+      // Storage defaults uploads to "no-cache", so every visitor re-downloads
+      // every image on every visit. Upload paths carry a timestamp, so a given
+      // path never changes content and can be cached indefinitely.
+      if (method === 'POST') {
+        xhr.setRequestHeader('x-upsert', 'true');
+        xhr.setRequestHeader('cache-control', 'max-age=31536000');
+      }
       if (xhr.upload && onProgress) xhr.upload.addEventListener('progress', e => {
         if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
       });
@@ -144,6 +150,17 @@ window.SUPABASE = {
     remove: (table, query) => req(`/rest/v1/${table}?${query}`, { method: 'DELETE' }),
     upload: (bucket, path, file, onProgress) => storageRequest('POST', bucket, path, file, onProgress),
     publicUrl: (bucket, path) => `${cfg.url}/storage/v1/object/public/${bucket}/${encodeURI(path)}`,
+    // Display URL for an uploaded image. Goes through /img on our own domain
+    // rather than straight to storage, because the raw object is the original
+    // upload — a 1.4MB PNG screenshot stays a 1.4MB PNG. /img is rewritten to
+    // Supabase's transform endpoint, which resizes and hands back WebP, and it
+    // lets us set our own caching. Storage also answers with
+    // "x-robots-tag: none", so images linked directly are barred from Google
+    // Images; served from our domain they are indexable.
+    // Use publicUrl instead when the bytes matter more than the size, e.g. a
+    // download link or an admin preview of what was actually uploaded.
+    imageUrl: (bucket, path, width = 1024) =>
+      `/img/w${width}/${bucket}/${String(path).split('/').map(encodeURIComponent).join('/')}`,
     removeFile: (bucket, path) => storageRequest('DELETE', bucket, path)
   };
 })();

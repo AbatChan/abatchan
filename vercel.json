@@ -3,6 +3,20 @@
   "outputDirectory": ".",
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/img/w640/:path*",
+      "destination": "https://fdubcelrwfpzjjnqipku.supabase.co/storage/v1/render/image/public/:path*?width=640&quality=72"
+    },
+    {
+      "source": "/img/w1024/:path*",
+      "destination": "https://fdubcelrwfpzjjnqipku.supabase.co/storage/v1/render/image/public/:path*?width=1024&quality=72"
+    },
+    {
+      "source": "/img/w1600/:path*",
+      "destination": "https://fdubcelrwfpzjjnqipku.supabase.co/storage/v1/render/image/public/:path*?width=1600&quality=72"
+    }
+  ],
   "redirects": [
     {
       "source": "/",
@@ -28,13 +42,20 @@
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
         { "key": "X-Permitted-Cross-Domain-Policies", "value": "none" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://fdubcelrwfpzjjnqipku.supabase.co; connect-src 'self' https://fdubcelrwfpzjjnqipku.supabase.co https://cdn.jsdelivr.net; font-src 'self' data:; media-src 'self' blob:; upgrade-insecure-requests" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://fdubcelrwfpzjjnqipku.supabase.co; connect-src 'self' https://fdubcelrwfpzjjnqipku.supabase.co; font-src 'self' data:; media-src 'self' blob:; upgrade-insecure-requests" }
       ]
     },
     {
       "source": "/assets/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/img/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "X-Robots-Tag", "value": "all" }
       ]
     }
   ]

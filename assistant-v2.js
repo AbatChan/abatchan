@@ -3,18 +3,25 @@
 // the assistant so the rest of the static site keeps its zero-build setup.
 
 (function assistantV2(){
+  // Served from our own domain rather than a CDN. The previous marked URL was
+  // unpinned, so whatever version jsdelivr resolved to that day was executing
+  // here — on a library that renders model output. These are the exact bytes
+  // that URL served, pinned. Same-origin also means they cache with the site
+  // and cost no extra connection on first paint.
   const CDN={
-    marked:'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
-    purify:'https://cdn.jsdelivr.net/npm/dompurify@3.4.7/dist/purify.min.js'
+    marked:'/assets/vendor/marked-15.0.12.min.js',
+    purify:'/assets/vendor/purify-3.4.7.min.js'
   };
   const STORE='abatchanGuideHistoryV1';
   const MAX_STORED=24;
   const WHATSAPP='https://wa.me/2347041857921';
 
   const loadScript=src=>new Promise((resolve,reject)=>{
-    if([...document.scripts].some(s=>s.src===src))return resolve();
+    // script.src reads back absolute, so a relative src never matches it.
+    const href=new URL(src,location.href).href;
+    if([...document.scripts].some(s=>s.src===href))return resolve();
     const s=document.createElement('script');
-    s.src=src;s.defer=true;s.crossOrigin='anonymous';
+    s.src=src;s.defer=true;
     s.onload=resolve;s.onerror=reject;document.head.appendChild(s);
   });
 

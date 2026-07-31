@@ -63,14 +63,27 @@
   const REDUCED=matchMedia('(prefers-reduced-motion: reduce)');
 
   // Measured after paint: only quotes that actually overflow get a control.
+  // Rows are built already clamped, so this only ever relaxes a quote that
+  // turned out to fit. Clamping here instead would mean painting every quote
+  // at full height first and collapsing it a frame later, which moved
+  // everything below the list and was the page's whole layout-shift score.
   const applyClamp=body=>{
     const quote=body.querySelector('.review-quote');
     if(!quote)return;
-    quote.classList.add('is-clamped');
-    if(quote.scrollHeight-quote.clientHeight<4){quote.classList.remove('is-clamped');return}
-    const toggle=document.createElement('button');
+    if(quote.scrollHeight-quote.clientHeight<4){
+      quote.classList.remove('is-clamped');
+      body.querySelector('.review-toggle')?.remove();
+      return;
+    }
+    // Prerendered markup ships its own toggle so the row is the right height
+    // on first paint. Adopt that button rather than adding a second one, so it
+    // ends up wired to the same handler either way.
+    const existing=body.querySelector('.review-toggle');
+    if(existing&&existing.dataset.bound)return;
+    const toggle=existing||document.createElement('button');
     toggle.type='button';
     toggle.className='review-toggle';
+    toggle.dataset.bound='1';
     toggle.setAttribute('aria-expanded','false');
     const label=()=>{
       const open=!quote.classList.contains('is-clamped');
@@ -87,7 +100,7 @@
         {duration:Math.min(520,220+Math.abs(end-start)*0.35),easing:'cubic-bezier(.2,.75,.2,1)'});
     });
     label();
-    body.append(toggle);
+    if(!existing)body.append(toggle);
   };
 
   const buildRow=(item,collect)=>{
@@ -108,7 +121,10 @@
     const body=document.createElement('div');
     body.className='review-body';
     const quote=document.createElement('blockquote');
-    quote.className='review-quote';
+    // Clamped up front to match the prerendered markup; applyClamp relaxes it
+    // a frame later if it turns out to fit. A short quote is unaffected by a
+    // four-line clamp, so relaxing one costs no movement.
+    quote.className='review-quote is-clamped';
     quote.textContent=item.quote||'';
     body.append(quote);
     row.append(who,body);

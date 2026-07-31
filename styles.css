@@ -1230,3 +1230,42 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
   line-height:1.45;
   opacity:.85;
 }
+
+/* Nothing is hidden waiting for JavaScript.
+   .reveal used to mean opacity:0 until script.js loaded, parsed and ran its
+   observer — so text that was already in the HTML and already on screen stayed
+   invisible for seconds, which is what Largest Contentful Paint was measuring.
+   script.js now adds .pending to the elements that are genuinely below the
+   fold, and only those are hidden. Content in the first viewport paints with
+   the document.
+   The overrides below sit at the end of the file deliberately: the original
+   .reveal rule is still up in the minified block at the top. */
+.reveal{opacity:1;transform:none}
+.reveal.pending{opacity:0;transform:translateY(28px)}
+.reveal.pending.visible,.reveal.visible{opacity:1;transform:none}
+
+/* Hero content still animates in — from a CSS animation, which starts with the
+   stylesheet rather than after a 59KB script. */
+@keyframes reveal-rise{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+.hero>div>.reveal,
+.hero>.reveal,
+.page-hero>.reveal,
+.pricing-hero>.reveal,
+.doc-hero>.reveal,
+.brand-hero>.reveal{
+  animation:reveal-rise .7s var(--ease) both;
+}
+.hero>div>.reveal:nth-child(2),.page-hero>.reveal:nth-child(2),
+.pricing-hero>.reveal:nth-child(2),.doc-hero>.reveal:nth-child(2),
+.brand-hero>.reveal:nth-child(2){animation-delay:.07s}
+.hero>div>.reveal:nth-child(3),.page-hero>.reveal:nth-child(3),
+.pricing-hero>.reveal:nth-child(3),.doc-hero>.reveal:nth-child(3),
+.brand-hero>.reveal:nth-child(3){animation-delay:.14s}
+.hero>div>.reveal:nth-child(4),.page-hero>.reveal:nth-child(4),
+.pricing-hero>.reveal:nth-child(4),.doc-hero>.reveal:nth-child(4),
+.brand-hero>.reveal:nth-child(4){animation-delay:.21s}
+/* Someone who asked for less motion gets the content, not the movement. */
+@media(prefers-reduced-motion:reduce){
+  .hero>div>.reveal,.hero>.reveal,.page-hero>.reveal,.pricing-hero>.reveal,
+  .doc-hero>.reveal,.brand-hero>.reveal{animation-duration:.01ms;animation-delay:0s}
+}

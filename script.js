@@ -892,7 +892,9 @@ window.ASSISTANT_CANNED=CANNED;
       visual.replaceChildren();
       visual.className='card-visual managed';
       const img=document.createElement('img');
-      img.src=sb.publicUrl('work',item.image_path);
+      img.src=sb.imageUrl('work',item.image_path,1024);
+      img.srcset=[640,1024,1600].map(w=>`${sb.imageUrl('work',item.image_path,w)} ${w}w`).join(', ');
+      img.sizes='(max-width:900px) 100vw, 620px';
       img.alt=item.image_alt||'';
       img.loading='lazy';
       img.className='work-art';
@@ -1002,11 +1004,33 @@ if(intro){
   else{video?.play().catch(close);video?.addEventListener('ended',close,{once:true});skip?.addEventListener('click',close,{once:true});setTimeout(close,2800)}
 }
 
-const observer=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.12});
-qa('.reveal').forEach(e=>observer.observe(e));
+// Scroll reveals hide only what the visitor has not reached yet.
+//
+// Every .reveal used to start at opacity 0 and wait for this file to load and
+// parse before anything appeared. For a section far down the page that is the
+// point; for the heading and copy already on screen it was pure delay, and it
+// was what Largest Contentful Paint was measuring — the text sat in the HTML,
+// painted, and invisible for seconds.
+//
+// So nothing is hidden by the stylesheet any more. Elements below the fold are
+// hidden here, at the moment we can tell where they are, and revealed on
+// approach as before. Anything already on screen is simply left alone.
+const observer=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;
+  e.target.classList.remove('pending');
+  e.target.classList.add('visible');
+  observer.unobserve(e.target);
+}),{threshold:.12});
+const hideUntilSeen=e=>{
+  if(e.classList.contains('visible'))return;
+  if(e.getBoundingClientRect().top<innerHeight)return;
+  e.classList.add('pending');
+  observer.observe(e);
+};
+qa('.reveal').forEach(hideUntilSeen);
 // CMS-rendered sections arrive after this runs, so they need the same observer
 // rather than a second one with its own threshold.
-window.__abatchanObserveReveal=node=>observer.observe(node);
+window.__abatchanObserveReveal=hideUntilSeen;
 document.addEventListener('mousemove',e=>{const light=q('.cursor-light');if(light){light.style.left=e.clientX+'px';light.style.top=e.clientY+'px'}});
 // System map. Connectors are measured from the real node boxes rather than
 // drawn at fixed angles, so they always terminate on the node edge instead of
