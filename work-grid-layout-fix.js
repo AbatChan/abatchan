@@ -18,6 +18,8 @@
   };
 
   normalizeWorkCards();
-  const grid=document.querySelector('.work-grid');
-  if(grid&&isWork)new MutationObserver(normalizeWorkCards).observe(grid,{childList:true,subtree:false});
+  // /work now renders one grid per category, so watch the container holding
+  // them all rather than whichever grid happened to be first.
+  const host=document.querySelector('.work-groups')||document.querySelector('.work-grid');
+  if(host&&isWork)new MutationObserver(normalizeWorkCards).observe(host,{childList:true,subtree:true});
 })();

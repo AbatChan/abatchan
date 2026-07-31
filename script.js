@@ -845,54 +845,175 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
 // ------------------------------------------------------------- managed work
 // A successful empty result means there are no published projects. A network
 // failure leaves the authored HTML cards in place as the resilient fallback.
+// Category order and labels for the grouped work page. build/prerender.mjs
+// holds the same table: it writes these sections into the HTML and this
+// rebuilds them from Supabase a moment later, so if the two disagree on order
+// or wording the page visibly reshuffles after it loads.
+const WORK_CATEGORIES=[
+  ['product','products'],
+  ['platform','platforms'],
+  ['web','web development'],
+  ['product-design','product design'],
+  ['branding','branding'],
+  ['automation','automation'],
+  ['concept','concepts']
+];
+// Past this many projects the page opens on a first batch with a "load more".
+// Both numbers are repeated in build/prerender.mjs.
+const WORK_PAGINATE_FROM=20;
+const WORK_PAGE_SIZE=12;
+
 (async function managedWork(){
-  const grid=q('body[data-page="work"] .work-grid')||(
-    /\/work(?:\.html)?$/.test(location.pathname.replace(/\/+$/,''))?q('.work-grid'):null
+  const groups=q('body[data-page="work"] .work-groups')||(
+    /\/work(?:\.html)?$/.test(location.pathname.replace(/\/+$/,''))?q('.work-groups'):null
   );
-  if(!grid)return;
-  grid.dataset.loadingWork='true';
-  grid.setAttribute('aria-busy','true');
-  const fallbackVisuals=new Map(qa('.work-card',grid).map(card=>[
+  if(!groups)return;
+  groups.dataset.loadingWork='true';
+  groups.setAttribute('aria-busy','true');
+  const fallbackVisuals=new Map(qa('.work-card',groups).map(card=>[
     q('.card-info h3',card)?.textContent.trim().toLowerCase(),
     q('.card-visual',card)?.cloneNode(true)
   ]).filter(([title,visual])=>title&&visual));
-  const filters=qa('[data-filter]');
-  const syncFilterAvailability=()=>{
-    const categories=new Set(qa('.work-card',grid).map(card=>card.dataset.type));
-    filters.forEach(button=>{button.hidden=button.dataset.filter!=='all'&&!categories.has(button.dataset.filter)});
-  };
-  syncFilterAvailability();
-  filters.forEach(button=>button.addEventListener('click',()=>{
-    filters.forEach(other=>other.classList.toggle('active',other===button));
-    qa('.work-card',grid).forEach(card=>{
-      card.hidden=button.dataset.filter!=='all'&&card.dataset.type!==button.dataset.filter;
+  const bar=q('.filter-bar');
+  // Queried live rather than captured: the bar is rebuilt whenever the set of
+  // categories changes, so a stale list would leave dead buttons wired up.
+  const filters=()=>qa('[data-filter]',bar||document);
+  const moreWrap=q('[data-work-more]');
+  const moreBtn=q('[data-work-more-btn]');
+  let shown=Infinity;
+
+  const activeFilter=()=>filters().find(b=>b.classList.contains('active'))?.dataset.filter||'all';
+
+  // One pass owns what is on screen: the chosen category first, then how much
+  // of it has been revealed. Keeping both in one place means a filter change
+  // and a "load more" can never disagree about which cards are showing.
+  const applyView=()=>{
+    const filter=activeFilter();
+    let seen=0,total=0;
+    qa('.work-group',groups).forEach(section=>{
+      const inCategory=filter==='all'||section.dataset.group===filter;
+      let visibleHere=0;
+      qa('.work-card',section).forEach(card=>{
+        if(!inCategory){card.hidden=true;return}
+        total+=1;
+        const reveal=seen<shown;
+        card.hidden=!reveal;
+        if(reveal){seen+=1;visibleHere+=1}
+      });
+      section.hidden=!visibleHere;
     });
-  }));
-  if(!window.sb?.configured?.()){
-    delete grid.dataset.loadingWork;
-    grid.removeAttribute('aria-busy');
-    return;
-  }
+    if(moreWrap)moreWrap.hidden=seen>=total;
+    return {seen,total};
+  };
+
+  // The bar is rebuilt from what is actually on the page, so a category with
+  // nothing in it has no chip at all rather than a chip reading zero, and a
+  // category the last build never saw still gets one.
+  const syncFilterAvailability=()=>{
+    if(!bar)return;
+    const keep=activeFilter();
+    const present=[...qa('.work-group',groups)].map(section=>({
+      slug:section.dataset.group,
+      label:q('.work-group-head',section)?.firstChild?.textContent?.trim()||section.dataset.group,
+      count:qa('.work-card',section).length
+    })).filter(group=>group.count);
+    const chip=(slug,label,count,active)=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='btn chip'+(active?' active':'');
+      button.dataset.filter=slug;
+      button.textContent=label;
+      const badge=document.createElement('span');
+      badge.className='chip-count';
+      badge.textContent=count;
+      button.append(badge);
+      return button;
+    };
+    const total=qa('.work-card',groups).length;
+    const wanted=[['all','all systems',total],...present.map(g=>[g.slug,g.label,g.count])];
+    // Only touch the DOM when the bar would actually differ, so a re-sync does
+    // not throw away the button the visitor is mid-click on.
+    const signature=wanted.map(([s,,c])=>`${s}:${c}`).join('|');
+    if(bar.dataset.signature===signature)return;
+    bar.dataset.signature=signature;
+    bar.replaceChildren(...wanted.map(([slug,label,count])=>
+      chip(slug,label,count,slug===keep||(keep==='all'&&slug==='all'))));
+    if(!filters().some(b=>b.classList.contains('active')))
+      filters()[0]?.classList.add('active');
+  };
+
+  const resetPaging=()=>{
+    const total=qa('.work-card',groups).length;
+    shown=total>=WORK_PAGINATE_FROM?WORK_PAGE_SIZE:Infinity;
+  };
+
+  syncFilterAvailability();
+  resetPaging();
+  applyView();
+
+  // Delegated, because syncFilterAvailability replaces the buttons whenever the
+  // categories change and per-button listeners would go with them.
+  bar?.addEventListener('click',event=>{
+    const button=event.target.closest('[data-filter]');
+    if(!button||!bar.contains(button))return;
+    filters().forEach(other=>other.classList.toggle('active',other===button));
+    resetPaging();
+    applyView();
+  });
+  moreBtn?.addEventListener('click',()=>{
+    shown+=WORK_PAGE_SIZE;
+    const {seen}=applyView();
+    // Move focus to the first newly revealed card so the keyboard and a screen
+    // reader land on the new work rather than staying on a button that may
+    // have just disappeared.
+    const cards=qa('.work-card',groups).filter(card=>!card.hidden);
+    cards[Math.max(0,seen-WORK_PAGE_SIZE)]?.querySelector('h3')?.focus?.();
+  });
+  const settle=()=>{
+    delete groups.dataset.loadingWork;
+    groups.removeAttribute('aria-busy');
+  };
+  if(!window.sb?.configured?.()){settle();return}
   let rows;
   try{
     rows=await sb.select('work_items','published=eq.true&select=*&order=position.asc,created_at.asc');
-  }catch{
-    delete grid.dataset.loadingWork;
-    grid.removeAttribute('aria-busy');
-    return;
-  }
-  grid.replaceChildren();
+  }catch{settle();return}
+  groups.replaceChildren();
   if(!rows.length){
-    filters.forEach(button=>{button.hidden=button.dataset.filter!=='all'});
+    filters().forEach(button=>{button.hidden=button.dataset.filter!=='all'});
+    if(moreWrap)moreWrap.hidden=true;
     const empty=document.createElement('p');
     empty.className='work-empty';
     empty.textContent='New work is being prepared. Check back soon.';
-    grid.append(empty);
-    delete grid.dataset.loadingWork;
-    grid.removeAttribute('aria-busy');
+    groups.append(empty);
+    settle();
     return;
   }
-  rows.forEach(item=>{
+  // Same buckets and order the build used, so replacing its markup with this
+  // does not move anything.
+  const buckets=new Map(WORK_CATEGORIES.map(([slug,label])=>[slug,{slug,label,items:[]}]));
+  const spare={slug:'other',label:'more work',items:[]};
+  rows.forEach(item=>{(buckets.get(item.category)||spare).items.push(item)});
+  const ordered=[...buckets.values(),spare].filter(group=>group.items.length);
+  const gridFor=new Map();
+  ordered.forEach(group=>{
+    const section=document.createElement('section');
+    section.className='work-group';
+    section.dataset.group=group.slug;
+    const head=document.createElement('h2');
+    head.className='work-group-head';
+    head.textContent=group.label;
+    const count=document.createElement('span');
+    count.className='work-group-count';
+    count.textContent=group.items.length;
+    head.append(count);
+    const inner=document.createElement('div');
+    inner.className='work-grid';
+    section.append(head,inner);
+    groups.append(section);
+    group.items.forEach(item=>gridFor.set(item,inner));
+  });
+  ordered.flatMap(group=>group.items).forEach(item=>{
     const card=document.createElement('article');
     card.className='work-card reveal visible'+(item.featured?' is-featured':'');
     card.dataset.type=item.category||'product';
@@ -941,11 +1062,12 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
       info.append(link);
     }
     card.append(visual,info);
-    grid.append(card);
+    gridFor.get(item).append(card);
   });
   syncFilterAvailability();
-  delete grid.dataset.loadingWork;
-  grid.removeAttribute('aria-busy');
+  resetPaging();
+  applyView();
+  settle();
 })();
 
 // ------------------------------------------------------------- what's new

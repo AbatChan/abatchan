@@ -191,7 +191,55 @@ const storageUrl = (path, width = 1024) => path
   ? `/img/w${width}/work/${String(path).split('/').map(encodeURIComponent).join('/')}`
   : '';
 
-function workCard(item) {
+// Category order and labels for the grouped work page. script.js holds the
+// same table and must stay in step with it: the build writes these sections
+// and the script rebuilds them from Supabase a moment later, so if the two
+// disagree on order or wording the page visibly reshuffles after it loads.
+// Anything with an unrecognised category falls into "more work" at the end
+// rather than vanishing.
+const WORK_CATEGORIES = [
+  ['product', 'products'],
+  ['platform', 'platforms'],
+  ['web', 'web development'],
+  ['product-design', 'product design'],
+  ['branding', 'branding'],
+  ['automation', 'automation'],
+  ['concept', 'concepts']
+];
+// Beyond this many projects the page shows a first batch and a "load more".
+// script.js repeats both numbers; changing one alone reintroduces the shift.
+const WORK_PAGINATE_FROM = 20;
+const WORK_PAGE_SIZE = 12;
+
+// The filter bar used to be a fixed list of eight chips, so a page with four
+// categories painted four dead chips until script.js hid them. Writing only
+// the categories that have work means nothing empty is ever on screen, and the
+// bar does not reflow a moment after load.
+function filterBarMarkup(groups, total) {
+  const chip = (slug, label, count, active) =>
+    `<button class="btn chip${active ? ' active' : ''}" data-filter="${escapeHtml(slug)}">`
+    + `${escapeHtml(label)}<span class="chip-count">${count}</span></button>`;
+  return chip('all', 'all systems', total, true)
+    + groups.map(group => chip(group.slug, group.label, group.items.length, false)).join('');
+}
+
+function replaceFilterBar(html, inner) {
+  const pattern = /(<div class="filter-bar[^"]*"[^>]*>)[\s\S]*?(<\/div>)/;
+  if (!pattern.test(html)) return { html, ok: false };
+  return { html: html.replace(pattern, `$1${inner}$2`), ok: true };
+}
+
+function groupWork(items) {
+  const known = new Map(WORK_CATEGORIES.map(([slug, label]) => [slug, { slug, label, items: [] }]));
+  const spare = { slug: 'other', label: 'more work', items: [] };
+  for (const item of items) {
+    const bucket = known.get(item.category) || spare;
+    bucket.items.push(item);
+  }
+  return [...known.values(), spare].filter(group => group.items.length);
+}
+
+function workCard(item, beyondFirstBatch = false) {
   const image = storageUrl(item.image_path);
   const srcset = item.image_path
     ? IMAGE_WIDTHS.map(w => `${storageUrl(item.image_path, w)} ${w}w`).join(', ')
@@ -202,7 +250,7 @@ function workCard(item) {
   const link = typeof item.link_url === 'string' && /^(https:\/\/|\/)/.test(item.link_url)
     ? `<a class="btn sm" href="${escapeHtml(item.link_url)}"${item.link_url.startsWith('https://') ? ' target="_blank" rel="noopener noreferrer"' : ''}>view project <span class="arrow">↗</span></a>`
     : '';
-  return `<article class="work-card${item.featured ? ' is-featured' : ''}" data-type="${escapeHtml(item.category || 'product')}"${item.slug ? ` id="work-${escapeHtml(item.slug)}"` : ''}>`
+  return `<article class="work-card${item.featured ? ' is-featured' : ''}" data-type="${escapeHtml(item.category || 'product')}"${item.slug ? ` id="work-${escapeHtml(item.slug)}"` : ''}${beyondFirstBatch ? ' hidden' : ''}>`
     + visual
     + `<div class="card-info"><div class="card-meta">`
     + `<span>${escapeHtml(item.kicker || item.category || 'project')}</span>`
@@ -387,7 +435,7 @@ function replaceWorkGrid(html, inner) {
   const block = replaceBlock('', 'work', inner);
   if (marker.test(html)) return { html: html.replace(marker, block), ok: true };
 
-  const open = html.match(/<div class="work-grid"[^>]*>/);
+  const open = html.match(/<div class="work-groups"[^>]*>/);
   if (!open) return { html, ok: false };
   const start = open.index + open[0].length;
   const rest = html.slice(start);
@@ -504,10 +552,30 @@ async function run() {
   if (work.length) {
     try {
       let html = await read('work.html');
-      const cards = work.map(workCard).join('');
+      const groups = groupWork(work);
+      // Past the threshold the page opens on a first batch. The cards beyond
+      // it are written out in full and marked hidden, so the "load more"
+      // button reveals markup that is already here rather than fetching, and
+      // the first paint is the same height the script will settle on.
+      const paginate = work.length >= WORK_PAGINATE_FROM;
+      let rendered = 0;
+      const cards = groups.map(group => {
+        const inner = group.items.map(item => {
+          const beyond = paginate && rendered >= WORK_PAGE_SIZE;
+          rendered += 1;
+          return workCard(item, beyond);
+        }).join('');
+        return `<section class="work-group" data-group="${escapeHtml(group.slug)}">`
+          + `<h2 class="work-group-head">${escapeHtml(group.label)}`
+          + `<span class="work-group-count">${group.items.length}</span></h2>`
+          + `<div class="work-grid">${inner}</div>`
+          + `</section>`;
+      }).join('');
       const injected = replaceWorkGrid(html, cards);
       if (injected.ok) {
-        html = addSchema(injected.html, 'workschema', workSchema(work));
+        const bar = replaceFilterBar(injected.html, filterBarMarkup(groups, work.length));
+        if (!bar.ok) warn('work.html: filter bar not found, chips left as authored');
+        html = addSchema(bar.html, 'workschema', workSchema(work));
         html = addSchema(html, 'workbreadcrumbs', breadcrumbSchema('Work', '/work'));
         await write('work.html', html);
         note(`work.html: ${work.length} published cards written`);

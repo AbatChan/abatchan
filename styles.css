@@ -909,3 +909,47 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
 @media(prefers-reduced-motion:reduce){
   .hero>div>.reveal,.hero>.reveal,.page-hero>.reveal,.pricing-hero>.reveal,
   .doc-hero>.reveal,.brand-hero>.reveal{animation-duration:.01ms;animation-delay:0s}}
+
+/* --- work, grouped by category ------------------------------------------- */
+/* /work used to be one flat grid with chips that hid cards. It now renders a
+   section per category, so the page reads as a structured portfolio and each
+   category name is real text on the page rather than only a button label. */
+.work-groups{display:flex;flex-direction:column;gap:38px}
+/* These are <section> elements, and the global rule gives every section
+   120px of vertical padding — which put 240px of dead space inside each
+   category on top of the gap between them. */
+.work-group{padding:0}
+.work-group[hidden]{display:none}
+.work-group-head{
+  display:flex;align-items:baseline;gap:10px;
+  margin:0 0 16px;padding-bottom:10px;
+  border-bottom:1px solid var(--line);
+  font-size:13px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);
+}
+.work-group-count{
+  padding:2px 8px;border-radius:999px;
+  background:rgba(99,102,241,.14);color:var(--signal-ink,var(--signal));
+  font-size:11px;letter-spacing:.04em;
+}
+html[data-theme="light"] .work-group-count{background:rgba(99,102,241,.12)}
+
+/* No column overrides here on purpose: work-grid-layout-fix.js puts /work into
+   its three-column mode, where every card takes one cell and grid-column is
+   forced to auto. Adding span rules would only fight it. */
+@media(max-width:900px){.work-groups{gap:30px}}
+
+/* Counts on the filter chips, so the size of each category is visible before
+   you commit to a click. */
+.chip-count{
+  margin-left:7px;padding:1px 6px;border-radius:999px;
+  background:rgba(245,245,243,.12);
+  font-size:11px;line-height:1.5;font-variant-numeric:tabular-nums;
+}
+.btn.chip.active .chip-count{background:rgba(13,13,13,.14)}
+html[data-theme="light"] .chip-count{background:rgba(21,21,25,.1)}
+
+.work-more{display:flex;justify-content:center;margin-top:52px}
+.work-more[hidden]{display:none}
+.work-more .arrow{transition:transform .25s var(--ease)}
+.work-more .btn:hover .arrow{transform:translateY(3px)}

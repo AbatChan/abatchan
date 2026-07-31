@@ -195,8 +195,10 @@
       };
 
       apply();
-      const grid = q('.work-grid');
-      if (grid) new MutationObserver(apply).observe(grid, { childList: true });
+      // /work splits its cards across one grid per category, so watch the
+      // container that holds them all. The homepage still has a single grid.
+      const host = q('.work-groups') || q('.work-grid');
+      if (host) new MutationObserver(apply).observe(host, { childList: true, subtree: true });
     } catch {}
   };
 
