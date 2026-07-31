@@ -419,6 +419,64 @@ function unhideReviewSection(html) {
   );
 }
 
+// The home and pricing teasers sit in their own hidden section, for the same
+// reason and with the same cost: reviews.js reveals it, so a crawler saw a
+// heading promising client reviews above an empty, hidden box.
+function unhideTeaserSection(html) {
+  return html.replace(
+    /<section([^>]*?)\s+hidden([^>]*)>((?:(?!<\/section>)[\s\S])*?data-reviews-latest)/,
+    '<section$1$2>$3'
+  );
+}
+
+// Mirrors the ordering in reviews.js: a date like "January 2025" becomes a
+// sortable number, and anything unparseable sorts last rather than pretending
+// to be recent. The two have to agree — if the server picks a different five
+// than the client, the client swaps them out after paint and the section
+// jumps, which is the bug this whole pass exists to remove.
+const REVIEW_MONTHS =
+  'january february march april may june july august september october november december'.split(' ');
+const reviewWhen = item => {
+  const parts = String(item.date || '').trim().toLowerCase().split(/\s+/);
+  if (parts.length < 2) return 0;
+  const month = REVIEW_MONTHS.indexOf(parts[0]);
+  const year = Number(parts[1]);
+  return month < 0 || !year ? 0 : year * 12 + month + 1;
+};
+const latestFirst = (a, b) => reviewWhen(b) - reviewWhen(a) || (a.position ?? 0) - (b.position ?? 0);
+
+// Writes the newest few reviews into a page that only teases them, then opens
+// the section and, when there are more than fit, the "see all" link.
+async function writeTeaser(file, published) {
+  let html = await read(file);
+  const declared = html.match(/data-reviews-limit="(\d+)"/);
+  const limit = declared ? Number(declared[1]) : 5;
+  const live = published.slice().sort(latestFirst).slice(0, limit);
+
+  const injected = injectInto(
+    html,
+    /<div class="review-ledger"[^>]*data-reviews-latest[^>]*>/,
+    'reviews-teaser',
+    live.map(reviewRow).join('')
+  );
+  if (!injected.ok) {
+    warn(`${file}: review teaser ledger not found, left alone`);
+    return;
+  }
+  html = unhideTeaserSection(injected.html);
+
+  if (published.length > live.length) {
+    html = html.replace(/(<div class="review-more[^>]*?data-reviews-more)\s+hidden(>)/, '$1$2');
+  }
+  html = html.replace(
+    /(<span data-reviews-count>)\d+(<\/span>)/,
+    `$1${published.length}$2`
+  );
+
+  await write(file, html);
+  note(`${file}: ${live.length} teaser reviews written, ${published.length} published`);
+}
+
 async function run() {
   const reviews = await loadReviews();
   const published = reviews.filter(item =>
@@ -488,6 +546,18 @@ async function run() {
     note(`bookingkoala.html: ${related.length} relevant reviews written`);
   } catch (err) {
     warn('bookingkoala.html:', err.message);
+  }
+
+  // ---- home and pricing review teasers
+  // Runs before the pricing FAQ step below, which reads pricing.html again.
+  if (published.length) {
+    for (const file of ['index.html', 'pricing.html']) {
+      try {
+        await writeTeaser(file, published);
+      } catch (err) {
+        warn(`${file} teaser:`, err.message);
+      }
+    }
   }
 
   // ---- /pricing FAQ
