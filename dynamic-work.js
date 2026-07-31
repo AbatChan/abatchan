@@ -53,6 +53,7 @@
       img.src = sb.imageUrl('work', path, 1024);
       img.srcset = gallerySrcset(path);
       img.sizes = '(max-width:900px) 100vw, 620px';
+      img.dataset.full = sb.imageUrl('work', path, 1600);
       img.alt = index === 0 ? (item.image_alt || '') : '';
       img.loading = 'lazy';
       slide.append(img);
@@ -212,8 +213,8 @@
       lbCount.textContent = `${lbIndex + 1} / ${lbUrls.length}`;
     };
 
-    const open = (slides, index) => {
-      lbUrls = slides;
+    const open = (urls, index) => {
+      lbUrls = urls;
       lbIndex = index;
       show();
       lightbox.classList.add('open');
@@ -255,7 +256,10 @@
       event.preventDefault();
       const visual = img.closest('.card-visual');
       const images = qa('img', visual).filter(node => node.currentSrc || node.src);
-      open(images.map(node => node.currentSrc || node.src), Math.max(0, images.indexOf(img)));
+      // The card showed whichever rendition fitted a 620px slot; the lightbox
+      // fills the screen, so prefer the large one where the slide named it.
+      open(images.map(node => node.dataset.full || node.currentSrc || node.src),
+        Math.max(0, images.indexOf(img)));
     });
   };
 
