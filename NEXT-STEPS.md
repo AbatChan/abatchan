@@ -23,10 +23,14 @@ and a possible cleaning-service website page remain optional follow-on work.
 
 - **Static HTML + vanilla JS. No framework, no build step.** Each page is a
   hand-written `.html` file at the repo root. There is no bundler.
-- **Hosting: Vercel.** Deploy with `vercel deploy --prod` from
-  `website-preview/`. There is **no GitHub → Vercel integration** — pushing to
-  GitHub does not deploy. Deploys are CLI-only and come from the working
-  directory, not from a commit.
+- **Hosting: Vercel, connected to `AbatChan/abatchan`.** Pushing to `main`
+  deploys production. `vercel deploy --prod` from `website-preview/` also works
+  and ships the *working directory* rather than a commit — convenient, and the
+  reason production once ran code that existed in no commit, and why untracked
+  files under `audit/` briefly went live. Prefer pushing.
+- **A deploy hook rebuilds on demand.** `/api/refresh`, wired to the "rebuild
+  for search" button on the dashboard's work list. Publishing reaches visitors
+  at once and search engines only at the next build, so this closes that gap.
 - **Data: Supabase.** Table `public.settings` is a key/value store
   (`key`, `value` jsonb, `is_public`). `is_public = true` rows are readable by
   the browser with the publishable key; `false` rows are server-only.
