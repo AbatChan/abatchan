@@ -349,15 +349,25 @@ const socialRail=()=>socialLinks.map(([slug,label,href])=>
 
 // Secondary pages live down here as a plain text menu, so the header can stay
 // on the five primary destinations.
+const FOOTER_WORK=[
+  ['/work','all work'],
+  ['/bookingkoala','BookingKoala']
+];
 const FOOTER_NAV=[
-  ['/bookingkoala','BookingKoala'],
+  ['/about','about'],
   ['/brand','brand'],
   ['/process','process'],
   ['/reviews','reviews'],
   ['/pricing','pricing'],
   ['/privacy','privacy'],
-  ['/terms','terms']
+  ['/terms','terms'],
+  ['/contact','contact']
 ];
+const footerWorkMenu=()=>`<details class="footer-submenu">
+  <summary>work <span aria-hidden="true"></span></summary>
+  <div class="footer-submenu-links">${FOOTER_WORK.map(([href,label])=>
+    `<a data-page="${href}" href="${href}">${label}</a>`).join('')}</div>
+</details>`;
 const footerNav=()=>FOOTER_NAV.map(([href,label])=>
   `<a data-page="${href}" href="${href}">${label}</a>`).join('');
 
@@ -366,7 +376,7 @@ qa('footer').forEach(footer=>{
     <a class="footer-mark" href="/" aria-label="abatchan home">${brandMarkup()}</a>
     <div class="social-rail" aria-label="social profiles">${socialRail()}</div>
     <div class="footer-meta"><a href="mailto:abatchan4@gmail.com">abatchan mail</a><span>&copy; 2026</span></div>
-    <nav class="footer-nav" aria-label="More pages">${footerNav()}</nav>
+    <nav class="footer-nav" aria-label="More pages">${footerWorkMenu()}${footerNav()}</nav>
   </div>`;
 });
 

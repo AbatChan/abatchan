@@ -127,10 +127,13 @@ function reviewRow(item) {
 // script.js rebuilds this on load with inline SVG icons. A crawler only needs
 // the links and their text, so the prerendered version is plain anchors.
 const FOOTER_NAV = [
-  ['/work', 'work'], ['/about', 'about'], ['/process', 'process'],
-  ['/bookingkoala', 'BookingKoala'],
+  ['/about', 'about'], ['/process', 'process'],
   ['/brand', 'brand'], ['/reviews', 'reviews'], ['/pricing', 'pricing'],
   ['/privacy', 'privacy'], ['/terms', 'terms'], ['/contact', 'contact']
+];
+const FOOTER_WORK = [
+  ['/work', 'all work'],
+  ['/bookingkoala', 'BookingKoala']
 ];
 
 async function footerMarkup() {
@@ -151,7 +154,11 @@ async function footerMarkup() {
         `<a class="social-chip" href="${escapeHtml(row.href)}" target="_blank" rel="noreferrer noopener" aria-label="${escapeHtml(row.label)}">${escapeHtml(row.label)}</a>`
       ).join('') + `</div>`
     : '';
-  const nav = `<nav class="footer-nav" aria-label="More pages">`
+  const work = `<details class="footer-submenu"><summary>work <span aria-hidden="true"></span></summary>`
+    + `<div class="footer-submenu-links">`
+    + FOOTER_WORK.map(([href, label]) => `<a href="${href}">${label}</a>`).join('')
+    + `</div></details>`;
+  const nav = `<nav class="footer-nav" aria-label="More pages">${work}`
     + FOOTER_NAV.map(([href, label]) => `<a href="${href}">${label}</a>`).join('')
     + `</nav>`;
   return `<div class="shell compact-footer">`
