@@ -660,10 +660,28 @@ const CANNED=[
 // answer the questions visitors actually ask.
 window.ASSISTANT_CANNED=CANNED;
 
+// The assistant's styles are not in styles.css. They were 19KB of rules for a
+// panel most visitors never open, and every page waited for them before it
+// could paint. They load here instead — started in parallel with the settings
+// call this function already waits on, so the launcher costs no extra time and
+// is never painted before the rules that position it arrive.
+const ASSISTANT_CSS='/assistant.css?v=1';
+const loadAssistantStyles=()=>new Promise(resolve=>{
+  if(document.querySelector('link[data-assist-css]'))return resolve();
+  const link=document.createElement('link');
+  link.rel='stylesheet';link.href=ASSISTANT_CSS;link.dataset.assistCss='1';
+  // Resolve either way: a missing stylesheet should leave the guide reachable
+  // and plain, not remove it from the page.
+  link.onload=resolve;link.onerror=resolve;
+  document.head.append(link);
+});
+
 (async function assistant(){
   if(q('.assist-launch'))return;
+  const styles=loadAssistantStyles();
   const settings=await loadPublicSettings();
   if(settings?.['assistant.enabled']===false)return;
+  await styles;
   if(typeof settings?.['assistant.greeting']==='string'&&settings['assistant.greeting']!==LEGACY_ASSISTANT_GREETING){
     ASSISTANT.greeting=settings['assistant.greeting'];
   }
