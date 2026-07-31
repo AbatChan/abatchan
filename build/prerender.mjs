@@ -127,8 +127,8 @@ function reviewRow(item) {
 // script.js rebuilds this on load with inline SVG icons. A crawler only needs
 // the links and their text, so the prerendered version is plain anchors.
 const FOOTER_NAV = [
-  ['/about', 'about'], ['/process', 'process'],
-  ['/brand', 'brand'], ['/reviews', 'reviews'], ['/pricing', 'pricing'],
+  ['/brand', 'brand'], ['/process', 'process'],
+  ['/reviews', 'reviews'],
   ['/privacy', 'privacy'], ['/terms', 'terms'], ['/contact', 'contact']
 ];
 const FOOTER_WORK = [
@@ -158,8 +158,9 @@ async function footerMarkup() {
     + `<div class="footer-submenu-links">`
     + FOOTER_WORK.map(([href, label]) => `<a href="${href}">${label}</a>`).join('')
     + `</div></details>`;
-  const nav = `<nav class="footer-nav" aria-label="More pages">${work}`
-    + FOOTER_NAV.map(([href, label]) => `<a href="${href}">${label}</a>`).join('')
+  const nav = `<nav class="footer-nav" aria-label="More pages">`
+    + FOOTER_NAV.map(([href, label]) =>
+      `${href === '/reviews' ? work : ''}<a href="${href}">${label}</a>`).join('')
     + `</nav>`;
   return `<div class="shell compact-footer">`
     + `<a class="footer-mark" href="/" aria-label="abatchan home">abatchan</a>`

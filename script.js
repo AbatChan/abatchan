@@ -354,11 +354,9 @@ const FOOTER_WORK=[
   ['/bookingkoala','BookingKoala']
 ];
 const FOOTER_NAV=[
-  ['/about','about'],
   ['/brand','brand'],
   ['/process','process'],
   ['/reviews','reviews'],
-  ['/pricing','pricing'],
   ['/privacy','privacy'],
   ['/terms','terms'],
   ['/contact','contact']
@@ -369,14 +367,14 @@ const footerWorkMenu=()=>`<details class="footer-submenu">
     `<a data-page="${href}" href="${href}">${label}</a>`).join('')}</div>
 </details>`;
 const footerNav=()=>FOOTER_NAV.map(([href,label])=>
-  `<a data-page="${href}" href="${href}">${label}</a>`).join('');
+  `${href==='/reviews'?footerWorkMenu():''}<a data-page="${href}" href="${href}">${label}</a>`).join('');
 
 qa('footer').forEach(footer=>{
   footer.innerHTML=`<div class="shell compact-footer">
     <a class="footer-mark" href="/" aria-label="abatchan home">${brandMarkup()}</a>
     <div class="social-rail" aria-label="social profiles">${socialRail()}</div>
     <div class="footer-meta"><a href="mailto:abatchan4@gmail.com">abatchan mail</a><span>&copy; 2026</span></div>
-    <nav class="footer-nav" aria-label="More pages">${footerWorkMenu()}${footerNav()}</nav>
+    <nav class="footer-nav" aria-label="More pages">${footerNav()}</nav>
   </div>`;
 });
 
