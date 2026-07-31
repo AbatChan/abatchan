@@ -78,6 +78,7 @@ Page directory:
 - [Brand](/brand): name, slogan, symbol, colours, typography, voice and downloads.
 - [Contact](/contact): project enquiry and direct email.
 - [Reviews](/reviews): client reviews from Upwork and Fiverr.
+- [BookingKoala services](/bookingkoala): setup, customization, quote and booking flows, integrations, and repairs backed by published client reviews.
 - [Privacy](/privacy): privacy information.
 - [Terms](/terms): website and project terms.
 
@@ -134,6 +135,7 @@ const PAGE={
   '/brand':'The visitor is viewing the brand system.',
   '/contact':'The visitor is on the project enquiry page.',
   '/reviews':'The visitor is reading client reviews.',
+  '/bookingkoala':'The visitor is reading about BookingKoala setup, customization, integration, and repair services.',
   '/privacy':'The visitor is reading the privacy notice.',
   '/terms':'The visitor is reading the terms.'
 };

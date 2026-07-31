@@ -75,6 +75,21 @@ async function loadReviews() {
   }
 }
 
+async function loadWork() {
+  try {
+    const rows = await fromSupabase(
+      'work_items?published=eq.true&select=*&order=position.asc,created_at.asc'
+    );
+    if (Array.isArray(rows) && rows.length) {
+      note(`work: ${rows.length} published items from the dashboard`);
+      return rows;
+    }
+  } catch (err) {
+    warn('work: dashboard read failed, keeping the committed snapshot —', err.message);
+  }
+  return [];
+}
+
 // --------------------------------------------------------------- markup
 
 const STAR = 'M12 3.6 14.5 9l5.9.8-4.3 4.1 1.1 5.9-5.2-2.9-5.2 2.9 1.1-5.9L3.6 9.8 9.5 9Z';
@@ -113,6 +128,7 @@ function reviewRow(item) {
 // the links and their text, so the prerendered version is plain anchors.
 const FOOTER_NAV = [
   ['/work', 'work'], ['/about', 'about'], ['/process', 'process'],
+  ['/bookingkoala', 'BookingKoala'],
   ['/brand', 'brand'], ['/reviews', 'reviews'], ['/pricing', 'pricing'],
   ['/privacy', 'privacy'], ['/terms', 'terms'], ['/contact', 'contact']
 ];
@@ -144,6 +160,27 @@ async function footerMarkup() {
     + `<div class="footer-meta"><a href="mailto:abatchan4@gmail.com">abatchan mail</a><span>&copy; 2026</span></div>`
     + nav
     + `</div>`;
+}
+
+const storageUrl = path => path
+  ? `${SUPABASE_URL}/storage/v1/object/public/work/${String(path).split('/').map(encodeURIComponent).join('/')}`
+  : '';
+
+function workCard(item) {
+  const image = storageUrl(item.image_path);
+  const visual = image
+    ? `<div class="card-visual managed"><img class="work-art" src="${escapeHtml(image)}" loading="lazy" alt="${escapeHtml(item.image_alt || '')}"></div>`
+    : `<div class="card-visual managed"></div>`;
+  const link = typeof item.link_url === 'string' && /^(https:\/\/|\/)/.test(item.link_url)
+    ? `<a class="btn sm" href="${escapeHtml(item.link_url)}"${item.link_url.startsWith('https://') ? ' target="_blank" rel="noopener noreferrer"' : ''}>view project <span class="arrow">↗</span></a>`
+    : '';
+  return `<article class="work-card${item.featured ? ' is-featured' : ''}" data-type="${escapeHtml(item.category || 'product')}"${item.slug ? ` id="work-${escapeHtml(item.slug)}"` : ''}>`
+    + visual
+    + `<div class="card-info"><div class="card-meta">`
+    + `<span>${escapeHtml(item.kicker || item.category || 'project')}</span>`
+    + `<span>${escapeHtml(item.status || 'selected work')}</span></div>`
+    + `<h3>${escapeHtml(item.title)}</h3>`
+    + `<p>${escapeHtml(item.summary || '')}</p>${link}</div></article>`;
 }
 
 // ---------------------------------------------------------------- schema
@@ -219,6 +256,53 @@ function faqSchema(html) {
   };
 }
 
+function workSchema(items) {
+  if (!items.length) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Selected abatchan digital product and systems work',
+    url: 'https://abatchan.com/work',
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => {
+      const projectUrl = typeof item.link_url === 'string' && /^https:\/\//.test(item.link_url)
+        ? item.link_url
+        : `https://abatchan.com/work#work-${item.slug}`;
+      const node = {
+        '@type': 'CreativeWork',
+        name: item.title,
+        description: item.summary || '',
+        url: projectUrl,
+        creator: { '@id': 'https://abatchan.com/#studio' }
+      };
+      const image = storageUrl(item.image_path);
+      if (image) node.image = image;
+      return { '@type': 'ListItem', position: index + 1, item: node };
+    })
+  };
+}
+
+function breadcrumbSchema(name, path) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://abatchan.com/'
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name,
+        item: `https://abatchan.com${path}`
+      }
+    ]
+  };
+}
+
 // ---------------------------------------------------------------- writing
 
 // Markers keep this idempotent. Running twice replaces the block rather than
@@ -268,6 +352,23 @@ function addSchema(html, name, data) {
   return html.replace('</head>', `${block}</head>`);
 }
 
+function replaceWorkGrid(html, inner) {
+  const marker = /<!--prerender:work-->[\s\S]*?<!--\/prerender:work-->/;
+  const block = replaceBlock('', 'work', inner);
+  if (marker.test(html)) return { html: html.replace(marker, block), ok: true };
+
+  const open = html.match(/<div class="work-grid"[^>]*>/);
+  if (!open) return { html, ok: false };
+  const start = open.index + open[0].length;
+  const rest = html.slice(start);
+  const close = rest.match(/<\/div>\s*<\/section>/);
+  if (!close) return { html, ok: false };
+  return {
+    html: html.slice(0, start) + block + rest.slice(close.index),
+    ok: true
+  };
+}
+
 const read = file => readFile(join(ROOT, file), 'utf8');
 const write = (file, html) => writeFile(join(ROOT, file), html);
 
@@ -275,6 +376,7 @@ async function run() {
   const reviews = await loadReviews();
   const published = reviews.filter(item =>
     item && item.published !== false && String(item.quote || '').trim());
+  const work = await loadWork();
 
   // ---- /reviews
   if (published.length) {
@@ -291,6 +393,54 @@ async function run() {
     } else {
       warn('reviews.html: archive container not found, left alone');
     }
+  }
+
+  // ---- /work
+  if (work.length) {
+    try {
+      let html = await read('work.html');
+      const cards = work.map(workCard).join('');
+      const injected = replaceWorkGrid(html, cards);
+      if (injected.ok) {
+        html = addSchema(injected.html, 'workschema', workSchema(work));
+        html = addSchema(html, 'workbreadcrumbs', breadcrumbSchema('Work', '/work'));
+        await write('work.html', html);
+        note(`work.html: ${work.length} published cards written`);
+      } else {
+        warn('work.html: work grid not found, left alone');
+      }
+    } catch (err) {
+      warn('work.html:', err.message);
+    }
+  }
+
+  // ---- /bookingkoala proof and FAQ
+  try {
+    let html = await read('bookingkoala.html');
+    const related = published
+      .filter(item => /booking\s*koala|bookingkoala/i.test(
+        `${item.engagement || ''} ${item.quote || ''}`
+      ))
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const injected = injectInto(
+      html,
+      /<div class="review-ledger service-proof-ledger"[^>]*>/,
+      'bookingkoala-reviews',
+      related.map(reviewRow).join('')
+    );
+    if (injected.ok) html = injected.html;
+    else warn('bookingkoala.html: review ledger not found');
+    const faq = faqSchema(html);
+    if (faq) html = addSchema(html, 'bookingkoala-faqschema', faq);
+    html = addSchema(
+      html,
+      'bookingkoala-breadcrumbs',
+      breadcrumbSchema('BookingKoala services', '/bookingkoala')
+    );
+    await write('bookingkoala.html', html);
+    note(`bookingkoala.html: ${related.length} relevant reviews written`);
+  } catch (err) {
+    warn('bookingkoala.html:', err.message);
   }
 
   // ---- /pricing FAQ
@@ -310,7 +460,8 @@ async function run() {
   // ---- footer, every page
   const footer = await footerMarkup();
   const pages = ['index.html', 'work.html', 'about.html', 'pricing.html', 'process.html',
-    'contact.html', 'reviews.html', 'brand.html', 'privacy.html', 'terms.html', '404.html'];
+    'contact.html', 'reviews.html', 'bookingkoala.html', 'brand.html', 'privacy.html',
+    'terms.html', '404.html'];
   let count = 0;
   for (const page of pages) {
     try {

@@ -350,6 +350,7 @@ const socialRail=()=>socialLinks.map(([slug,label,href])=>
 // Secondary pages live down here as a plain text menu, so the header can stay
 // on the five primary destinations.
 const FOOTER_NAV=[
+  ['/bookingkoala','BookingKoala'],
   ['/brand','brand'],
   ['/process','process'],
   ['/reviews','reviews'],
@@ -858,6 +859,7 @@ window.ASSISTANT_CANNED=CANNED;
     const card=document.createElement('article');
     card.className='work-card reveal visible'+(item.featured?' is-featured':'');
     card.dataset.type=item.category||'product';
+    if(item.slug)card.id='work-'+item.slug;
     if(item.featured){
       card.style.gridColumn='span 12';
       card.style.minHeight='570px';

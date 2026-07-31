@@ -4,6 +4,19 @@ Written 30 July 2026, for whoever picks this up next. Self-contained: assume no
 prior conversation. Read "How this site works" before changing anything, because
 two of the rules there have already caused live bugs.
 
+## Update — 31 July 2026
+
+Items 1–6 below are now implemented. The build prerenders all 26 reviews, all
+published work items, the sitewide footer, review/FAQ/work/breadcrumb schema,
+and the new `/bookingkoala` service page. The BookingKoala page includes six
+relevant published reviews, four visible FAQs, independent-provider language,
+internal footer links, visitor-guide context, and sitemap coverage. The build
+was verified idempotent and the pages were checked at desktop and mobile widths.
+
+The remaining exposure task is item 7: the owner must verify Google Search
+Console, submit the sitemap, and request indexing. Directory/profile listings
+and a possible cleaning-service website page remain optional follow-on work.
+
 ---
 
 ## How this site works
@@ -312,8 +325,9 @@ abatchan.com.
 
 1. Add `abatchan.com` at `https://search.google.com/search-console`.
 2. Verify via DNS TXT record, or the existing Vercel domain integration.
-3. Submit `https://abatchan.com/sitemap.xml` (8 URLs, already live and correct).
-4. Use URL Inspection on `/work`, `/pricing`, `/reviews` and request indexing.
+3. Submit `https://abatchan.com/sitemap.xml` (9 URLs after this update).
+4. Use URL Inspection on `/work`, `/pricing`, `/reviews`, and `/bookingkoala`,
+   then request indexing.
 
 **Why it matters now.** The site ranks #1 for its brand name, but only `/` and
 `/about` are surfacing in results. Search Console is the only way to see which
