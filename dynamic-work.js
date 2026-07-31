@@ -20,7 +20,7 @@
     }
   };
 
-  const imageUrls = (item, extra) => {
+  const imagePaths = (item, extra) => {
     const paths = [];
     if (item.image_path) paths.push(item.image_path);
     if (Array.isArray(extra?.gallery_paths)) {
@@ -28,23 +28,31 @@
         if (path && !paths.includes(path)) paths.push(path);
       });
     }
-    return paths.map(path => sb.imageUrl('work', path, 1024));
+    return paths;
   };
 
+  // Gallery slides are one card wide, not one screen wide, so a phone has no
+  // use for the 1024px rendition. Offering both lets the browser pick.
+  const GALLERY_WIDTHS = [640, 1024];
+  const gallerySrcset = path =>
+    GALLERY_WIDTHS.map(w => `${sb.imageUrl('work', path, w)} ${w}w`).join(', ');
+
   const makeGallery = (item, extra) => {
-    const urls = imageUrls(item, extra);
-    if (!urls.length) return null;
+    const slides = imagePaths(item, extra);
+    if (!slides.length) return null;
 
     const wrap = document.createElement('div');
     wrap.className = 'managed-gallery';
     const track = document.createElement('div');
     track.className = 'managed-gallery-track';
 
-    urls.forEach((url, index) => {
+    slides.forEach((path, index) => {
       const slide = document.createElement('div');
       slide.className = 'managed-gallery-slide';
       const img = document.createElement('img');
-      img.src = url;
+      img.src = sb.imageUrl('work', path, 1024);
+      img.srcset = gallerySrcset(path);
+      img.sizes = '(max-width:900px) 100vw, 620px';
       img.alt = index === 0 ? (item.image_alt || '') : '';
       img.loading = 'lazy';
       slide.append(img);
@@ -53,13 +61,13 @@
 
     wrap.append(track);
 
-    if (urls.length > 1) {
+    if (slides.length > 1) {
       const nav = document.createElement('div');
       nav.className = 'managed-gallery-nav';
       const dots = document.createElement('div');
       dots.className = 'managed-gallery-dots';
 
-      urls.forEach((_, index) => {
+      slides.forEach((_, index) => {
         const dot = document.createElement('i');
         dot.className = `managed-gallery-dot${index === 0 ? ' is-on' : ''}`;
         dots.append(dot);
@@ -67,7 +75,7 @@
 
       const count = document.createElement('span');
       count.className = 'managed-gallery-count';
-      count.textContent = `1 / ${urls.length}`;
+      count.textContent = `1 / ${slides.length}`;
       nav.append(dots, count);
       wrap.append(nav);
 
@@ -77,12 +85,12 @@
         raf = requestAnimationFrame(() => {
           const index = Math.max(
             0,
-            Math.min(urls.length - 1, Math.round(track.scrollLeft / Math.max(1, track.clientWidth)))
+            Math.min(slides.length - 1, Math.round(track.scrollLeft / Math.max(1, track.clientWidth)))
           );
           qa('.managed-gallery-dot', dots).forEach((dot, dotIndex) => {
             dot.classList.toggle('is-on', dotIndex === index);
           });
-          count.textContent = `${index + 1} / ${urls.length}`;
+          count.textContent = `${index + 1} / ${slides.length}`;
         });
       }, { passive: true });
     }
@@ -204,8 +212,8 @@
       lbCount.textContent = `${lbIndex + 1} / ${lbUrls.length}`;
     };
 
-    const open = (urls, index) => {
-      lbUrls = urls;
+    const open = (slides, index) => {
+      lbUrls = slides;
       lbIndex = index;
       show();
       lightbox.classList.add('open');
