@@ -106,7 +106,7 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
 .footer-meta a:hover{color:var(--paper)}
 
 /* --- intro + page transition -------------------------------------------- */
-.intro{background:#0c0c0c;overflow:hidden}
+.intro{background:#0c0c0c;overflow:hidden;transition-duration:.35s}
 .intro video{position:absolute;left:50%;top:50%;width:min(30vw,460px);height:auto;max-height:30vh;transform:translate(-50%,-50%);object-fit:contain;background:#0c0c0c;display:block}
 .skip{z-index:2}
 /* Five columns wiping in sequence with the symbol landing in the middle, rather
@@ -217,9 +217,11 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
 .doc-step{scroll-margin-top:112px;display:grid;grid-template-columns:52px 1fr;gap:20px;padding:26px 0;border-bottom:1px solid var(--line);align-items:start}
 .doc-step:last-child{border-bottom:0}
 .doc-step>span{color:var(--signal-ink,var(--signal));font-size:12px;padding-top:4px}
-.doc-step h3{margin:0 0 7px;font-size:22px}
+.doc-step h2,.doc-step h3{margin:0 0 7px;font-size:22px;letter-spacing:-.03em}
 .doc-step p{margin:0}
 .doc-step p+p{margin-top:13px}
+
+.principle h2{margin:0 0 8px;font-size:24px;letter-spacing:-.035em}
 @media(max-width:980px){
   .doc-body{grid-template-columns:1fr;gap:34px}
   .doc-toc{position:static;grid-auto-flow:row}}
@@ -512,7 +514,7 @@ html[data-theme="light"] .news-x:hover{color:#151519;background:rgba(21,21,25,.0
 
 .news{max-width:330px!important}
 
-/* Mobile visual viewport clamping — from mobile-viewport-fix.js */
+/* Mobile visual viewport clamping. */
 html,body{min-height:100%;overscroll-behavior-y:none}
 @supports(height:100dvh){body{min-height:100dvh}}
 @media(max-width:900px){
@@ -520,7 +522,7 @@ html,body{min-height:100%;overscroll-behavior-y:none}
   .mobile-tabs{max-width:calc(var(--visual-width,100vw) - 24px)}}
 
 
-/* Theme lamp label — from responsive-lamp.js */
+/* Theme lamp label. */
 .lamp>svg path{stroke:var(--muted)!important}
 .lamp-label.is-icon{
   width:20px;height:20px;display:grid;place-items:center;padding:0;border:0;
@@ -548,7 +550,8 @@ html[data-theme="light"] .lamp-label.is-icon{color:#57575f;filter:none}
 @media(max-width:900px){.work-grid.home-dynamic-grid>.home-slot-card:nth-child(n){grid-column:span 12}.home-dynamic-grid>.home-slot-card:nth-child(n) .card-visual{aspect-ratio:16/10}.work-lightbox{padding:14px}.work-lightbox-prev{left:8px}.work-lightbox-next{right:8px}.work-lightbox-close{top:8px;right:8px}}
 
 
-/* Work and homepage grid layout — from work-grid-layout-fix.js */
+/* Work and homepage grid layout. The body attributes are authored in the HTML
+   so these rules apply on first paint instead of after a patch script runs. */
 body[data-work-grid="three"] .work-grid{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
@@ -936,10 +939,25 @@ body[data-home-grid="aligned"] .home-dynamic-grid>.home-managed-card:nth-child(n
 }
 html[data-theme="light"] .work-group-count{background:rgba(99,102,241,.12)}
 
-/* No column overrides here on purpose: work-grid-layout-fix.js puts /work into
-   its three-column mode, where every card takes one cell and grid-column is
-   forced to auto. Adding span rules would only fight it. */
-@media(max-width:900px){.work-groups{gap:30px}}
+/* No column overrides here on purpose: /work uses the three-column mode above,
+   where every card takes one cell and grid-column is forced to auto. */
+@media(max-width:900px){
+  .work-groups{gap:30px}
+  body[data-page="work"] .page-hero{min-height:58svh;padding-bottom:54px}
+  body[data-page="work"] .filter-bar{
+    flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    margin-bottom:28px;padding:4px 2px 12px;scroll-padding-inline:2px;
+  }
+  body[data-page="work"] .filter-bar::-webkit-scrollbar{display:none}
+  body[data-page="work"] .filter-bar .btn{flex:0 0 auto}
+}
+@media(max-width:640px){
+  /* Reserve the assistant launcher's lane while the filter is in the opening
+     viewport. The chips still scroll horizontally, but never sit underneath
+     the floating control. */
+  body[data-page="work"] .filter-bar{width:calc(100% - 68px)}
+}
 
 /* Counts on the filter chips, so the size of each category is visible before
    you commit to a click. */

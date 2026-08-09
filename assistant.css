@@ -168,7 +168,7 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
 @media(prefers-reduced-motion:reduce){.assist-msg.is-streaming::after{animation:none}.assist-reply-peek{transition:none}}
 
 
-/* Assistant panel: motion and layout refinements — from assistant-polish.js */
+/* Assistant panel: motion and layout refinements. */
 .assist-panel{
   width:min(380px,calc(100vw - 24px))!important;
   max-width:380px!important;

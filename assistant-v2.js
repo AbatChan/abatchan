@@ -81,6 +81,27 @@
     const head=panel.querySelector('.assist-head');
     if(!log||!oldForm||!launch||!head)return;
 
+    // The responsive sheet and backdrop are part of the assistant shell. They
+    // used to arrive in assistant-polish.js after this module, which created a
+    // short window where the panel had desktop behaviour on a phone.
+    let backdrop=document.querySelector('.assist-backdrop');
+    if(!backdrop){
+      backdrop=document.createElement('button');
+      backdrop.type='button';
+      backdrop.className='assist-backdrop';
+      backdrop.setAttribute('aria-label','Close chat');
+      document.body.appendChild(backdrop);
+    }
+    const syncSheet=()=>{
+      const open=panel.classList.contains('is-open');
+      document.body.classList.toggle('assist-sheet-open',open&&matchMedia('(max-width:640px)').matches);
+      backdrop.classList.toggle('is-on',open&&matchMedia('(max-width:900px)').matches);
+    };
+    new MutationObserver(syncSheet).observe(panel,{attributes:true,attributeFilter:['class']});
+    addEventListener('resize',syncSheet,{passive:true});
+    backdrop.addEventListener('click',()=>{if(panel.classList.contains('is-open'))launch.click()});
+    syncSheet();
+
     const form=oldForm.cloneNode(true);oldForm.replaceWith(form);
     const chips=oldChips?.cloneNode(true);if(oldChips&&chips)oldChips.replaceWith(chips);
     const input=form.querySelector('textarea,input');const send=form.querySelector('.assist-send');

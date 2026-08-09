@@ -64,6 +64,8 @@
         img.sizes = '(max-width:900px) 100vw, 620px';
         img.alt = index === 0 ? (item.image_alt || '') : '';
         img.loading = 'lazy';
+        img.width = 1600;
+        img.height = 1000;
       }
       img.dataset.full = sb.imageUrl('work', path, 1600);
       slide.append(img);

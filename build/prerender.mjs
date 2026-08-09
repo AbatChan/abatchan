@@ -148,15 +148,32 @@ const FOOTER_WORK = [
   ['/bookingkoala', 'BookingKoala']
 ];
 
+// Public fallbacks keep the footer useful and crawlable when Supabase is
+// unreachable during a deploy. A successful settings read replaces these.
+const FOOTER_SOCIALS = [
+  { label: 'LinkedIn', href: 'https://www.linkedin.com/in/abatchan/' },
+  { label: 'GitHub', href: 'https://github.com/AbatChan' },
+  { label: 'X', href: 'https://x.com/abat_chan' },
+  { label: 'Instagram', href: 'https://www.instagram.com/realabatchan/' },
+  { label: 'TikTok', href: 'https://www.tiktok.com/@realabatchan' },
+  { label: 'YouTube', href: 'https://www.youtube.com/@abatchan' },
+  { label: 'Facebook', href: 'https://www.facebook.com/abat.chan.2025' },
+  { label: 'Behance', href: 'https://www.behance.net/abatchan' },
+  { label: 'Dribbble', href: 'https://dribbble.com/abatchan' },
+  { label: 'Upwork', href: 'https://www.upwork.com/freelancers/abatchan' },
+  { label: 'WhatsApp', href: 'https://wa.me/2347041857921' }
+];
+
 async function footerMarkup() {
-  let socials = [];
+  let socials = FOOTER_SOCIALS;
   try {
     const rows = await fromSupabase('settings?key=eq.social.links&is_public=eq.true&select=value');
     const stored = rows?.[0]?.value;
     if (Array.isArray(stored)) {
-      socials = stored
+      const configured = stored
         .map(row => (Array.isArray(row) ? { slug: row[0], label: row[1], href: row[2] } : row))
         .filter(row => row?.href && row?.label);
+      if (configured.length) socials = configured;
     }
   } catch (err) {
     warn('footer: social links unavailable —', err.message);
@@ -245,7 +262,7 @@ function workCard(item, beyondFirstBatch = false) {
     ? IMAGE_WIDTHS.map(w => `${storageUrl(item.image_path, w)} ${w}w`).join(', ')
     : '';
   const visual = image
-    ? `<div class="card-visual managed"><img class="work-art" src="${escapeHtml(image)}" srcset="${escapeHtml(srcset)}" sizes="(max-width:900px) 100vw, 620px" loading="lazy" alt="${escapeHtml(item.image_alt || '')}"></div>`
+    ? `<div class="card-visual managed"><img class="work-art" src="${escapeHtml(image)}" srcset="${escapeHtml(srcset)}" sizes="(max-width:900px) 100vw, 620px" loading="lazy" width="1600" height="1000" alt="${escapeHtml(item.image_alt || '')}"></div>`
     : `<div class="card-visual managed"></div>`;
   const link = typeof item.link_url === 'string' && /^(https:\/\/|\/)/.test(item.link_url)
     ? `<a class="btn sm" href="${escapeHtml(item.link_url)}"${item.link_url.startsWith('https://') ? ' target="_blank" rel="noopener noreferrer"' : ''}>view project <span class="arrow">↗</span></a>`
@@ -450,6 +467,33 @@ function replaceWorkGrid(html, inner) {
 const read = file => readFile(join(ROOT, file), 'utf8');
 const write = (file, html) => writeFile(join(ROOT, file), html);
 
+// Keep first-paint ownership in the document itself. These behaviours used to
+// arrive as four tiny patch scripts after styles and markup had already painted,
+// which caused the Work grid to briefly show its older two-column state. Their
+// logic now lives in script.js/assistant-v2.js and their CSS lives in styles.css.
+function normalizeRuntime(html, page) {
+  html = html
+    .replace(/<script src="\/(?:assistant-polish|mobile-viewport-fix|responsive-lamp|work-grid-layout-fix)\.js\?v=\d+"><\/script>/g, '')
+    .replace(/\/styles\.css\?v=20/g, '/styles.css?v=21')
+    .replace(/\/script\.js\?v=21/g, '/script.js?v=22')
+    .replace(/\/assistant-v2\.js\?v=10/g, '/assistant-v2.js?v=11')
+    .replace(/\/dynamic-work\.js\?v=11/g, '/dynamic-work.js?v=12');
+
+  html = html.replace(/<img class="work-art"([^>]*)>/g, (tag, attrs) =>
+    /\bwidth=/.test(attrs)
+      ? tag
+      : `<img class="work-art"${attrs} width="1600" height="1000">`
+  );
+
+  if (page === 'index.html' && !/<body[^>]*\bdata-home-grid=/.test(html)) {
+    html = html.replace(/<body([^>]*)>/, '<body$1 data-home-grid="aligned">');
+  }
+  if (page === 'work.html' && !/<body[^>]*\bdata-work-grid=/.test(html)) {
+    html = html.replace(/<body([^>]*)>/, '<body$1 data-work-grid="three">');
+  }
+  return html;
+}
+
 // The reviews section is authored hidden so the page never flashes an empty
 // heading while reviews.js is still fetching. Once the rows are written into
 // the HTML there is nothing to wait for, and leaving it hidden was costing
@@ -650,7 +694,7 @@ async function run() {
   let count = 0;
   for (const page of pages) {
     try {
-      const html = await read(page);
+      const html = normalizeRuntime(await read(page), page);
       const injected = replaceContents(html, 'footer', 'footer', footer);
       if (!injected.ok) { warn(`${page}: no <footer>`); continue; }
       await write(page, injected.html);

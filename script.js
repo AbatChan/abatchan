@@ -301,6 +301,27 @@ renderBrand();
   draw(); wake();
 })();
 
+// Keep the theme hint with the lamp that owns it. This used to arrive in a
+// later patch file, which let the old label paint first on every navigation.
+(function responsiveLampHint(){
+  const sun='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.6"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>';
+  const moon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.4 8.4 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2Z"/></svg>';
+  const nextTheme=()=>document.documentElement.dataset.theme==='light'?'dark':'light';
+  const apply=()=>{
+    const label=q('.lamp-label'),bead=q('.lamp-bead');
+    if(!label||!bead)return;
+    const next=nextTheme(),icon=innerWidth<=640;
+    label.classList.toggle('is-icon',icon);
+    if(icon)label.innerHTML=next==='light'?sun:moon;
+    else label.textContent=innerWidth<=900?'pull or tap':`pull or tap for ${next}`;
+    bead.setAttribute('aria-label',`Pull or tap to switch to ${next} mode`);
+  };
+  apply();
+  new MutationObserver(apply).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  addEventListener('resize',apply,{passive:true});
+  window.visualViewport?.addEventListener('resize',apply,{passive:true});
+})();
+
 // Brand marks from simple-icons (CC0), inlined so the footer makes no third-party
 // requests. Single path each, uniform 24x24 viewBox.
 const ICONS={
@@ -1018,10 +1039,8 @@ const WORK_PAGE_SIZE=12;
     card.className='work-card reveal visible'+(item.featured?' is-featured':'');
     card.dataset.type=item.category||'product';
     if(item.slug)card.id='work-'+item.slug;
-    if(item.featured){
-      card.style.gridColumn='span 12';
-      card.style.minHeight='570px';
-    }
+    // Featured status is content metadata. The page grid owns card sizing, so
+    // a database refresh cannot briefly expand this card to an old layout.
     const fallbackVisual=fallbackVisuals.get(String(item.title||'').trim().toLowerCase());
     const visual=fallbackVisual||document.createElement('div');
     if(!fallbackVisual)visual.className='card-visual managed';
@@ -1036,6 +1055,8 @@ const WORK_PAGE_SIZE=12;
       img.sizes='(max-width:900px) 100vw, 620px';
       img.alt=item.image_alt||'';
       img.loading='lazy';
+      img.width=1600;
+      img.height=1000;
       img.className='work-art';
       visual.append(img);
     }
@@ -1139,9 +1160,21 @@ if(sessionStorage.getItem(navigationKey)==='1'&&transition){
 const intro=q('.intro');
 if(intro){
   const video=q('video',intro),skip=q('.skip',intro);
-  const close=()=>{intro.classList.add('hidden');sessionStorage.setItem('abatIntro','1');setTimeout(()=>intro.remove(),800)};
+  let closed=false;
+  const close=()=>{
+    if(closed)return;closed=true;
+    intro.classList.add('hidden');sessionStorage.setItem('abatIntro','1');
+    setTimeout(()=>intro.remove(),420);
+  };
   if(sessionStorage.getItem('abatIntro')||matchMedia('(prefers-reduced-motion: reduce)').matches)close();
-  else{video?.play().catch(close);video?.addEventListener('ended',close,{once:true});skip?.addEventListener('click',close,{once:true});setTimeout(close,2800)}
+  else{
+    video?.play().catch(close);
+    video?.addEventListener('ended',close,{once:true});
+    skip?.addEventListener('click',close,{once:true});
+    // The logo remains a first-visit signature, but never holds the actual
+    // page behind a multi-second cover.
+    setTimeout(close,850);
+  }
 }
 
 // Scroll reveals hide only what the visitor has not reached yet.
@@ -1239,6 +1272,63 @@ qa('[data-sysmap]').forEach(map=>{
 
 const internal=h=>!!h&&h.startsWith('/')&&!h.startsWith('//');
 qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();sessionStorage.setItem(navigationKey,'1');transition?.classList.add('is-leaving');setTimeout(()=>location.assign(href),480)}));
+
+// Real-device mobile viewport stabilizer. It belongs with the shared site
+// shell instead of arriving after the shell in a separate corrective script.
+(function mobileViewport(){
+  const isAdmin=/\/admin(?:\.html)?$/.test(location.pathname);
+  const root=document.documentElement;
+  const scroller=document.scrollingElement||root;
+  const viewport=window.visualViewport;
+  let frame=0,settleTimer=0,lastWidth=0,lastHeight=0;
+
+  const realPageEnd=()=>{
+    const footer=q('body > footer');
+    if(!footer)return scroller.scrollHeight;
+    const rect=footer.getBoundingClientRect();
+    return Math.max(0,Math.round(rect.bottom+scroller.scrollTop));
+  };
+  const clampToContent=()=>{
+    if(isAdmin||innerWidth>900||document.body.classList.contains('assist-sheet-open'))return;
+    const height=Math.round(viewport?.height||root.clientHeight||innerHeight);
+    const max=Math.max(0,realPageEnd()-height);
+    if(scroller.scrollTop>max+2){scroller.scrollTop=max;window.scrollTo(0,max)}
+  };
+  const queueClamp=(delay=90)=>{
+    if(isAdmin)return;
+    clearTimeout(settleTimer);
+    settleTimer=setTimeout(()=>requestAnimationFrame(()=>requestAnimationFrame(clampToContent)),delay);
+  };
+  const settleClamp=()=>{
+    queueClamp(30);
+    setTimeout(()=>queueClamp(80),140);
+    setTimeout(()=>queueClamp(80),420);
+  };
+  const measure=()=>{
+    frame=0;
+    const width=Math.round(viewport?.width||root.clientWidth||innerWidth);
+    const height=Math.round(viewport?.height||root.clientHeight||innerHeight);
+    root.style.setProperty('--visual-width',width+'px');
+    root.style.setProperty('--visual-height',height+'px');
+    root.style.setProperty('--visual-top',Math.round(viewport?.offsetTop||0)+'px');
+    root.style.setProperty('--visual-left',Math.round(viewport?.offsetLeft||0)+'px');
+    if(width!==lastWidth||height!==lastHeight){
+      lastWidth=width;lastHeight=height;
+      dispatchEvent(new Event('resize'));
+    }
+    queueClamp();
+  };
+  const schedule=()=>{if(!frame)frame=requestAnimationFrame(measure)};
+  addEventListener('resize',schedule,{passive:true});
+  addEventListener('orientationchange',()=>setTimeout(()=>{schedule();settleClamp()},80),{passive:true});
+  addEventListener('pageshow',()=>{schedule();settleClamp()},{passive:true});
+  addEventListener('touchend',settleClamp,{passive:true});
+  addEventListener('scrollend',settleClamp,{passive:true});
+  viewport?.addEventListener('resize',()=>{schedule();settleClamp()},{passive:true});
+  viewport?.addEventListener('scroll',schedule,{passive:true});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){schedule();settleClamp()}});
+  schedule();
+})();
 const path=location.pathname.replace(/\.html$/,'').replace(/\/index$/,'/').replace(/(.)\/$/,'$1')||'/';
 qa('[data-page]').forEach(a=>{
   const active=a.dataset.page===path;
