@@ -56,14 +56,14 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
    hue offset, so whatever scrolls underneath is smeared and colour-split at the
    edge instead of being painted on as a fake gradient. */
 .site-header,.mobile-tabs{
-  --glass-tint:rgba(13,13,13,.005);
-  --glass-blur:8px;
+  --glass-tint:rgba(13,13,13,.075);
+  --glass-blur:11px;
   --glass-ring:rgba(0,0,0,.05);
   --glass-spec:rgba(255,255,255,.05);
   position:fixed;overflow:hidden;isolation:isolate;border:0;
   background:var(--glass-tint);
-  backdrop-filter:blur(var(--glass-blur)) saturate(220%) brightness(1.07);
-  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(220%) brightness(1.07);
+  backdrop-filter:blur(var(--glass-blur)) saturate(225%) contrast(1.06) brightness(1.05);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(225%) contrast(1.06) brightness(1.05);
   box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),inset 0 -1px 0 rgba(255,255,255,.08),0 20px 50px rgba(0,0,0,.4)}
 /* must out-specify the .site-header>* rule below, or the rim joins the grid flow */
 .site-header .glass-edge,.mobile-tabs .glass-edge{position:absolute;inset:0;z-index:0;pointer-events:none;display:block}
@@ -79,12 +79,16 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
   background:radial-gradient(180px 130px at var(--glass-x,50%) var(--glass-y,-35%),rgba(255,255,255,.07),transparent 72%)}
 .site-header>:not(.glass-edge),.mobile-tabs>:not(.glass-edge){position:relative;z-index:2}
 html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{
-  --glass-tint:rgba(255,255,255,.005);
+  --glass-tint:rgba(255,255,255,.11);
   --glass-ring:rgba(21,21,25,.05);
   --glass-spec:rgba(255,255,255,.05);
   box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),0 18px 44px rgba(27,28,34,.16)}
 html[data-theme="light"] .site-header::after,html[data-theme="light"] .mobile-tabs::after{
   background:radial-gradient(180px 130px at var(--glass-x,50%) var(--glass-y,-35%),rgba(255,255,255,.16),transparent 72%)}
+.site-header .desktop-nav a,.site-header .brand,.site-header .header-actions,.mobile-tabs a{
+  text-shadow:0 1px 12px rgba(0,0,0,.34)}
+html[data-theme="light"] .site-header .desktop-nav a,html[data-theme="light"] .site-header .brand,html[data-theme="light"] .site-header .header-actions,html[data-theme="light"] .mobile-tabs a{
+  text-shadow:0 1px 10px rgba(255,255,255,.72)}
 
 /* --- desktop nav lens --------------------------------------------------- */
 .desktop-nav{position:relative}
@@ -108,7 +112,12 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
 /* --- intro + page transition -------------------------------------------- */
 .intro{background:#0c0c0c;overflow:hidden;transition-duration:.35s}
 .intro video{position:absolute;left:50%;top:50%;width:min(30vw,460px);height:auto;max-height:30vh;transform:translate(-50%,-50%);object-fit:contain;background:#0c0c0c;display:block}
-.skip{z-index:2}
+.skip{z-index:2;left:50%;right:auto;top:max(18px,env(safe-area-inset-top));
+  background:rgba(22,22,24,.66);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:0 0 0 1px rgba(255,255,255,.08),inset 0 1px 0 rgba(255,255,255,.14),0 12px 30px rgba(0,0,0,.3);
+  animation:skip-enter .52s var(--ease) .16s both}
+.skip:focus-visible{outline:2px solid #fff;outline-offset:3px}
+@keyframes skip-enter{from{opacity:0;transform:translate(-50%,-22px)}to{opacity:1;transform:translate(-50%,0)}}
 /* Five columns wiping in sequence with the symbol landing in the middle, rather
    than one solid indigo sheet. The element itself no longer transforms; each
    column does, so they can be staggered. */
@@ -121,19 +130,9 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
 .page-transition>i:nth-child(4){transition-delay:.075s}
 .page-transition>i:nth-child(5){transition-delay:.1s}
 .page-transition .pt-mark{position:absolute;left:50%;top:50%;width:min(15vw,120px);height:auto;opacity:0;transform:translate(-50%,-50%) scale(.7);transition:opacity .26s linear .12s,transform .42s var(--ease) .12s;pointer-events:none}
-.page-transition.is-leaving,.page-transition.is-arriving{pointer-events:auto}
-.page-transition.is-leaving>i,.page-transition.is-arriving>i{transform:scaleY(1)}
-.page-transition.is-leaving .pt-mark,.page-transition.is-arriving .pt-mark{opacity:1;transform:translate(-50%,-50%) scale(1)}
-/* leaving wipes up from the bottom, arriving retracts upward off the top */
-.page-transition.is-arriving>i{transform-origin:top}
-.page-transition.is-loaded>i{transform:scaleY(0);transform-origin:top;transition:transform .42s var(--ease)}
-/* reverse the stagger on the way out so it reads as one sweep, not a rewind */
-.page-transition.is-loaded>i:nth-child(1){transition-delay:.1s}
-.page-transition.is-loaded>i:nth-child(2){transition-delay:.075s}
-.page-transition.is-loaded>i:nth-child(3){transition-delay:.05s}
-.page-transition.is-loaded>i:nth-child(4){transition-delay:.025s}
-.page-transition.is-loaded>i:nth-child(5){transition-delay:0s}
-.page-transition.is-loaded .pt-mark{opacity:0;transform:translate(-50%,-50%) scale(1.25);transition:opacity .22s linear,transform .34s var(--ease)}
+.page-transition.is-leaving{pointer-events:auto}
+.page-transition.is-leaving>i{transform:scaleY(1)}
+.page-transition.is-leaving .pt-mark{opacity:1;transform:translate(-50%,-50%) scale(1)}
 
 /* --- mobile ------------------------------------------------------------- */
 @media(max-width:900px){
@@ -186,7 +185,8 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
   .glass-edge,.site-header::after,.mobile-tabs::after{display:none}}
 
 @media(prefers-reduced-motion:reduce){
-  .desktop-nav .nav-lens,.page-transition>i,.page-transition .pt-mark,.page-transition.is-loaded>i{transition:none}}
+  .desktop-nav .nav-lens,.page-transition>i,.page-transition .pt-mark{transition:none}
+  .skip{animation:none;transform:translateX(-50%)}}
 
 
 /* --- document pages (process, privacy, terms) --------------------------- */

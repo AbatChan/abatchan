@@ -1144,19 +1144,13 @@ async function loadNews(){
   setTimeout(()=>el.classList.add('is-on'),1400);
 })();
 
-const transition=q('.page-transition'),navigationKey='abatNavigationPending';
+const transition=q('.page-transition');
 // A solid indigo sheet sliding up reads as a loading block. Five columns that
 // stagger, with the symbol landing in the middle, reads as a transition.
 if(transition&&!transition.querySelector('i')){
   transition.innerHTML='<i></i><i></i><i></i><i></i><i></i>'+
     '<img class="pt-mark" src="/assets/abatchan-symbol-white-tight.svg" alt="" width="504" height="309" aria-hidden="true">';
 }
-if(sessionStorage.getItem(navigationKey)==='1'&&transition){
-  transition.classList.add('is-arriving');
-  const revealPage=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{transition.classList.add('is-loaded');sessionStorage.removeItem(navigationKey);setTimeout(()=>transition.classList.remove('is-arriving','is-loaded'),600)}));
-  if(document.readyState==='complete')revealPage();else window.addEventListener('load',revealPage,{once:true});
-}
-
 const intro=q('.intro');
 if(intro){
   const video=q('video',intro),skip=q('.skip',intro);
@@ -1171,9 +1165,10 @@ if(intro){
     video?.play().catch(close);
     video?.addEventListener('ended',close,{once:true});
     skip?.addEventListener('click',close,{once:true});
-    // The logo remains a first-visit signature, but never holds the actual
-    // page behind a multi-second cover.
-    setTimeout(close,850);
+    // The asset is deliberately cut to a complete 1.35-second sequence. This
+    // timeout is only a safety exit if media playback stalls; normal playback
+    // closes on `ended`, and visitors can still skip immediately.
+    setTimeout(close,2600);
   }
 }
 
@@ -1271,7 +1266,7 @@ qa('[data-sysmap]').forEach(map=>{
 });
 
 const internal=h=>!!h&&h.startsWith('/')&&!h.startsWith('//');
-qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();sessionStorage.setItem(navigationKey,'1');transition?.classList.add('is-leaving');setTimeout(()=>location.assign(href),480)}));
+qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();if(!transition){location.assign(href);return}transition.classList.add('is-leaving');setTimeout(()=>location.assign(href),500)}));
 
 // Real-device mobile viewport stabilizer. It belongs with the shared site
 // shell instead of arriving after the shell in a separate corrective script.
