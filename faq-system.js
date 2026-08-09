@@ -1,7 +1,7 @@
 // Shared pricing FAQ content, styling, CMS rendering, and accordion motion.
 (function faqSystem(){
   'use strict';
-  const VERSION=8;
+  const VERSION=9;
   if((window.__ABATCHAN_FAQ_SYSTEM_VERSION__||0)>=VERSION)return;
   window.__ABATCHAN_FAQ_SYSTEM_VERSION__=VERSION;
 
@@ -44,7 +44,7 @@
   };
   const number=group=>[...group.querySelectorAll(':scope>details')].forEach((details,index)=>{decorate(details);const badge=details.querySelector(':scope>summary>.faq-index');if(badge)badge.textContent=String(index+1).padStart(2,'0')});
   const scan=root=>{root.querySelectorAll?.(groupSelector).forEach(number);if(root.matches?.(groupSelector))number(root)};
-  const render=(container,items)=>{container.classList.add('visible');container.replaceChildren(...items.filter(item=>item.published!==false&&(item.page==='/pricing'||!item.page)&&page==='/pricing').map(item=>{const details=document.createElement('details');details.dataset.faqId=item.id||'';const summary=document.createElement('summary');summary.textContent=item.question||'';const p=document.createElement('p');p.textContent=item.answer||'';details.append(summary,p);return details}));number(container)};
+  const render=(container,items)=>{items=window.ABATCHAN_UPGRADE_FAQS?.(items)||items;container.classList.add('visible');container.replaceChildren(...items.filter(item=>item.published!==false&&(item.page==='/pricing'||!item.page)&&page==='/pricing').map(item=>{const details=document.createElement('details');details.dataset.faqId=item.id||'';const summary=document.createElement('summary');summary.textContent=item.question||'';const p=document.createElement('p');p.textContent=item.answer||'';details.append(summary,p);return details}));number(container)};
   const load=async()=>{const container=document.querySelector('.faq-list,[data-faq-page]');if(!container)return;try{const rows=await sb.select('settings','key=eq.faq.items&is_public=eq.true&select=value');render(container,Array.isArray(rows?.[0]?.value)?rows[0].value:window.ABATCHAN_FAQ_DEFAULTS)}catch{if(page==='/pricing')render(container,window.ABATCHAN_FAQ_DEFAULTS)}};
   const initial=document.querySelector('.faq-list,[data-faq-page]');
   if(initial&&page==='/pricing')render(initial,window.ABATCHAN_FAQ_DEFAULTS);

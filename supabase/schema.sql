@@ -121,9 +121,9 @@ insert into public.settings (key, value, is_public) values
   ('copy.home.h1',        '"Build connected systems."',   true),
   ('copy.home.sub',       '"I design and build the interface, backend, integrations, and automation as one working product."', true),
   ('copy.contact.email',  '"abatchan4@gmail.com"',        true),
-  ('copy.pricing.website','"$150"',                       true),
-  ('copy.pricing.platform','"$1,500"',                    true),
-  ('copy.pricing.system', '"$3,500"',                     true),
+  ('copy.pricing.website','"$500"',                       true),
+  ('copy.pricing.platform','"$2,500"',                    true),
+  ('copy.pricing.system', '"$5,000"',                     true),
   ('assistant.enabled',   'true',                         true),
   ('assistant.greeting',  '"Hey, I''m the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?"', true),
   ('assistant.model',     '"deepseek-v4-flash"',          false),
@@ -131,11 +131,21 @@ insert into public.settings (key, value, is_public) values
   ('news.items',          '[{"id":"2026-07-brand-and-assistant","tag":"what''s new","title":"Brand page, process, and an assistant","body":"The full brand system with downloadable lockups is up, along with how projects actually run. There is also a chat bubble now if you would rather ask than read.","href":"/brand","cta":"see the brand page","soon":false}]', true)
 on conflict (key) do nothing;
 
--- Repair the one legacy seed without overwriting a price the owner edited.
+-- Repair legacy seeds without overwriting a price the owner edited.
 update public.settings
-set value = '"$150"'::jsonb
+set value = '"$500"'::jsonb
 where key = 'copy.pricing.website'
-  and value = '"$750"'::jsonb;
+  and value in ('"$750"'::jsonb, '"$150"'::jsonb);
+
+update public.settings
+set value = '"$2,500"'::jsonb
+where key = 'copy.pricing.platform'
+  and value = '"$1,500"'::jsonb;
+
+update public.settings
+set value = '"$5,000"'::jsonb
+where key = 'copy.pricing.system'
+  and value = '"$3,500"'::jsonb;
 
 -- ------------------------------------------------- assistant spend ceiling
 -- Both counters in one statement so concurrent instances cannot lose an

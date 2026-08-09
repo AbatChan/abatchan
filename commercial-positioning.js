@@ -7,7 +7,7 @@
   if(scopeStrip&&!document.querySelector('.delivery-strip')){
     const strip=document.createElement('div');
     strip.className='delivery-strip reveal visible';
-    strip.innerHTML='<div class="delivery-item"><span>delivery</span><h3>Fast focused builds</h3><p>Templates, reusable systems, automation, and AI-assisted workflows reduce avoidable production time.</p></div><div class="delivery-item"><span>quality</span><h3>Speed without shortcuts</h3><p>Fast delivery still includes responsive behavior, testing, performance checks, and a clean handover.</p></div><div class="delivery-item"><span>brand</span><h3>Branding is separate</h3><p>Logo systems, identity direction, brand guidelines, and launch assets are scoped as premium creative work, not bundled as a free extra.</p></div>';
+    strip.innerHTML='<div class="delivery-item"><span>diagnosis</span><h3>Start with the real bottleneck</h3><p>The first job is finding the workflow where a better interface, integration, or AI system will create measurable value.</p></div><div class="delivery-item"><span>delivery</span><h3>AI where it earns its place</h3><p>Reusable systems and AI shorten production. Human judgment, review, testing, and accountability stay in the loop.</p></div><div class="delivery-item"><span>reliability</span><h3>Built for everyday use</h3><p>Permissions, error handling, integrations, monitoring, documentation, and a human fallback are planned with the feature.</p></div>';
     scopeStrip.after(strip);
   }
 })();

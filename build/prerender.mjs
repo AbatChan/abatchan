@@ -536,6 +536,19 @@ const reviewWhen = item => {
   return month < 0 || !year ? 0 : year * 12 + month + 1;
 };
 const latestFirst = (a, b) => reviewWhen(b) - reviewWhen(a) || (a.position ?? 0) - (b.position ?? 0);
+const TEASER_REVIEW_IDS = [
+  'review-cleaning-2026-05',
+  'review-rescue-2025-01',
+  'review-ghl-2025-10',
+  'review-bandzoogle-2024-04',
+  'review-fix-2026-03'
+];
+const curatedReviewsFirst = items => {
+  const byId = new Map(items.map(item => [item.id, item]));
+  const selected = TEASER_REVIEW_IDS.map(id => byId.get(id)).filter(Boolean);
+  const selectedIds = new Set(selected.map(item => item.id));
+  return selected.concat(items.filter(item => !selectedIds.has(item.id)).sort(latestFirst));
+};
 
 // Writes the newest few reviews into a page that only teases them, then opens
 // the section and, when there are more than fit, the "see all" link.
@@ -543,7 +556,7 @@ async function writeTeaser(file, published) {
   let html = await read(file);
   const declared = html.match(/data-reviews-limit="(\d+)"/);
   const limit = declared ? Number(declared[1]) : 5;
-  const live = published.slice().sort(latestFirst).slice(0, limit);
+  const live = curatedReviewsFirst(published).slice(0, limit);
 
   const injected = injectInto(
     html,
@@ -569,7 +582,64 @@ async function writeTeaser(file, published) {
   note(`${file}: ${live.length} teaser reviews written, ${published.length} published`);
 }
 
+// pricing.html is intentionally minified in the repository. Keep its public,
+// crawler-visible commercial copy current here instead of painting newer
+// words over old HTML after load. Every replacement is deliberately exact so
+// an owner edit is preserved rather than silently overwritten.
+async function updatePricingPositioning() {
+  let html = await read('pricing.html');
+  const replacements = [
+    ['<span class="signal"></span>clear starting points</div><h1 class="reveal">Pricing built around outcomes.</h1>', '<span class="signal"></span>clear scope, no inflated agency overhead</div><h1 class="reveal">Serious systems. Sensible starting points.</h1>'],
+    ['<p class="pricing-intro">Choose the closest starting point. I scope every project before work begins, so you know what is included, what it costs, and what happens next.</p><div class="price-note">Prices are starting points in USD. Final quotes depend on scope, integrations, content readiness, deadlines, and the condition of any existing system.</div>', '<p class="pricing-intro">Tell me what needs to work. I will recommend the smallest sensible scope, explain the trade-offs, and quote it before anything begins.</p><div class="price-note">Prices are starting points in USD. Reusable systems and AI cut waste; scope, risk, integrations, content readiness, and support still determine the final quote.</div>'],
+    ['<div class="price">$150 <small>landing pages from</small></div><p>For focused landing pages and business websites built quickly without sacrificing clarity, responsiveness, or conversion.</p><ul class="price-list"><li>landing pages from $150</li><li>focused landing pages commonly delivered in 2–3 working days</li><li>focused 5-page business websites commonly delivered in about 5 working days</li><li>responsive design, enquiry flow, SEO, deployment, and handover</li><li>final price depends on sections, content, integrations, and functionality</li>', '<div class="price">$500 <small>landing pages from</small></div><p>For a focused landing page or small business website that needs to look credible, load quickly, and turn interest into enquiries.</p><ul class="price-list"><li>focused landing pages from $500</li><li>small business websites commonly $1,200–$2,000</li><li>typical landing-page build: 3–5 working days once content and access are ready</li><li>responsive UI, enquiry flow, basic technical SEO, analytics, deployment, and handover</li><li>final price follows pages, content, integrations, and functionality</li>'],
+    ['<div class="price">$1,500 <small>starting</small></div>', '<div class="price">$2,500 <small>starting</small></div>'],
+    ['<div class="price">$3,500 <small>starting</small></div>', '<div class="price">$5,000 <small>starting</small></div>'],
+    ['<li>testing, deployment, and support plan</li>', '<li>permissions, error handling, monitoring, and documentation</li>'],
+    ['Ongoing technical work starts at $30 per hour when project pricing is not suitable.', 'Ongoing technical work starts at $45 per hour when project pricing is not suitable.'],
+    ['Maintenance, improvements, and technical support start at $600 per month.', 'A reserved support plan starts at $600 per month. Included time and response windows are agreed before it begins.'],
+    ['<h3>Custom scope</h3><p>Large systems are split into milestones, so risk and delivery stay controlled.</p>', '<h3>Brand and product design</h3><p>Identity systems, interface direction, and launch assets are scoped separately so creative work is not treated as a free extra.</p>'],
+    ['<h2>No mystery around the price.</h2>', '<h2>Quote the work, not the hype.</h2>'],
+    ['<div><h2>Delivered at these prices.</h2><p>Unedited feedback from paid contracts on Upwork and Fiverr.</p>', '<div><h2>What clients say after delivery.</h2><p>Their words, unedited, from paid Upwork and Fiverr contracts.</p>']
+  ];
+  for (const [before, after] of replacements) {
+    if (html.includes(before)) html = html.replace(before, after);
+    else if (!html.includes(after)) warn(`pricing.html: expected commercial copy not found: ${before.slice(0, 64)}…`);
+  }
+
+  const publicFaqs = [
+    ['What will my project actually cost?', 'The figures above are honest starting points, not bait prices or automatic quotes. Once I understand the pages, workflows, integrations, content, deadline, and current setup, I send a written scope with the final price before work begins.'],
+    ['How do payments work?', 'You receive an invoice rather than a generic checkout link. Small jobs are usually funded upfront. Larger builds are split into clear milestones, so you approve and fund the work in manageable stages.'],
+    ['How quickly can you deliver?', 'A focused landing page usually takes 3–5 working days once the content, references, access, and feedback are ready. A small business website commonly takes 1–2 weeks. Ecommerce, dashboards, migrations, custom workflows, and integrations need a schedule based on the real scope.'],
+    ['Can we start small and add more later?', 'Yes. We can launch the smallest version that solves the immediate problem, as long as the foundation accounts for what you may add later. That avoids paying twice for the same structure.'],
+    ['Can you repair or extend something that already exists?', 'Yes. I work with existing websites, booking systems, ecommerce stores, WordPress builds, automations, and custom products. I review the current setup first, then tell you what is worth keeping, what is causing risk, and the smallest sensible route forward.'],
+    ['Do you use templates, AI, or custom code?', 'I use proven components, automation, and AI when they save real time. I write custom code where your workflow needs it. Everything is still reviewed, tested, and owned as part of the project.'],
+    ['How are feedback and scope changes handled?', 'Each milestone says what is included and where feedback belongs. Normal revisions inside that scope are part of the work. If a new page, workflow, or integration appears later, I price it clearly before building it.'],
+    ['What happens after launch?', 'I test, deploy, and hand over the finished work with the access and documentation we agreed on. If you want ongoing improvements, monitoring, or technical support, we can continue hourly or under a monthly support plan.']
+  ].map(([question, answer]) => `<details><summary>${question}</summary><p>${answer}</p></details>`).join('');
+  html = html.replace(/<div class="faq-list reveal">[\s\S]*?<\/div><\/div><\/section><section class="shell pricing-cta">/, `<div class="faq-list reveal">${publicFaqs}</div></div></section><section class="shell pricing-cta">`);
+  html = html
+    .replace('/script.js?v=24', '/script.js?v=25')
+    .replace('/commercial-positioning.js?v=5', '/commercial-positioning.js?v=6')
+    .replace('/faq-data.js?v=1', '/faq-data.js?v=2')
+    .replace('/faq-system.js?v=12', '/faq-system.js?v=13')
+    .replace('/reviews.js?v=5', '/reviews.js?v=6');
+  await write('pricing.html', html);
+}
+
+async function updateChangedAssetVersions() {
+  for (const file of ['index.html', 'reviews.html', 'admin.html']) {
+    let html = await read(file);
+    html = html
+      .replace('/reviews.js?v=5', '/reviews.js?v=6')
+      .replace('/faq-data.js?v=1', '/faq-data.js?v=2')
+      .replace('/faq-admin.js?v=15', '/faq-admin.js?v=16');
+    await write(file, html);
+  }
+}
+
 async function run() {
+  await updatePricingPositioning();
+  await updateChangedAssetVersions();
   const reviews = await loadReviews();
   const published = reviews.filter(item =>
     item && item.published !== false && String(item.quote || '').trim());

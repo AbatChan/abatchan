@@ -51,19 +51,20 @@ const GUIDE=`Official brand facts:
 abatchan designs and builds connected digital systems from interface to infrastructure. Capabilities include websites, landing pages, web products, dashboards, mobile-facing experiences, design systems, plugins, automation, APIs, third-party integrations, backend architecture, cloud infrastructure and brand identity systems.
 
 Current starting prices in USD:
-- Focused landing page: from $150.
-- Broader business website: quoted by page count, content, sections, functionality and integrations.
-- Platform, dashboard, ecommerce, membership or workflow product: from $1,500.
-- Connected interface, API, automation and infrastructure system: from $3,500.
+- Focused landing page: from $500.
+- Small business website: commonly $1,200 to $2,000, depending on pages, content, functionality and integrations.
+- Platform, dashboard, ecommerce, membership or workflow product: from $2,500.
+- Connected interface, API, automation and infrastructure system: from $5,000.
 - Small fixes and consultations: usually from $100.
-- Hourly technical work: from $30/hour.
+- Hourly technical work: from $45/hour.
 - Monthly maintenance and support: from $600.
 - Branding and identity work is scoped separately as premium creative work. Do not treat it as a free website add-on.
+- For AI and automation work, start with the workflow and measurable outcome. Reliability, data quality, permissions, review, monitoring and a human fallback matter as much as the model.
 Final cost depends on scope, integrations, content readiness, deadlines and existing systems.
 
 Typical focused delivery expectations:
-- Landing page: commonly 2–3 working days when content, references, access and feedback are ready.
-- Focused five-page business website: commonly about 5 working days when content and feedback are ready.
+- Landing page: commonly 3–5 working days when content, references, access and feedback are ready.
+- Focused small business website: commonly 1–2 weeks when content and feedback are ready.
 - Custom features, ecommerce, dashboards, account systems, integrations, migrations, multilingual content, custom animation or delayed approvals extend delivery.
 - Do not tell visitors that ordinary landing pages normally take 2–4 weeks.
 

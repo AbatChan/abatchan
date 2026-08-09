@@ -605,7 +605,9 @@ const loadPublicSettings=()=>{
   const legacyCopy={
     'copy.home.eyebrow':'digital engineering studio',
     'copy.home.sub':'We design and engineer the interfaces, infrastructure, and integrations behind modern digital products.',
-    'copy.pricing.website':'$750'
+    'copy.pricing.website':['$750','$150'],
+    'copy.pricing.platform':['$1,500'],
+    'copy.pricing.system':['$3,500']
   };
   const targets={
     'copy.home.h1':q('.hero h1'),
@@ -622,7 +624,8 @@ const loadPublicSettings=()=>{
   }
   Object.entries(targets).forEach(([key,el])=>{
     const value=settings[key];
-    if(!el||typeof value!=='string'||value===legacyCopy[key])return;
+    const oldValues=[].concat(legacyCopy[key]||[]);
+    if(!el||typeof value!=='string'||oldValues.includes(value))return;
     const small=el.querySelector?.('small');
     if(small){
       const text=[...el.childNodes].find(node=>node.nodeType===Node.TEXT_NODE);

@@ -6,7 +6,7 @@
 // site with no reviews yet rather than shipping an empty heading.
 (function reviews(){
   'use strict';
-  const VERSION=4;
+  const VERSION=5;
   if((window.__ABATCHAN_REVIEWS_VERSION__||0)>=VERSION)return;
   window.__ABATCHAN_REVIEWS_VERSION__=VERSION;
 
@@ -21,6 +21,25 @@
     if(parts.length<2)return 0;
     const month=MONTHS.indexOf(parts[0]),year=Number(parts[1]);
     return month<0||!year?0:year*12+month+1;
+  };
+
+  // The small homepage and pricing ledgers should show breadth, not five
+  // consecutive updates from the same engagement. These are real published
+  // reviews selected to demonstrate delivery, rescue work, automation,
+  // design care, and responsiveness. Any missing ID simply falls back to the
+  // remaining reviews in recency order.
+  const TEASER_IDS=[
+    'review-cleaning-2026-05',
+    'review-rescue-2025-01',
+    'review-ghl-2025-10',
+    'review-bandzoogle-2024-04',
+    'review-fix-2026-03'
+  ];
+  const curatedFirst=items=>{
+    const byId=new Map(items.map(item=>[item.id,item]));
+    const selected=TEASER_IDS.map(id=>byId.get(id)).filter(Boolean);
+    const used=new Set(selected);
+    return selected.concat(items.filter(item=>!used.has(item)).sort((a,b)=>when(b)-when(a)||(a.position??0)-(b.position??0)));
   };
 
   const STAR='M12 3.6 14.5 9l5.9.8-4.3 4.1 1.1 5.9-5.2-2.9-5.2 2.9 1.1-5.9L3.6 9.8 9.5 9Z';
@@ -149,11 +168,10 @@
     // Home and pricing take the newest few automatically; the reviews page
     // keeps the order set in the dashboard.
     const newest='reviewsLatest' in container.dataset;
-    const eligible=items
-      .filter(item=>item&&item.published!==false&&String(item.quote||'').trim())
-      .sort(newest
-        ? (a,b)=>when(b)-when(a)||(a.position??0)-(b.position??0)
-        : (a,b)=>(a.position??0)-(b.position??0));
+    const publishedItems=items.filter(item=>item&&item.published!==false&&String(item.quote||'').trim());
+    const eligible=newest
+      ? curatedFirst(publishedItems)
+      : publishedItems.sort((a,b)=>(a.position??0)-(b.position??0));
     const live=eligible.slice(0,limit);
     const published=items.filter(item=>item&&item.published!==false&&String(item.quote||'').trim()).length;
 

@@ -588,11 +588,18 @@
     const form = q('#copyForm');
     try {
       copyRows = await sb.select('settings', 'key=like.copy.%25&select=key,value,is_public&order=key.asc');
-      const legacyWebsitePrice = copyRows.find(row => row.key === 'copy.pricing.website' && row.value === '$750');
-      if (legacyWebsitePrice) {
-        legacyWebsitePrice.value = '$150';
-        await sb.upsert('settings', [{ key: legacyWebsitePrice.key, value: legacyWebsitePrice.value, is_public: true }]);
-      }
+      const currentPrices = {
+        'copy.pricing.website': { legacy: ['$750', '$150'], value: '$500' },
+        'copy.pricing.platform': { legacy: ['$1,500'], value: '$2,500' },
+        'copy.pricing.system': { legacy: ['$3,500'], value: '$5,000' }
+      };
+      const priceMigrations = copyRows.flatMap(row => {
+        const rule = currentPrices[row.key];
+        if (!rule || !rule.legacy.includes(row.value)) return [];
+        row.value = rule.value;
+        return [{ key: row.key, value: row.value, is_public: true }];
+      });
+      if (priceMigrations.length) await sb.upsert('settings', priceMigrations);
       form.replaceChildren();
       copyRows.forEach(row => {
         const wrap = document.createElement('div');
