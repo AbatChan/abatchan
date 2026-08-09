@@ -56,7 +56,7 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
    hue offset, so whatever scrolls underneath is smeared and colour-split at the
    edge instead of being painted on as a fake gradient. */
 .site-header,.mobile-tabs{
-  --glass-tint:rgba(13,13,13,.075);
+  --glass-tint:rgba(13,13,13,.005);
   --glass-blur:11px;
   --glass-ring:rgba(0,0,0,.05);
   --glass-spec:rgba(255,255,255,.05);
@@ -79,7 +79,7 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
   background:radial-gradient(180px 130px at var(--glass-x,50%) var(--glass-y,-35%),rgba(255,255,255,.07),transparent 72%)}
 .site-header>:not(.glass-edge),.mobile-tabs>:not(.glass-edge){position:relative;z-index:2}
 html[data-theme="light"] .site-header,html[data-theme="light"] .mobile-tabs{
-  --glass-tint:rgba(255,255,255,.11);
+  --glass-tint:rgba(255,255,255,.005);
   --glass-ring:rgba(21,21,25,.05);
   --glass-spec:rgba(255,255,255,.05);
   box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),0 18px 44px rgba(27,28,34,.16)}
@@ -133,6 +133,20 @@ html[data-theme="light"] .social-rail a.social-chip:hover{color:#fff;background:
 .page-transition.is-leaving{pointer-events:auto}
 .page-transition.is-leaving>i{transform:scaleY(1)}
 .page-transition.is-leaving .pt-mark{opacity:1;transform:translate(-50%,-50%) scale(1)}
+/* The head boot marks arrival before the browser can paint the destination.
+   Start fully covered, then shrink each column toward the bottom: its top edge
+   travels down the screen, revealing the new page without a second hard cut. */
+html.nav-arriving .page-transition{pointer-events:auto}
+html.nav-arriving .page-transition>i{transform:scaleY(1);transition:none}
+html.nav-arriving .page-transition .pt-mark{opacity:1;transform:translate(-50%,-50%) scale(1);transition:none}
+.page-transition.is-arriving{pointer-events:auto}
+.page-transition.is-arriving>i{transform:scaleY(0);transform-origin:bottom;transition:transform .42s var(--ease)}
+.page-transition.is-arriving>i:nth-child(1){transition-delay:.1s}
+.page-transition.is-arriving>i:nth-child(2){transition-delay:.075s}
+.page-transition.is-arriving>i:nth-child(3){transition-delay:.05s}
+.page-transition.is-arriving>i:nth-child(4){transition-delay:.025s}
+.page-transition.is-arriving>i:nth-child(5){transition-delay:0s}
+.page-transition.is-arriving .pt-mark{opacity:0;transform:translate(-50%,-50%) scale(1.2);transition:opacity .2s linear,transform .34s var(--ease)}
 
 /* --- mobile ------------------------------------------------------------- */
 @media(max-width:900px){

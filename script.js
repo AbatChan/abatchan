@@ -1144,12 +1144,22 @@ async function loadNews(){
   setTimeout(()=>el.classList.add('is-on'),1400);
 })();
 
-const transition=q('.page-transition');
+const transition=q('.page-transition'),navigationKey='abatNavigationPending';
 // A solid indigo sheet sliding up reads as a loading block. Five columns that
 // stagger, with the symbol landing in the middle, reads as a transition.
 if(transition&&!transition.querySelector('i')){
   transition.innerHTML='<i></i><i></i><i></i><i></i><i></i>'+
     '<img class="pt-mark" src="/assets/abatchan-symbol-white-tight.svg" alt="" width="504" height="309" aria-hidden="true">';
+}
+if(transition&&document.documentElement.classList.contains('nav-arriving')){
+  // navigation-boot.js makes the destination fully covered before first paint.
+  // With that stable starting frame in place, the columns can descend cleanly
+  // to reveal the new page without the old half-painted staircase flash.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    transition.classList.add('is-arriving');
+    document.documentElement.classList.remove('nav-arriving');
+    setTimeout(()=>transition.classList.remove('is-arriving'),650);
+  }));
 }
 const intro=q('.intro');
 if(intro){
@@ -1266,7 +1276,7 @@ qa('[data-sysmap]').forEach(map=>{
 });
 
 const internal=h=>!!h&&h.startsWith('/')&&!h.startsWith('//');
-qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();if(!transition){location.assign(href);return}transition.classList.add('is-leaving');setTimeout(()=>location.assign(href),500)}));
+qa('a[href]').forEach(a=>a.addEventListener('click',e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0||a.target==='_blank')return;const href=a.getAttribute('href');if(!internal(href)||href===location.pathname)return;e.preventDefault();if(!transition){location.assign(href);return}try{sessionStorage.setItem(navigationKey,'1')}catch{}transition.classList.add('is-leaving');setTimeout(()=>location.assign(href),500)}));
 
 // Real-device mobile viewport stabilizer. It belongs with the shared site
 // shell instead of arriving after the shell in a separate corrective script.
