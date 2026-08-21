@@ -302,7 +302,7 @@
       let action=null;
       try{
         const parsed=JSON.parse(decodeURIComponent(match[1]));
-        if(parsed&&typeof parsed.href==='string'&&typeof parsed.label==='string'&&typeof parsed.departure==='string'&&typeof parsed.arrival==='string'&&Array.isArray(parsed.progress)&&parsed.progress.length===2&&parsed.progress.every(item=>typeof item==='string'))action=parsed;
+        if(parsed&&typeof parsed.href==='string'&&typeof parsed.label==='string'&&typeof parsed.departure==='string'&&typeof parsed.arrival==='string'&&Array.isArray(parsed.progress)&&parsed.progress.length===1&&parsed.progress.every(item=>typeof item==='string'))action=parsed;
       }catch{}
       return {text:String(text).replace(match[0],'').trim(),action};
     };
@@ -396,14 +396,12 @@
       journeyStep(bubble,journey.progress[0]);
       if(publicPath(url)!==pagePath()){
         navigateTo(journey.href,journey.label,journey);
-        setTimeout(()=>journeyStep(bubble,journey.progress[1]),240);
         return;
       }
       revealTarget(url,journey.label);
       let finished=false;
       const arrive=()=>{
         if(finished)return;finished=true;
-        journeyStep(bubble,journey.progress[1]);
         setTimeout(()=>completeJourney(bubble,journey),280);
       };
       addEventListener('scrollend',arrive,{once:true});
@@ -415,14 +413,13 @@
     // points at the promised destination instead of starting over.
     try{
       const handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null');
-      if(handoff&&Date.now()-Number(handoff.at||0)<30000&&Array.isArray(handoff.progress)&&handoff.progress.length===2&&typeof handoff.arrival==='string'){
+      if(handoff&&Date.now()-Number(handoff.at||0)<30000&&Array.isArray(handoff.progress)&&handoff.progress.length===1&&typeof handoff.arrival==='string'){
         sessionStorage.removeItem(NAV_STORE);
         setTimeout(()=>{
           if(!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);
           const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
-          journeyStep(bubble,handoff.progress[0],{done:true});
-          journeyStep(bubble,handoff.progress[1]);
+          journeyStep(bubble,handoff.progress[0]);
           revealTarget(url,handoff.label);
           const transition=document.querySelector('.page-transition');
           const finish=()=>completeJourney(bubble,handoff);
