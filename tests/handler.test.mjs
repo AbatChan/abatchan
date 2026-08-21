@@ -137,6 +137,7 @@ deepSeekMode = 'tool';
 result = await call('5.5.5.5', 'The animated logo section is where I want to be; please move me there now.');
 check('tool is offered to DeepSeek', lastDeepSeekBody.tools[0].function.name, 'navigate_site');
 check('tool choice lets the model decide', lastDeepSeekBody.tool_choice, 'auto');
+check('plain answers cannot fake an arrival', lastDeepSeekBody.messages[0].content.includes('Never claim that you are moving the visitor'), true);
 check('model-authored departure is streamed', result.text.startsWith('I’ll bring up the animated logo for you.'), true);
 check('server action is bound to response token', result.text.includes(`<!--abatchan-nav:${result.headers['x-abatchan-action-token']}:`), true);
 check('action carries exact verified destination', decodeURIComponent(result.text).includes('"href":"/brand#symbol"'), true);
