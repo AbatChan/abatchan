@@ -79,7 +79,7 @@ Page directory:
 - [About](/about): Abat, the studio, philosophy and principles. Specific sections: [principles](/about#principles), [capabilities](/about#capabilities), [start a project](/about#start-project).
 - [Pricing](/pricing): starting prices and delivery expectations. Specific sections: [website](/pricing#website), [platform](/pricing#platform), [connected system](/pricing#system), [quoting process](/pricing#quote-process), [client reviews](/pricing#client-reviews), [pricing FAQ](/pricing#pricing-faq), [request a quote](/pricing#start-project).
 - [Process](/process): [Discovery](/process#discovery), [Scope](/process#scope), [Build](/process#build), [Launch](/process#launch), [Support](/process#support), and [working together](/process#working).
-- [Brand](/brand): name, slogan, symbol, colours, typography, voice and downloads. Specific sections: [name](/brand#name), [voice](/brand#voice), [symbol](/brand#symbol), and [downloads](/brand#downloads).
+- [Brand](/brand): name, slogan, symbol, colours, typography, voice and downloads. The animated logo reveal is in the symbol section. Specific sections: [name](/brand#name), [voice](/brand#voice), [logo animation and symbol](/brand#symbol), and [downloads](/brand#downloads).
 - [Contact](/contact): project enquiry and direct email. The exact enquiry destination is [project form](/contact#project-form).
 - [Reviews](/reviews): client reviews from Upwork and Fiverr.
 - [BookingKoala services](/bookingkoala): setup, customization, quote and booking flows, integrations, and repairs. Specific sections: [fit](/bookingkoala#fit), [scope](/bookingkoala#scope), [process](/bookingkoala#process), [client proof](/bookingkoala#proof), [FAQ](/bookingkoala#faq).

@@ -250,7 +250,7 @@
       const current=pagePath();
       rememberJourney({from:current,to:destination+url.hash,label:label||'the section',at:Date.now()});
       if(destination===current){
-        if(revealTarget(url,label))add(`Here you go — I’ve highlighted ${label||'the relevant section'}.`,'bot');
+        revealTarget(url,label);
         return;
       }
       try{sessionStorage.setItem(NAV_STORE,JSON.stringify({href:destination+url.hash,label:label||'the relevant section',at:Date.now()}))}catch{}
@@ -312,8 +312,7 @@
         setTimeout(()=>{
           if(!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);
-          const found=revealTarget(url,handoff.label);
-          add(found?`Here you go — I’ve highlighted ${handoff.label}.`:'Here you go — you’re on the right page.','bot');
+          revealTarget(url,handoff.label);
         },360);
       }
     }catch{sessionStorage.removeItem(NAV_STORE)}
