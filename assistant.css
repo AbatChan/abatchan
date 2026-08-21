@@ -112,6 +112,21 @@ html[data-theme="light"] .assist-form textarea{color:#151519}
 .assist-send svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .assist-note{padding:0 16px 12px;color:var(--muted);font-size:11px;line-height:1.45}
 
+/* Navigation and reset feedback belongs to the interface, not the transcript. */
+.assist-system-status{position:absolute;z-index:8;top:66px;left:50%;max-width:calc(100% - 28px);
+  padding:8px 12px 8px 11px;border:1px solid rgba(129,132,255,.32);border-radius:999px;
+  background:rgba(20,20,25,.9);color:var(--paper);box-shadow:0 10px 28px rgba(0,0,0,.28);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-size:11.5px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transform:translate(-50%,-7px);
+  pointer-events:none;transition:opacity .18s ease,transform .24s var(--ease)}
+.assist-system-status.is-on{opacity:1;transform:translate(-50%,0)}
+.assist-system-status.is-busy::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;
+  border:2px solid rgba(255,255,255,.28);border-top-color:var(--signal);border-radius:50%;
+  vertical-align:-1px;animation:assistStatusSpin .7s linear infinite}
+html[data-theme="light"] .assist-system-status{background:rgba(250,250,248,.92);color:#202025;box-shadow:0 10px 28px rgba(20,20,28,.16)}
+@keyframes assistStatusSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.assist-system-status{transition:none}.assist-system-status.is-busy::before{animation:none}}
+
 @media(max-width:900px){
   /* clear the mobile dock */
   .assist-launch{right:16px;bottom:calc(86px + env(safe-area-inset-bottom));width:52px;height:52px}

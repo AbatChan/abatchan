@@ -258,7 +258,7 @@
     };
 
     const enhanceActions=el=>{
-      if(!el||el.dataset.actionsReady)return;
+      if(!el||el.dataset.actionsReady)return [];
       el.dataset.actionsReady='true';
       const links=[...el.querySelectorAll('a[href]')];
       const internal=[];
@@ -272,7 +272,7 @@
         internal.push({href:publicPath(url)+url.hash,label});
       });
       const unique=internal.filter((item,index,list)=>index===list.findIndex(other=>other.href===item.href)).slice(0,3);
-      if(!unique.length)return;
+      if(!unique.length)return [];
       const actions=document.createElement('div');actions.className='assist-response-actions';
       unique.forEach((item,index)=>{
         const button=document.createElement('button');button.type='button';button.className=index===0?'is-primary':'';
@@ -281,7 +281,14 @@
         actions.append(button);
       });
       el.append(actions);
+      return unique;
     };
+
+    // “Take me”, “open”, and “go to” already contain permission to navigate.
+    // Questions such as “where is…” still get a button so the visitor stays in
+    // control. This is deliberately narrow: the guide can only choose from the
+    // same verified, same-origin destinations used by the action buttons.
+    const isDirectNavigation=text=>/^(?:(?:take|bring|send)\s+me\b|(?:go|open|navigate|jump)\s+(?:me\s+)?(?:to\s+)?\b|show\s+me\s+(?:the\s+)?(?:page|section|form|work|pricing|brand|process|contact)\b)/i.test(String(text).trim());
 
     const add=(text,who,persisted=false)=>{
       const el=document.createElement('div');el.className='assist-msg '+who;
@@ -301,6 +308,28 @@
     const greetingObserver=new MutationObserver(pinIntro);
     greetingObserver.observe(log,{childList:true});
     pinIntro();
+
+    // Operational feedback is not part of the conversation. Keep it in one
+    // compact live region instead of drawing “chat cleared” or “opening…” as
+    // though the guide sent another reply.
+    const systemStatus=document.createElement('div');
+    systemStatus.className='assist-system-status';
+    systemStatus.setAttribute('role','status');
+    systemStatus.setAttribute('aria-live','polite');
+    systemStatus.hidden=true;
+    head.after(systemStatus);
+    let systemStatusTimer=0;
+    const announceStatus=(message,{busy=false,duration=1800}={})=>{
+      clearTimeout(systemStatusTimer);
+      systemStatus.textContent=message;
+      systemStatus.classList.toggle('is-busy',busy);
+      systemStatus.hidden=false;
+      requestAnimationFrame(()=>systemStatus.classList.add('is-on'));
+      if(duration)systemStatusTimer=setTimeout(()=>{
+        systemStatus.classList.remove('is-on');
+        setTimeout(()=>{systemStatus.hidden=true},180);
+      },duration);
+    };
 
     // Complete a guide-initiated cross-page handoff only once. The assistant
     // reopens after the new page is ready, keeps the conversation above, and
@@ -330,7 +359,7 @@
       transcript=[];history.length=0;localStorage.removeItem(STORE);
       log.querySelectorAll('[data-chat-entry="true"]').forEach(el=>el.remove());
       chips&&(chips.hidden=false);clearUnread();resetClear();
-      add('Chat cleared. What are you trying to build?','bot');
+      announceStatus('Chat history cleared.');
     });
 
     const thinking=()=>{
@@ -484,11 +513,17 @@
         if(answer)paint();
         else throw new Error('The guide returned an empty response.');
         bubble?.classList.remove('is-streaming');
-        if(bubble){delete bubble.dataset.actionsReady;enhanceActions(bubble)}
+        let actions=[];
+        if(bubble){delete bubble.dataset.actionsReady;actions=enhanceActions(bubble)}
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
         transcript.push({role:'assistant',content:answer});writeStored(transcript);
         notifyClosed(answer);
+        if(isDirectNavigation(text)&&actions[0]){
+          const destination=actions[0];
+          announceStatus(`Opening ${destination.label}…`,{busy:true,duration:1600});
+          setTimeout(()=>navigateTo(destination.href,destination.label),420);
+        }
       }catch(err){
         if(frame)cancelAnimationFrame(frame);
         loader.remove();bubble?.remove();fail(err.detail||err.message,text);

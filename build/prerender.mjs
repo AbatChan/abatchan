@@ -475,8 +475,8 @@ function normalizeRuntime(html, page) {
   html = html
     .replace(/<script src="\/(?:assistant-polish|mobile-viewport-fix|responsive-lamp|work-grid-layout-fix)\.js\?v=\d+"><\/script>/g, '')
     .replace(/\/styles\.css\?v=20/g, '/styles.css?v=21')
-    .replace(/\/script\.js\?v=(?:21|22|23|24|25)/g, '/script.js?v=26')
-    .replace(/\/assistant-v2\.js\?v=(?:10|11)/g, '/assistant-v2.js?v=12')
+    .replace(/\/script\.js\?v=(?:21|22|23|24|25|26)/g, '/script.js?v=27')
+    .replace(/\/assistant-v2\.js\?v=(?:10|11|12)/g, '/assistant-v2.js?v=13')
     .replace(/\/dynamic-work\.js\?v=11/g, '/dynamic-work.js?v=12');
 
   html = html.replace(/<img class="work-art"([^>]*)>/g, (tag, attrs) =>
