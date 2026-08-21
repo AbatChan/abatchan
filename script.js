@@ -645,11 +645,10 @@ const loadPublicSettings=()=>{
 
 // ---------------------------------------------------------------- assistant
 // The endpoint is server-side so the provider key never reaches the browser.
-// Canned answers remain a useful fallback if the endpoint is unavailable.
 const ASSISTANT={
   // assistant-v2.js owns the network and replaces the form below on load.
-  // This path only runs if that never happens, so it answers from CANNED
-  // rather than calling an endpoint whose shape it no longer parses.
+  // This path only runs if that never happens and reports a real connection
+  // state instead of impersonating the model with keyword-matched replies.
   endpoint:null,
   greeting:"Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?",
   chips:['What do you build?','How much does it cost?','How long does it take?','What can you help with?']
@@ -667,29 +666,12 @@ const assistantPageContext=()=>{
   const text=(q('main')?.innerText||'').replace(/\s+/g,' ').trim().slice(0,3500);
   return {title:document.title.slice(0,160),description:description.slice(0,320),text};
 };
-const CANNED=[
-  // "pric" not "price", so pricing and prices match too — the words visitors
-  // actually type. Same reason "how much" is here.
-  [/pric|cost|budget|charge|quote|afford|how much|expensive/i,"Focused landing pages start at $500, platforms at $2,500, and connected systems at $5,000. Those are starting points, not quotes. See the [full pricing breakdown](/pricing#website)."],
-  [/how long|timeline|deadline|when/i,"It depends on scope, but work is split into milestones so you see something usable at each one. See the [five delivery stages](/process#discovery)."],
-  [/what.*(build|do)|services|offer/i,"Connected web and mobile products, automation and workflow systems, APIs and integrations, dashboards, and the infrastructure under them."],
-  [/small|tiny|fix|quick/i,"Yes. Small fixes and consultations are quoted separately, usually from $100, and ongoing work starts at $45/hour when project pricing does not fit."],
-  [/hire|available|start|book/i,"Abat is taking on new projects. Send the problem, current setup, and deadline through the [project form](/contact#project-form)."],
-  [/what can you help|can you do|your limits|do.?s|don.?ts/i,"I can explain the site, work, pricing, process, and how to start a project. I cannot access accounts, take payments, send messages, write code for visitors, or make binding promises."],
-  [/hello|hi|hey|good (morning|afternoon|evening)/i,"Hello. What are you building?"]
-];
-
-// assistant-v2.js replaces the form below to stream, which detaches these
-// answers with it. Hand them over so a capped or unreachable guide can still
-// answer the questions visitors actually ask.
-window.ASSISTANT_CANNED=CANNED;
-
 // The assistant's styles are not in styles.css. They were 19KB of rules for a
 // panel most visitors never open, and every page waited for them before it
 // could paint. They load here instead — started in parallel with the settings
 // call this function already waits on, so the launcher costs no extra time and
 // is never painted before the rules that position it arrive.
-const ASSISTANT_CSS='/assistant.css?v=3';
+const ASSISTANT_CSS='/assistant.css?v=4';
 const loadAssistantStyles=()=>new Promise(resolve=>{
   if(document.querySelector('link[data-assist-css]'))return resolve();
   const link=document.createElement('link');
@@ -814,8 +796,7 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
       }catch{issue=ASSISTANT_FALLBACK_ERROR}
     }else{
       await new Promise(r=>setTimeout(r,420+Math.random()*380));
-      answer=(CANNED.find(([re])=>re.test(text))||[])[1];
-      if(!answer)issue=ASSISTANT_FALLBACK_ERROR;
+      issue=ASSISTANT_FALLBACK_ERROR;
     }
     dots.remove();
     if(answer){

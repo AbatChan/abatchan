@@ -15,6 +15,7 @@
   const STORE='abatchanGuideHistoryV1';
   const NAV_STORE='abatchanGuideNavigationV1';
   const JOURNEY_STORE='abatchanGuideJourneyV1';
+  const TRANSITION_STORE='abatNavigationPending';
   const MAX_STORED=24;
   const WHATSAPP='https://wa.me/2347041857921';
 
@@ -242,7 +243,7 @@
       return true;
     };
 
-    const navigateTo=(href,label)=>{
+    const navigateTo=(href,label,handoff=null)=>{
       let url;
       try{url=new URL(href,location.href)}catch{return}
       if(!isSafeDestination(url))return;
@@ -251,10 +252,17 @@
       rememberJourney({from:current,to:destination+url.hash,label:label||'the section',at:Date.now()});
       if(destination===current){
         revealTarget(url,label);
-        return;
+        return false;
       }
-      try{sessionStorage.setItem(NAV_STORE,JSON.stringify({href:destination+url.hash,label:label||'the relevant section',at:Date.now()}))}catch{}
-      location.assign(destination+url.hash);
+      try{
+        if(handoff)sessionStorage.setItem(NAV_STORE,JSON.stringify({...handoff,href:destination+url.hash,label,at:Date.now()}));
+        sessionStorage.setItem(TRANSITION_STORE,'1');
+      }catch{}
+      const transition=document.querySelector('.page-transition');
+      if(!transition){location.assign(destination+url.hash);return true}
+      transition.classList.add('is-leaving');
+      setTimeout(()=>location.assign(destination+url.hash),500);
+      return true;
     };
 
     const enhanceActions=el=>{
@@ -294,7 +302,7 @@
       let action=null;
       try{
         const parsed=JSON.parse(decodeURIComponent(match[1]));
-        if(parsed&&typeof parsed.href==='string'&&typeof parsed.label==='string')action=parsed;
+        if(parsed&&typeof parsed.href==='string'&&typeof parsed.label==='string'&&typeof parsed.departure==='string'&&typeof parsed.arrival==='string'&&Array.isArray(parsed.progress)&&parsed.progress.length===2&&parsed.progress.every(item=>typeof item==='string'))action=parsed;
       }catch{}
       return {text:String(text).replace(match[0],'').trim(),action};
     };
@@ -340,18 +348,87 @@
       },duration);
     };
 
+    const journeyStep=(bubble,message,{done=false}={})=>{
+      if(!bubble||!message)return;
+      let steps=bubble.querySelector('.assist-journey-steps');
+      if(!steps){
+        steps=document.createElement('div');
+        steps.className='assist-journey-steps';
+        steps.setAttribute('role','status');
+        steps.setAttribute('aria-live','polite');
+        bubble.appendChild(steps);
+      }
+      steps.querySelector('.is-active')?.classList.replace('is-active','is-done');
+      let step=[...steps.children].find(item=>item.querySelector('span')?.textContent===message);
+      if(!step){
+        step=document.createElement('div');
+        step.className='assist-journey-step';
+        step.innerHTML='<i aria-hidden="true"></i><span></span>';
+        step.querySelector('span').textContent=message;
+        steps.appendChild(step);
+      }
+      step.classList.remove('is-active','is-done');
+      step.classList.add(done?'is-done':'is-active');
+      log.scrollTop=log.scrollHeight;
+    };
+
+    const completeJourney=(bubble,journey)=>{
+      if(!bubble||!journey?.arrival||bubble.dataset.journeyComplete)return;
+      bubble.dataset.journeyComplete='true';
+      bubble.querySelector('.assist-journey-step.is-active')?.classList.replace('is-active','is-done');
+      const completed=[journey.departure,journey.arrival].filter(Boolean).join('\n\n');
+      const arrival=document.createElement('div');
+      arrival.className='assist-journey-arrival';
+      render(arrival,journey.arrival);
+      bubble.appendChild(arrival);
+      delete bubble.dataset.actionsReady;
+      enhanceActions(bubble);
+      for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){transcript[i]={...transcript[i],content:completed};break}}
+      for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:completed};break}}
+      writeStored(transcript);
+      notifyClosed(journey.arrival);
+    };
+
+    const guideJourney=(journey,bubble)=>{
+      let url;
+      try{url=new URL(journey.href,location.href)}catch{return}
+      if(!isSafeDestination(url))return;
+      journeyStep(bubble,journey.progress[0]);
+      if(publicPath(url)!==pagePath()){
+        navigateTo(journey.href,journey.label,journey);
+        setTimeout(()=>journeyStep(bubble,journey.progress[1]),240);
+        return;
+      }
+      revealTarget(url,journey.label);
+      let finished=false;
+      const arrive=()=>{
+        if(finished)return;finished=true;
+        journeyStep(bubble,journey.progress[1]);
+        setTimeout(()=>completeJourney(bubble,journey),280);
+      };
+      addEventListener('scrollend',arrive,{once:true});
+      setTimeout(arrive,900);
+    };
+
     // Complete a guide-initiated cross-page handoff only once. The assistant
     // reopens after the new page is ready, keeps the conversation above, and
     // points at the promised destination instead of starting over.
     try{
       const handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null');
-      if(handoff&&Date.now()-Number(handoff.at||0)<30000){
+      if(handoff&&Date.now()-Number(handoff.at||0)<30000&&Array.isArray(handoff.progress)&&handoff.progress.length===2&&typeof handoff.arrival==='string'){
         sessionStorage.removeItem(NAV_STORE);
         setTimeout(()=>{
           if(!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);
+          const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
+          journeyStep(bubble,handoff.progress[0],{done:true});
+          journeyStep(bubble,handoff.progress[1]);
           revealTarget(url,handoff.label);
-        },360);
+          const transition=document.querySelector('.page-transition');
+          const finish=()=>completeJourney(bubble,handoff);
+          if(transition?.classList.contains('is-arriving'))transition.addEventListener('transitionend',finish,{once:true});
+          setTimeout(finish,720);
+        },120);
       }
     }catch{sessionStorage.removeItem(NAV_STORE)}
 
@@ -424,34 +501,10 @@
 
     launch.addEventListener('click',()=>{if(panel.classList.contains('is-open'))clearUnread()});
 
-    // The static answers script.js hands over. When the guide cannot answer,
-    // the common questions still get a real reply instead of a red box.
-    const canned=question=>{
-      const list=window.ASSISTANT_CANNED;
-      if(!Array.isArray(list))return '';
-      return list.find(([pattern])=>pattern.test(question))?.[1]||'';
-    };
-
-    // The site keeps a small set of verified answers for common questions. Use
-    // those first during an outage; unknown questions get a clear retry/contact
-    // state instead of provider or server output.
     const fail=(error,question)=>{
       const message=typeof error==='string'?error:error?.message;
       const heading=(typeof error==='object'&&error?.title)||'The guide lost its connection.';
       const retryable=typeof error==='object'&&error?.retryable!==undefined?!!error.retryable:true;
-      const offline=canned(question);
-
-      if(offline){
-        const answer=add(offline,'bot',true);
-        answer.classList.add('assist-offline');
-        const note=document.createElement('div');note.className='assist-offline-note';
-        note.textContent='Answered from the site’s own notes, because the live guide cannot reply right now.';
-        answer.append(note);
-        history.push({role:'user',content:question},{role:'assistant',content:offline});
-        if(history.length>8)history.splice(0,history.length-8);
-        transcript.push({role:'assistant',content:offline});writeStored(transcript);
-        return;
-      }
 
       const el=document.createElement('div');el.className='assist-msg bot assist-error';el.setAttribute('role','alert');
       const title=document.createElement('b');title.textContent=heading;
@@ -534,8 +587,7 @@
           let destinationUrl=null;
           try{destinationUrl=new URL(destination.href,location.href)}catch{}
           if(destinationUrl&&isSafeDestination(destinationUrl)){
-            announceStatus(`Opening ${destination.label}…`,{busy:true,duration:1600});
-            setTimeout(()=>navigateTo(destination.href,destination.label),420);
+            guideJourney(destination,bubble);
           }
         }
       }catch(err){

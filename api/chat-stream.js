@@ -18,7 +18,8 @@ Voice and style:
 - Lead with the answer. Avoid filler, repeated questions and long disclaimers.
 - Use Markdown when useful, including relative links such as [pricing](/pricing), [work](/work), [process](/process) and [contact](/contact).
 - When the visitor wants to see, find, compare, contact, return to, or go somewhere on the site, give a short answer followed by one useful relative Markdown link from the verified destination directory. The website turns that link into a navigation action.
-- When the visitor clearly asks to be moved somewhere now, use the navigate_site tool. Decide this from the meaning of the request, not from exact trigger words. A request for information such as “where is it?”, “what is on that page?” or “can I see it?” is not permission to move them and should receive a normal link instead.
+- When the visitor clearly asks to be moved somewhere now, use the navigate_site tool. Decide this from the meaning of the request, not from exact trigger words. A request for information about a destination is not permission to move them and should receive a normal link instead.
+- For a navigation tool call, write the complete journey in your own voice: a departure, short contextual progress updates, and an arrival. Make every part specific to this request and destination. Vary the language naturally instead of reusing a stock template.
 - Prefer the most specific verified section link available, such as [project form](/contact#project-form), instead of dropping the visitor at the top of a page.
 - Use the recent guide navigation in page context when a visitor says "take me back" or refers to a place the guide just showed them. Only return an exact same-site destination already present in that journey or the verified directory.
 
@@ -139,15 +140,17 @@ const NAV_TOOL={
   type:'function',
   function:{
     name:'navigate_site',
-    description:'Move the visitor to an exact verified page or section only when their message clearly asks you to navigate there now. Do not call this for informational questions or tentative interest.',
+    description:'Move the visitor to an exact verified page or section only when their meaning clearly grants permission to navigate now. Do not call this for informational questions or tentative interest. Author the complete journey naturally and specifically for this visitor and destination.',
     parameters:{
       type:'object',
       properties:{
-        message:{type:'string',description:'A brief, natural sentence telling the visitor where you are taking them.'},
+        departure:{type:'string',description:'A brief, natural response confirming where you are taking the visitor.'},
+        progress:{type:'array',description:'Two short, distinct, context-specific progress updates for the journey. Write them naturally; do not recycle a generic sequence.',items:{type:'string'},minItems:2,maxItems:2},
+        arrival:{type:'string',description:'A brief, natural conclusion that confirms the visitor has arrived and offers relevant next help without repeating the departure.'},
         href:{type:'string',description:'One exact relative destination from the verified page directory, including the most specific anchor available.'},
         label:{type:'string',description:'A concise human label for the destination.'}
       },
-      required:['message','href','label'],
+      required:['departure','progress','arrival','href','label'],
       additionalProperties:false
     }
   }
@@ -356,12 +359,16 @@ export default async function handler(req,res){
     if(!tripped&&toolName==='navigate_site'&&toolArguments){
       try{
         const action=JSON.parse(toolArguments);
-        const actionMessage=String(action.message||'').trim().slice(0,500);
+        const departure=String(action.departure||'').trim().slice(0,500);
+        const progress=Array.isArray(action.progress)?action.progress.map(item=>String(item||'').trim().slice(0,160)).filter(Boolean).slice(0,2):[];
+        const arrival=String(action.arrival||'').trim().slice(0,500);
         const href=String(action.href||'').trim().slice(0,180);
         const label=String(action.label||'').trim().slice(0,100);
-        if(actionMessage&&!wrote&&!leaks(actionMessage)){res.write(actionMessage);wrote=true;}
-        if(href.startsWith('/')&&label){
-          const encoded=encodeURIComponent(JSON.stringify({href,label}));
+        const authored=[departure,...progress,arrival];
+        const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
+        if(safeJourney&&!wrote){res.write(departure);wrote=true;}
+        if(safeJourney&&progress.length===2&&href.startsWith('/')&&label){
+          const encoded=encodeURIComponent(JSON.stringify({href,label,departure,progress,arrival}));
           res.write(`\n<!--abatchan-nav:${actionToken}:${encoded}-->`);
         }
       }catch{}

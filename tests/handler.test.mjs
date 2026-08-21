@@ -20,7 +20,7 @@ globalThis.fetch = async (url, opts = {}) => {
   if (u.includes('api.deepseek.com')) {
     lastDeepSeekBody = JSON.parse(opts.body);
     const sse = deepSeekMode === 'tool'
-      ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"message\\":\\"Opening the animated logo.\\",\\"href\\":\\"/brand#symbol\\",\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
+      ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring up the animated logo for you.\\",\\"progress\\":[\\"Finding the symbol sequence…\\",\\"Bringing the reveal into view…\\"],\\"arrival\\":\\"You’re at the animated logo now. Want to explore how the symbol is constructed next?\\",\\"href\\":\\"/brand#symbol\\",\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
       : 'data: {"choices":[{"delta":{"content":"Connected systems, end to end."}}]}\n\ndata: [DONE]\n\n';
     const bytes = new TextEncoder().encode(sse);
     let sent = false;
@@ -137,9 +137,11 @@ deepSeekMode = 'tool';
 result = await call('5.5.5.5', 'The animated logo section is where I want to be; please move me there now.');
 check('tool is offered to DeepSeek', lastDeepSeekBody.tools[0].function.name, 'navigate_site');
 check('tool choice lets the model decide', lastDeepSeekBody.tool_choice, 'auto');
-check('natural message is streamed', result.text.startsWith('Opening the animated logo.'), true);
+check('model-authored departure is streamed', result.text.startsWith('I’ll bring up the animated logo for you.'), true);
 check('server action is bound to response token', result.text.includes(`<!--abatchan-nav:${result.headers['x-abatchan-action-token']}:`), true);
 check('action carries exact verified destination', decodeURIComponent(result.text).includes('"href":"/brand#symbol"'), true);
+check('action carries model-authored progress', decodeURIComponent(result.text).includes('"progress":["Finding the symbol sequence…","Bringing the reveal into view…"]'), true);
+check('action carries model-authored arrival', decodeURIComponent(result.text).includes('"arrival":"You’re at the animated logo now.'), true);
 
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);
