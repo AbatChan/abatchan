@@ -670,11 +670,11 @@ const assistantPageContext=()=>{
 const CANNED=[
   // "pric" not "price", so pricing and prices match too — the words visitors
   // actually type. Same reason "how much" is here.
-  [/pric|cost|budget|charge|quote|afford|how much|expensive/i,"Focused landing pages start at $150, platforms at $1,500, and connected systems at $3,500. Those are starting points, not quotes. The real number comes from scope, with the full breakdown on the pricing page."],
-  [/how long|timeline|deadline|when/i,"It depends on scope, but work is split into milestones so you see something usable at each one. The process page walks through all five stages."],
+  [/pric|cost|budget|charge|quote|afford|how much|expensive/i,"Focused landing pages start at $500, platforms at $2,500, and connected systems at $5,000. Those are starting points, not quotes. See the [full pricing breakdown](/pricing#website)."],
+  [/how long|timeline|deadline|when/i,"It depends on scope, but work is split into milestones so you see something usable at each one. See the [five delivery stages](/process#discovery)."],
   [/what.*(build|do)|services|offer/i,"Connected web and mobile products, automation and workflow systems, APIs and integrations, dashboards, and the infrastructure under them."],
-  [/small|tiny|fix|quick/i,"Yes. Small fixes and consultations are quoted separately, usually from $100, and ongoing work is $30/hour when project pricing does not fit."],
-  [/hire|available|start|book/i,"I am taking on new projects. Send the problem, the current setup, and the deadline through the contact page."],
+  [/small|tiny|fix|quick/i,"Yes. Small fixes and consultations are quoted separately, usually from $100, and ongoing work starts at $45/hour when project pricing does not fit."],
+  [/hire|available|start|book/i,"Abat is taking on new projects. Send the problem, current setup, and deadline through the [project form](/contact#project-form)."],
   [/what can you help|can you do|your limits|do.?s|don.?ts/i,"I can explain the site, work, pricing, process, and how to start a project. I cannot access accounts, take payments, send messages, write code for visitors, or make binding promises."],
   [/hello|hi|hey|good (morning|afternoon|evening)/i,"Hello. What are you building?"]
 ];
@@ -689,7 +689,7 @@ window.ASSISTANT_CANNED=CANNED;
 // could paint. They load here instead — started in parallel with the settings
 // call this function already waits on, so the launcher costs no extra time and
 // is never painted before the rules that position it arrive.
-const ASSISTANT_CSS='/assistant.css?v=1';
+const ASSISTANT_CSS='/assistant.css?v=2';
 const loadAssistantStyles=()=>new Promise(resolve=>{
   if(document.querySelector('link[data-assist-css]'))return resolve();
   const link=document.createElement('link');

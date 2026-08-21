@@ -13,8 +13,43 @@
     purify:'/assets/vendor/purify-3.4.7.min.js'
   };
   const STORE='abatchanGuideHistoryV1';
+  const NAV_STORE='abatchanGuideNavigationV1';
+  const JOURNEY_STORE='abatchanGuideJourneyV1';
   const MAX_STORED=24;
   const WHATSAPP='https://wa.me/2347041857921';
+
+  // Stable destinations for conversational navigation. Existing authored IDs
+  // remain the source of truth; headings only receive an ID when the page did
+  // not already provide one. The model can therefore point at a real section
+  // without receiving arbitrary DOM control.
+  const SECTION_TITLES={
+    '/':{
+      'selected-work':'Interface to infrastructure.',
+      'services':'One connected delivery layer.',
+      'delivery-process':'Clean execution, end to end.',
+      'client-reviews':'Reviewed by the people who hired me.',
+      'start-project':'If it plugs in, I build it.'
+    },
+    '/about':{'principles':'Connected by default.','capabilities':'Design, code, connect.','start-project':'Modern systems. Clean execution.'},
+    '/pricing':{'website':'Website','platform':'Platform','system':'System','quote-process':'Quote the work, not the hype.','client-reviews':'What clients say after delivery.','pricing-faq':'Useful details before we start.','start-project':'Tell me what needs to work.'},
+    '/reviews':{'start-project':'Tell me what needs to work.'},
+    '/brand':{'name':'One word, always lowercase.','voice':'What the brand says.','symbol':'Mirrored, open geometry.','downloads':'The short version.','start-project':'Need something not listed here?'}
+  };
+  const PUBLIC_PATHS=new Set(['/','/work','/about','/pricing','/process','/brand','/contact','/reviews','/bookingkoala','/privacy','/terms']);
+  const pagePath=()=>location.pathname.replace(/\/index(?:\.html)?$/,'/').replace(/\.html$/,'').replace(/\/+$/,'')||'/';
+  const publicPath=url=>(url.pathname.replace(/\.html$/,'').replace(/\/+$/,'')||'/');
+  const isSafeDestination=url=>url.origin===location.origin&&PUBLIC_PATHS.has(publicPath(url));
+  const installSectionAnchors=()=>{
+    const wanted=SECTION_TITLES[pagePath()]||{};
+    const headings=[...document.querySelectorAll('main h1,main h2,main h3')];
+    Object.entries(wanted).forEach(([id,title])=>{
+      if(document.getElementById(id))return;
+      const heading=headings.find(node=>node.textContent.trim()===title);
+      const target=heading?.closest('section,article')||heading;
+      if(target&&!target.id)target.id=id;
+    });
+  };
+  installSectionAnchors();
 
   const loadScript=src=>new Promise((resolve,reject)=>{
     // script.src reads back absolute, so a relative src never matches it.
@@ -62,7 +97,23 @@
     const description=document.querySelector('meta[name="description"]')?.content||'';
     const main=document.querySelector('main');
     const text=(main?.innerText||'').replace(/\s+/g,' ').trim().slice(0,3500);
-    return {title:document.title.slice(0,160),description:description.slice(0,320),text};
+    const sections=[...document.querySelectorAll('main [id]')]
+      .filter(node=>node.matches('section,article,h1,h2,h3')||node.querySelector('h1,h2,h3'))
+      .slice(0,24)
+      .map(node=>({id:node.id,label:node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
+    const active=[...document.querySelectorAll('main section[id],main article[id],main h2[id]')]
+      .map(node=>({node,distance:Math.abs(node.getBoundingClientRect().top-innerHeight*.32)}))
+      .sort((a,b)=>a.distance-b.distance)[0]?.node;
+    let journey=[];
+    try{journey=JSON.parse(sessionStorage.getItem(JOURNEY_STORE)||'[]')}catch{}
+    return {
+      title:document.title.slice(0,160),
+      description:description.slice(0,320),
+      text,
+      activeSection:active?{id:active.id,label:active.querySelector('h1,h2,h3')?.textContent.trim()||''}:null,
+      sections,
+      journey:Array.isArray(journey)?journey.slice(-4):[]
+    };
   };
 
   const waitForPanel=()=>new Promise(resolve=>{
@@ -107,6 +158,19 @@
     const input=form.querySelector('textarea,input');const send=form.querySelector('.assist-send');
     const LIMIT=Number(input.getAttribute('maxlength'))||1000;
 
+    const pagePrompts={
+      '/':['Show me relevant work','How does a project start?','What can you build?'],
+      '/work':['Which project fits my idea?','Show me the AI work','How do I start a project?'],
+      '/pricing':['Compare the options','What will my project cost?','How do payments work?'],
+      '/process':['Which stage comes first?','How long does delivery take?','Take me to the contact form'],
+      '/contact':['What should I include?','Which service fits my idea?','Show me pricing first'],
+      '/bookingkoala':['What can you fix?','Show me the proof','Take me to the enquiry form']
+    };
+    const contextualPrompts=pagePrompts[pagePath()];
+    if(chips&&contextualPrompts){
+      chips.replaceChildren(...contextualPrompts.map(text=>{const button=document.createElement('button');button.type='button';button.textContent=text;return button}));
+    }
+
     // The field grows with the question up to a ceiling, then scrolls, so a
     // long paste never pushes the send button off the panel.
     const GROW_MAX=132;
@@ -146,10 +210,83 @@
     const history=transcript.slice(-8);
     let pending=false,audioCtx=null,peekTimer=0,confirmTimer=0;
 
+    const rememberJourney=entry=>{
+      try{
+        const stored=JSON.parse(sessionStorage.getItem(JOURNEY_STORE)||'[]');
+        const journey=Array.isArray(stored)?stored:[];
+        journey.push(entry);
+        sessionStorage.setItem(JOURNEY_STORE,JSON.stringify(journey.slice(-8)));
+      }catch{}
+    };
+
+    const targetFor=url=>{
+      if(!url.hash)return document.querySelector('main h1,main');
+      try{
+        const raw=document.getElementById(decodeURIComponent(url.hash.slice(1)));
+        return raw?.closest('section,article')||raw;
+      }catch{return null}
+    };
+
+    const revealTarget=(url,label)=>{
+      const target=targetFor(url);
+      if(!target)return false;
+      document.querySelectorAll('.assist-guided-target').forEach(node=>node.classList.remove('assist-guided-target'));
+      target.classList.add('assist-guided-target');
+      target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+      const marker=document.createElement('span');
+      marker.className='assist-guide-marker';
+      marker.textContent=label||'Here';
+      marker.setAttribute('aria-hidden','true');
+      target.appendChild(marker);
+      setTimeout(()=>{target.classList.remove('assist-guided-target');marker.remove()},4200);
+      return true;
+    };
+
+    const navigateTo=(href,label)=>{
+      let url;
+      try{url=new URL(href,location.href)}catch{return}
+      if(!isSafeDestination(url))return;
+      const destination=publicPath(url);
+      const current=pagePath();
+      rememberJourney({from:current,to:destination+url.hash,label:label||'the section',at:Date.now()});
+      if(destination===current){
+        if(revealTarget(url,label))add(`Here you go — I’ve highlighted ${label||'the relevant section'}.`,'bot');
+        return;
+      }
+      try{sessionStorage.setItem(NAV_STORE,JSON.stringify({href:destination+url.hash,label:label||'the relevant section',at:Date.now()}))}catch{}
+      location.assign(destination+url.hash);
+    };
+
+    const enhanceActions=el=>{
+      if(!el||el.dataset.actionsReady)return;
+      el.dataset.actionsReady='true';
+      const links=[...el.querySelectorAll('a[href]')];
+      const internal=[];
+      links.forEach(link=>{
+        let url;
+        try{url=new URL(link.getAttribute('href'),location.href)}catch{return}
+        if(url.origin!==location.origin)return;
+        const label=link.textContent.trim()||'Go there';
+        link.replaceWith(document.createTextNode(label));
+        if(!isSafeDestination(url))return;
+        internal.push({href:publicPath(url)+url.hash,label});
+      });
+      const unique=internal.filter((item,index,list)=>index===list.findIndex(other=>other.href===item.href)).slice(0,3);
+      if(!unique.length)return;
+      const actions=document.createElement('div');actions.className='assist-response-actions';
+      unique.forEach((item,index)=>{
+        const button=document.createElement('button');button.type='button';button.className=index===0?'is-primary':'';
+        button.innerHTML=`<span>${escapeText(item.label)}</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>`;
+        button.addEventListener('click',()=>navigateTo(item.href,item.label));
+        actions.append(button);
+      });
+      el.append(actions);
+    };
+
     const add=(text,who,persisted=false)=>{
       const el=document.createElement('div');el.className='assist-msg '+who;
       if(persisted)el.dataset.chatEntry='true';
-      if(who==='bot')render(el,text);else el.textContent=text;
+      if(who==='bot'){render(el,text);enhanceActions(el)}else el.textContent=text;
       log.appendChild(el);log.scrollTop=log.scrollHeight;return el;
     };
 
@@ -164,6 +301,22 @@
     const greetingObserver=new MutationObserver(pinIntro);
     greetingObserver.observe(log,{childList:true});
     pinIntro();
+
+    // Complete a guide-initiated cross-page handoff only once. The assistant
+    // reopens after the new page is ready, keeps the conversation above, and
+    // points at the promised destination instead of starting over.
+    try{
+      const handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null');
+      if(handoff&&Date.now()-Number(handoff.at||0)<30000){
+        sessionStorage.removeItem(NAV_STORE);
+        setTimeout(()=>{
+          if(!panel.classList.contains('is-open'))launch.click();
+          const url=new URL(handoff.href,location.href);
+          const found=revealTarget(url,handoff.label);
+          add(found?`Here you go — I’ve highlighted ${handoff.label}.`:'Here you go — you’re on the right page.','bot');
+        },360);
+      }
+    }catch{sessionStorage.removeItem(NAV_STORE)}
 
     const clear=document.createElement('button');
     clear.type='button';clear.className='assist-clear';clear.setAttribute('aria-label','Delete chat history');
@@ -242,13 +395,14 @@
       return list.find(([pattern])=>pattern.test(question))?.[1]||'';
     };
 
-    // The server says whether waiting helps. A spent day does not come back in
-    // a minute, so offering "try again" on one only loops the visitor.
+    // The site keeps a small set of verified answers for common questions. Use
+    // those first during an outage; unknown questions get a clear retry/contact
+    // state instead of provider or server output.
     const fail=(error,question)=>{
       const message=typeof error==='string'?error:error?.message;
       const heading=(typeof error==='object'&&error?.title)||'The guide lost its connection.';
       const retryable=typeof error==='object'&&error?.retryable!==undefined?!!error.retryable:true;
-      const offline=retryable?'':canned(question);
+      const offline=canned(question);
 
       if(offline){
         const answer=add(offline,'bot',true);
@@ -256,6 +410,10 @@
         const note=document.createElement('div');note.className='assist-offline-note';
         note.textContent='Answered from the site’s own notes, because the live guide cannot reply right now.';
         answer.append(note);
+        history.push({role:'user',content:question},{role:'assistant',content:offline});
+        if(history.length>8)history.splice(0,history.length-8);
+        transcript.push({role:'assistant',content:offline});writeStored(transcript);
+        return;
       }
 
       const el=document.createElement('div');el.className='assist-msg bot assist-error';el.setAttribute('role','alert');
@@ -311,9 +469,9 @@
         if(!res.ok){
           let detail=null,message='Try again, or contact Abat directly.';
           if(type.includes('application/json')){try{detail=(await res.json())?.error||null;message=detail?.message||message}catch{}}
-          else{try{message=(await res.text())||message}catch{}}
+          else message=res.status===429?'The guide is busy right now. Please try again shortly.':'The guide could not connect just now. Please try again, or contact Abat directly.';
           const error=new Error(message);
-          error.detail={title:detail?.title,message,retryable:detail?.retryable};
+          error.detail={title:detail?.title,message,retryable:detail?.retryable??(res.status===429||res.status>=500)};
           throw error;
         }
         if(!res.body)throw new Error('The browser did not receive a response stream.');
@@ -327,6 +485,7 @@
         if(answer)paint();
         else throw new Error('The guide returned an empty response.');
         bubble?.classList.remove('is-streaming');
+        if(bubble){delete bubble.dataset.actionsReady;enhanceActions(bubble)}
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
         transcript.push({role:'assistant',content:answer});writeStored(transcript);
