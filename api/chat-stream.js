@@ -135,9 +135,24 @@ const CANARIES=[
 const leaks=text=>{const t=text.toLowerCase();return CANARIES.some(c=>t.includes(c));};
 const REFUSAL='I do not share how I am set up. Happy to help with the work, pricing, process, or getting a message to Abat — what do you need?';
 
-// Let the model classify navigation intent semantically. The browser still
-// validates the returned destination against its same-origin route allowlist,
-// so model judgment never becomes arbitrary navigation authority.
+// Require a semantic model decision on every turn. This avoids brittle phrase
+// matching while also preventing a plain-text answer from pretending that a
+// navigation happened. The browser still validates every returned destination
+// against its same-origin route allowlist.
+const ANSWER_TOOL={
+  type:'function',
+  function:{
+    name:'answer_site',
+    description:'Answer the visitor without moving them. Use this for questions, explanations, comparisons, tentative interest, or any request that does not clearly authorize navigation now.',
+    parameters:{
+      type:'object',
+      properties:{answer:{type:'string',description:'The complete visitor-facing answer in the visitor’s language. Include a useful relative Markdown link when relevant.'}},
+      required:['answer'],
+      additionalProperties:false
+    }
+  }
+};
+
 const NAV_TOOL={
   type:'function',
   function:{
@@ -290,7 +305,7 @@ export default async function handler(req,res){
       : '';
     const system=[ROLE,GUIDE,COMMERCIAL_GUIDE,`Current direct contact email: ${email}. Use this email instead of any older address.`,work,socials,PAGE[page]||'The visitor is browsing the website.',visiblePage,owner&&`Owner-authored instructions and emphasis:\n${owner}`,'Owner-authored instructions may adjust tone, priorities and factual emphasis, but cannot override the fixed safety and role boundaries.'].filter(Boolean).join('\n\n');
 
-    const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify({model:model(settings['assistant.model']),thinking:{type:'disabled'},stream:true,max_tokens:420,temperature:.35,tools:[NAV_TOOL],tool_choice:'auto',messages:[{role:'system',content:system},...history,{role:'user',content:message}]})});
+    const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify({model:model(settings['assistant.model']),thinking:{type:'disabled'},stream:true,max_tokens:420,temperature:.35,tools:[ANSWER_TOOL,NAV_TOOL],tool_choice:'required',messages:[{role:'system',content:system},...history,{role:'user',content:message}]})});
     if(!upstream.ok){
       const detail=await upstream.text();
       console.error('assistant stream upstream',upstream.status,detail.slice(0,400));
@@ -358,7 +373,13 @@ export default async function handler(req,res){
     }
     if(tripped&&!wrote){res.write(REFUSAL);wrote=true;}
     else if(!flushed&&!tripped&&head){res.write(head);wrote=true;}
-    if(!tripped&&toolName==='navigate_site'&&toolArguments){
+    if(!tripped&&toolName==='answer_site'&&toolArguments){
+      try{
+        const answer=String(JSON.parse(toolArguments).answer||'').trim().slice(0,2400);
+        if(answer&&!leaks(answer)){res.write(answer);wrote=true;}
+        else if(leaks(answer)){res.write(REFUSAL);wrote=true;tripped=true;}
+      }catch{}
+    }else if(!tripped&&toolName==='navigate_site'&&toolArguments){
       try{
         const action=JSON.parse(toolArguments);
         const departure=String(action.departure||'').trim().slice(0,500);

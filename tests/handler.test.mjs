@@ -21,7 +21,7 @@ globalThis.fetch = async (url, opts = {}) => {
     lastDeepSeekBody = JSON.parse(opts.body);
     const sse = deepSeekMode === 'tool'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring up the animated logo for you.\\",\\"progress\\":[\\"Finding the symbol sequence…\\"],\\"arrival\\":\\"You’re at the animated logo now. Want to explore how the symbol is constructed next?\\",\\"href\\":\\"/brand#symbol\\",\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
-      : 'data: {"choices":[{"delta":{"content":"Connected systems, end to end."}}]}\n\ndata: [DONE]\n\n';
+      : 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"answer_site","arguments":"{\\"answer\\":\\"Connected systems, end to end.\\"}"}}]}}]}\n\ndata: [DONE]\n\n';
     const bytes = new TextEncoder().encode(sse);
     let sent = false;
     return {
@@ -135,8 +135,9 @@ table.clear();
 globalThis.fetch = realFetch;
 deepSeekMode = 'tool';
 result = await call('5.5.5.5', 'The animated logo section is where I want to be; please move me there now.');
-check('tool is offered to DeepSeek', lastDeepSeekBody.tools[0].function.name, 'navigate_site');
-check('tool choice lets the model decide', lastDeepSeekBody.tool_choice, 'auto');
+check('answer tool is offered to DeepSeek', lastDeepSeekBody.tools[0].function.name, 'answer_site');
+check('navigation tool is offered to DeepSeek', lastDeepSeekBody.tools[1].function.name, 'navigate_site');
+check('model must make a semantic action choice', lastDeepSeekBody.tool_choice, 'required');
 check('plain answers cannot fake an arrival', lastDeepSeekBody.messages[0].content.includes('Never claim that you are moving the visitor'), true);
 check('model-authored departure is streamed', result.text.startsWith('I’ll bring up the animated logo for you.'), true);
 check('server action is bound to response token', result.text.includes(`<!--abatchan-nav:${result.headers['x-abatchan-action-token']}:`), true);
