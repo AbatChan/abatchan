@@ -364,7 +364,7 @@ export default async function handler(req,res){
           if(chunk)emit(chunk);
           const calls=data?.choices?.[0]?.delta?.tool_calls;
           if(Array.isArray(calls))calls.forEach(call=>{
-            if(call?.function?.name)toolName+=call.function.name;
+            if(call?.function?.name)toolName=call.function.name;
             if(call?.function?.arguments)toolArguments+=call.function.arguments;
           });
         }catch{}

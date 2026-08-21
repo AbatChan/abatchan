@@ -21,7 +21,7 @@ globalThis.fetch = async (url, opts = {}) => {
     lastDeepSeekBody = JSON.parse(opts.body);
     const sse = deepSeekMode === 'tool'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring up the animated logo for you.\\",\\"progress\\":[\\"Finding the symbol sequence…\\"],\\"arrival\\":\\"You’re at the animated logo now. Want to explore how the symbol is constructed next?\\",\\"href\\":\\"/brand#symbol\\",\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
-      : 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"answer_site","arguments":"{\\"answer\\":\\"Connected systems, end to end.\\"}"}}]}}]}\n\ndata: [DONE]\n\n';
+      : 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"answer_site","arguments":"{\\"answer\\":\\"Connected systems, "}}]}}]}\n\ndata: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"answer_site","arguments":"end to end.\\"}"}}]}}]}\n\ndata: [DONE]\n\n';
     const bytes = new TextEncoder().encode(sse);
     let sent = false;
     return {
