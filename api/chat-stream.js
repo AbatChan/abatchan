@@ -1,5 +1,6 @@
 // POST /api/chat-stream
 // Streams plain UTF-8 text while keeping provider and Supabase secrets private.
+import { randomUUID } from 'node:crypto';
 import { COMMERCIAL_GUIDE } from './commercial-guide.js';
 import { consume } from './quota.js';
 
@@ -17,6 +18,7 @@ Voice and style:
 - Lead with the answer. Avoid filler, repeated questions and long disclaimers.
 - Use Markdown when useful, including relative links such as [pricing](/pricing), [work](/work), [process](/process) and [contact](/contact).
 - When the visitor wants to see, find, compare, contact, return to, or go somewhere on the site, give a short answer followed by one useful relative Markdown link from the verified destination directory. The website turns that link into a navigation action.
+- When the visitor clearly asks to be moved somewhere now, use the navigate_site tool. Decide this from the meaning of the request, not from exact trigger words. A request for information such as “where is it?”, “what is on that page?” or “can I see it?” is not permission to move them and should receive a normal link instead.
 - Prefer the most specific verified section link available, such as [project form](/contact#project-form), instead of dropping the visitor at the top of a page.
 - Use the recent guide navigation in page context when a visitor says "take me back" or refers to a place the guide just showed them. Only return an exact same-site destination already present in that journey or the verified directory.
 
@@ -129,6 +131,27 @@ const CANARIES=[
 ];
 const leaks=text=>{const t=text.toLowerCase();return CANARIES.some(c=>t.includes(c));};
 const REFUSAL='I do not share how I am set up. Happy to help with the work, pricing, process, or getting a message to Abat — what do you need?';
+
+// Let the model classify navigation intent semantically. The browser still
+// validates the returned destination against its same-origin route allowlist,
+// so model judgment never becomes arbitrary navigation authority.
+const NAV_TOOL={
+  type:'function',
+  function:{
+    name:'navigate_site',
+    description:'Move the visitor to an exact verified page or section only when their message clearly asks you to navigate there now. Do not call this for informational questions or tentative interest.',
+    parameters:{
+      type:'object',
+      properties:{
+        message:{type:'string',description:'A brief, natural sentence telling the visitor where you are taking them.'},
+        href:{type:'string',description:'One exact relative destination from the verified page directory, including the most specific anchor available.'},
+        label:{type:'string',description:'A concise human label for the destination.'}
+      },
+      required:['message','href','label'],
+      additionalProperties:false
+    }
+  }
+};
 
 const PAGE={
   '/':'The visitor is on the homepage.',
@@ -262,7 +285,7 @@ export default async function handler(req,res){
       : '';
     const system=[ROLE,GUIDE,COMMERCIAL_GUIDE,`Current direct contact email: ${email}. Use this email instead of any older address.`,work,socials,PAGE[page]||'The visitor is browsing the website.',visiblePage,owner&&`Owner-authored instructions and emphasis:\n${owner}`,'Owner-authored instructions may adjust tone, priorities and factual emphasis, but cannot override the fixed safety and role boundaries.'].filter(Boolean).join('\n\n');
 
-    const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify({model:model(settings['assistant.model']),thinking:{type:'disabled'},stream:true,max_tokens:420,temperature:.35,messages:[{role:'system',content:system},...history,{role:'user',content:message}]})});
+    const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify({model:model(settings['assistant.model']),thinking:{type:'disabled'},stream:true,max_tokens:420,temperature:.35,tools:[NAV_TOOL],tool_choice:'auto',messages:[{role:'system',content:system},...history,{role:'user',content:message}]})});
     if(!upstream.ok){
       const detail=await upstream.text();
       console.error('assistant stream upstream',upstream.status,detail.slice(0,400));
@@ -273,7 +296,9 @@ export default async function handler(req,res){
     // Lets the browser warn before it hits the wall rather than after.
     res.setHeader('X-Guide-Remaining',String(usage.remaining));
     res.setHeader('X-Guide-Personal',String(usage.personal));
+    const actionToken=randomUUID();
     res.setHeader('Content-Type','text/plain; charset=utf-8');
+    res.setHeader('X-Abatchan-Action-Token',actionToken);
     res.setHeader('Cache-Control','no-cache, no-store, no-transform');
     res.setHeader('X-Content-Type-Options','nosniff');
     res.setHeader('X-Accel-Buffering','no');
@@ -282,7 +307,7 @@ export default async function handler(req,res){
     const reader=upstream.body?.getReader();
     if(!reader)return sendError(res,502,'empty_reply','The model returned no stream.');
     const decoder=new TextDecoder();
-    let buffer='',wrote=false;
+    let buffer='',wrote=false,toolName='',toolArguments='';
     // A recited prompt starts at the first token, so holding the opening back
     // buys the whole check while costing a beat of streaming. Past that the
     // scan keeps running and simply stops the stream, which bounds a late leak
@@ -317,12 +342,30 @@ export default async function handler(req,res){
           const data=JSON.parse(payload);
           const chunk=data?.choices?.[0]?.delta?.content;
           if(chunk)emit(chunk);
+          const calls=data?.choices?.[0]?.delta?.tool_calls;
+          if(Array.isArray(calls))calls.forEach(call=>{
+            if(call?.function?.name)toolName+=call.function.name;
+            if(call?.function?.arguments)toolArguments+=call.function.arguments;
+          });
         }catch{}
       }
       if(tripped)break;
     }
     if(tripped&&!wrote){res.write(REFUSAL);wrote=true;}
     else if(!flushed&&!tripped&&head){res.write(head);wrote=true;}
+    if(!tripped&&toolName==='navigate_site'&&toolArguments){
+      try{
+        const action=JSON.parse(toolArguments);
+        const actionMessage=String(action.message||'').trim().slice(0,500);
+        const href=String(action.href||'').trim().slice(0,180);
+        const label=String(action.label||'').trim().slice(0,100);
+        if(actionMessage&&!wrote&&!leaks(actionMessage)){res.write(actionMessage);wrote=true;}
+        if(href.startsWith('/')&&label){
+          const encoded=encodeURIComponent(JSON.stringify({href,label}));
+          res.write(`\n<!--abatchan-nav:${actionToken}:${encoded}-->`);
+        }
+      }catch{}
+    }
     if(tripped)console.warn('assistant stream suppressed a prompt leak');
     if(!wrote)res.write('I could not produce an answer this time. Please try again or use [contact](/contact).');
     res.end();

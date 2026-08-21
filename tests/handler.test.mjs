@@ -8,6 +8,8 @@ process.env.ASSISTANT_DAILY_MAX = '4';
 process.env.ASSISTANT_IP_DAILY_MAX = '2';
 
 const table = new Map();
+let deepSeekMode = 'content';
+let lastDeepSeekBody = null;
 
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url);
@@ -16,7 +18,10 @@ globalThis.fetch = async (url, opts = {}) => {
     return { ok: false, status: 404, json: async () => ({}) };
   }
   if (u.includes('api.deepseek.com')) {
-    const sse = 'data: {"choices":[{"delta":{"content":"Connected systems, end to end."}}]}\n\ndata: [DONE]\n\n';
+    lastDeepSeekBody = JSON.parse(opts.body);
+    const sse = deepSeekMode === 'tool'
+      ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"message\\":\\"Opening the animated logo.\\",\\"href\\":\\"/brand#symbol\\",\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
+      : 'data: {"choices":[{"delta":{"content":"Connected systems, end to end."}}]}\n\ndata: [DONE]\n\n';
     const bytes = new TextEncoder().encode(sse);
     let sent = false;
     return {
@@ -49,7 +54,7 @@ globalThis.fetch = async (url, opts = {}) => {
 
 const { default: handler } = await import('../api/chat-stream.js');
 
-const call = async ip => {
+const call = async (ip, message = 'what do you build?') => {
   const headers = {};
   const chunks = [];
   let status = 200;
@@ -77,7 +82,7 @@ const call = async ip => {
       'content-length': '60',
       'x-forwarded-for': ip
     },
-    body: { message: 'what do you build?', page: '/' }
+    body: { message, page: '/' }
   }, res);
   return { status, json, headers, text: chunks.join('') };
 };
@@ -124,6 +129,17 @@ globalThis.fetch = async (url, opts) => String(url).includes('api.deepseek.com')
 result = await call('4.4.4.4');
 check('code', result.json.error.code, 'upstream');
 check('IS retryable -> button shown', result.json.error.retryable, true);
+
+console.log('\n=== semantic navigation uses a structured model tool ===');
+table.clear();
+globalThis.fetch = realFetch;
+deepSeekMode = 'tool';
+result = await call('5.5.5.5', 'The animated logo section is where I want to be; please move me there now.');
+check('tool is offered to DeepSeek', lastDeepSeekBody.tools[0].function.name, 'navigate_site');
+check('tool choice lets the model decide', lastDeepSeekBody.tool_choice, 'auto');
+check('natural message is streamed', result.text.startsWith('Opening the animated logo.'), true);
+check('server action is bound to response token', result.text.includes(`<!--abatchan-nav:${result.headers['x-abatchan-action-token']}:`), true);
+check('action carries exact verified destination', decodeURIComponent(result.text).includes('"href":"/brand#symbol"'), true);
 
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);

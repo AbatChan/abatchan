@@ -284,11 +284,20 @@
       return unique;
     };
 
-    // “Take me”, “open”, and “go to” already contain permission to navigate.
-    // Questions such as “where is…” still get a button so the visitor stays in
-    // control. This is deliberately narrow: the guide can only choose from the
-    // same verified, same-origin destinations used by the action buttons.
-    const isDirectNavigation=text=>/^(?:(?:take|bring|send)\s+me\b|(?:go|open|navigate|jump)\s+(?:me\s+)?(?:to\s+)?\b|show\s+me\s+(?:the\s+)?(?:page|section|form|work|pricing|brand|process|contact)\b)/i.test(String(text).trim());
+    // Navigation intent comes from the model's tool decision, not a growing
+    // list of English trigger phrases. The protocol is removed before display
+    // and the destination still has to pass isSafeDestination before use.
+    const readNavigation=(text,token)=>{
+      const safeToken=String(token||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const match=safeToken?String(text).match(new RegExp(`<!--abatchan-nav:${safeToken}:([^>]+)-->`)):null;
+      if(!match)return {text:String(text),action:null};
+      let action=null;
+      try{
+        const parsed=JSON.parse(decodeURIComponent(match[1]));
+        if(parsed&&typeof parsed.href==='string'&&typeof parsed.label==='string')action=parsed;
+      }catch{}
+      return {text:String(text).replace(match[0],'').trim(),action};
+    };
 
     const add=(text,who,persisted=false)=>{
       const el=document.createElement('div');el.className='assist-msg '+who;
@@ -510,19 +519,24 @@
           if(answer&&!frame)frame=requestAnimationFrame(paint);
         }
         answer+=decoder.decode();if(frame)cancelAnimationFrame(frame);
+        const navigation=readNavigation(answer,res.headers.get('X-Abatchan-Action-Token'));
+        answer=navigation.text;
         if(answer)paint();
         else throw new Error('The guide returned an empty response.');
         bubble?.classList.remove('is-streaming');
-        let actions=[];
-        if(bubble){delete bubble.dataset.actionsReady;actions=enhanceActions(bubble)}
+        if(bubble){delete bubble.dataset.actionsReady;enhanceActions(bubble)}
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
         transcript.push({role:'assistant',content:answer});writeStored(transcript);
         notifyClosed(answer);
-        if(isDirectNavigation(text)&&actions[0]){
-          const destination=actions[0];
-          announceStatus(`Opening ${destination.label}…`,{busy:true,duration:1600});
-          setTimeout(()=>navigateTo(destination.href,destination.label),420);
+        if(navigation.action){
+          const destination=navigation.action;
+          let destinationUrl=null;
+          try{destinationUrl=new URL(destination.href,location.href)}catch{}
+          if(destinationUrl&&isSafeDestination(destinationUrl)){
+            announceStatus(`Opening ${destination.label}…`,{busy:true,duration:1600});
+            setTimeout(()=>navigateTo(destination.href,destination.label),420);
+          }
         }
       }catch(err){
         if(frame)cancelAnimationFrame(frame);
