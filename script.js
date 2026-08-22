@@ -671,7 +671,7 @@ const assistantPageContext=()=>{
 // could paint. They load here instead — started in parallel with the settings
 // call this function already waits on, so the launcher costs no extra time and
 // is never painted before the rules that position it arrive.
-const ASSISTANT_CSS='/assistant.css?v=10';
+const ASSISTANT_CSS='/assistant.css?v=11';
 const loadAssistantStyles=()=>new Promise(resolve=>{
   if(document.querySelector('link[data-assist-css]'))return resolve();
   const link=document.createElement('link');
@@ -713,10 +713,26 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
     '<div class="assist-log" role="log" aria-live="polite"></div>'+
     '<div class="assist-chips">'+ASSISTANT.chips.map(c=>`<button type="button">${c}</button>`).join('')+'</div>'+
     '<form class="assist-form">'+
-      '<textarea name="q" rows="1" autocomplete="off" maxlength="1000" placeholder="Ask a question…" aria-label="Your question"></textarea>'+
-      '<button class="assist-send" type="submit" aria-label="Send">'+
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 2.6 10.9 13.1"/><path d="M21.4 2.6 14.7 21.4l-3.8-8.3-8.3-3.8Z"/></svg>'+
-      '</button>'+
+      '<textarea name="q" rows="1" autocomplete="off" maxlength="1000" placeholder="Ask about your project…" aria-label="Your question"></textarea>'+
+      '<div class="assist-attachment-list" aria-live="polite" hidden></div>'+
+      '<input class="assist-file-input" type="file" accept="image/*,.txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" multiple hidden>'+
+      '<div class="assist-composer-rail">'+
+        '<div class="assist-composer-group">'+
+          '<button class="assist-composer-icon assist-add" type="button" aria-label="Attach project details" data-tip="Attach project details"><img src="/assets/icons/plus.svg" alt="" aria-hidden="true"></button>'+
+          '<div class="assist-composer-menu-wrap">'+
+            '<button class="assist-composer-choice assist-approval" type="button" aria-haspopup="menu" aria-expanded="false" data-tip="Choose how site actions are approved"><img src="/assets/icons/shield-check.svg" alt="" aria-hidden="true"><span>Ask first</span><img class="assist-choice-chevron" src="/assets/icons/chevron-down.svg" alt="" aria-hidden="true"></button>'+
+            '<div class="assist-composer-menu assist-approval-menu" role="menu" hidden><button type="button" role="menuitemradio" data-action-mode="ask"><strong>Ask before actions</strong><span>Confirm navigation each time</span></button><button type="button" role="menuitemradio" data-action-mode="allow"><strong>Allow site actions</strong><span>Navigate when I clearly ask</span></button></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="assist-composer-group assist-composer-end">'+
+          '<div class="assist-composer-menu-wrap">'+
+            '<button class="assist-composer-choice assist-depth" type="button" aria-haspopup="menu" aria-expanded="false" data-tip="Choose answer depth"><span>Concise</span><img class="assist-choice-chevron" src="/assets/icons/chevron-down.svg" alt="" aria-hidden="true"></button>'+
+            '<div class="assist-composer-menu assist-depth-menu" role="menu" hidden><button type="button" role="menuitemradio" data-answer-depth="concise"><strong>Concise</strong><span>Fast, focused answers</span></button><button type="button" role="menuitemradio" data-answer-depth="detailed"><strong>Detailed</strong><span>More context when useful</span></button></div>'+
+          '</div>'+
+          '<button class="assist-composer-icon assist-mic" type="button" aria-label="Start dictation" data-tip="Dictate a message"><img src="/assets/icons/microphone.svg" alt="" aria-hidden="true"></button>'+
+          '<button class="assist-send" type="submit" aria-label="Send" data-tip="Send message"><img src="/assets/icons/arrow-up.svg" alt="" aria-hidden="true"></button>'+
+        '</div>'+
+      '</div>'+
     '</form>'+
     '<p class="assist-note">Site help only, no account access, payments, or promises.</p>';
 

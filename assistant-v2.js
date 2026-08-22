@@ -17,6 +17,8 @@
   const JOURNEY_STORE='abatchanGuideJourneyV1';
   const PAGE_STORE='abatchanGuideCurrentPageV1';
   const TRANSITION_STORE='abatNavigationPending';
+  const ACTION_MODE_STORE='abatchanGuideActionModeV1';
+  const ANSWER_DEPTH_STORE='abatchanGuideAnswerDepthV1';
   const MAX_STORED=24;
   const WHATSAPP='https://wa.me/2347041857921';
   const uid=()=>crypto.randomUUID?.()||`m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
@@ -221,7 +223,101 @@
     const form=oldForm.cloneNode(true);oldForm.replaceWith(form);
     const chips=oldChips?.cloneNode(true);if(oldChips&&chips)oldChips.replaceWith(chips);
     const input=form.querySelector('textarea,input');const send=form.querySelector('.assist-send');
+    const addFile=form.querySelector('.assist-add');
+    const fileInput=form.querySelector('.assist-file-input');
+    const attachmentList=form.querySelector('.assist-attachment-list');
+    const approval=form.querySelector('.assist-approval');
+    const approvalMenu=form.querySelector('.assist-approval-menu');
+    const depth=form.querySelector('.assist-depth');
+    const depthMenu=form.querySelector('.assist-depth-menu');
+    const mic=form.querySelector('.assist-mic');
     const LIMIT=Number(input.getAttribute('maxlength'))||1000;
+    const storedChoice=(key,allowed,fallback)=>{try{const value=localStorage.getItem(key);return allowed.includes(value)?value:fallback}catch{return fallback}};
+    let actionMode=storedChoice(ACTION_MODE_STORE,['ask','allow'],'ask');
+    let answerDepth=storedChoice(ANSWER_DEPTH_STORE,['concise','detailed'],'concise');
+    let pendingAttachments=[];
+
+    const closeComposerMenus=except=>{
+      [[approval,approvalMenu],[depth,depthMenu]].forEach(([button,menu])=>{
+        if(menu===except)return;
+        menu.hidden=true;button.setAttribute('aria-expanded','false');
+      });
+    };
+    const toggleComposerMenu=(button,menu)=>{
+      const open=menu.hidden;closeComposerMenus(open?menu:null);menu.hidden=!open;button.setAttribute('aria-expanded',String(open));
+      if(open)menu.querySelector('[aria-checked="true"]')?.focus();
+    };
+    const syncChoices=()=>{
+      approval.querySelector('span').textContent=actionMode==='allow'?'Allow actions':'Ask first';
+      approvalMenu.querySelectorAll('[data-action-mode]').forEach(button=>button.setAttribute('aria-checked',String(button.dataset.actionMode===actionMode)));
+      depth.querySelector('span').textContent=answerDepth==='detailed'?'Detailed':'Concise';
+      depthMenu.querySelectorAll('[data-answer-depth]').forEach(button=>button.setAttribute('aria-checked',String(button.dataset.answerDepth===answerDepth)));
+    };
+    approval.addEventListener('click',()=>toggleComposerMenu(approval,approvalMenu));
+    depth.addEventListener('click',()=>toggleComposerMenu(depth,depthMenu));
+    approvalMenu.addEventListener('click',event=>{
+      const button=event.target.closest('[data-action-mode]');if(!button)return;
+      actionMode=button.dataset.actionMode;try{localStorage.setItem(ACTION_MODE_STORE,actionMode)}catch{}
+      syncChoices();closeComposerMenus();announceStatus(actionMode==='allow'?'Site actions can run when you clearly ask.':'Site actions will ask first.');input.focus();
+    });
+    depthMenu.addEventListener('click',event=>{
+      const button=event.target.closest('[data-answer-depth]');if(!button)return;
+      answerDepth=button.dataset.answerDepth;try{localStorage.setItem(ANSWER_DEPTH_STORE,answerDepth)}catch{}
+      syncChoices();closeComposerMenus();announceStatus(answerDepth==='detailed'?'Detailed answers selected.':'Concise answers selected.');input.focus();
+    });
+    document.addEventListener('pointerdown',event=>{if(!event.target.closest('.assist-composer-menu-wrap'))closeComposerMenus()});
+    form.addEventListener('keydown',event=>{if(event.key==='Escape')closeComposerMenus()});
+    syncChoices();
+
+    const renderPendingAttachments=()=>{
+      attachmentList.replaceChildren(...pendingAttachments.map((item,index)=>{
+        const chip=document.createElement('div');chip.className='assist-attachment';
+        chip.dataset.tip=item.kind==='image'?'Image name only: the guide cannot inspect images yet.':'Project details will be read with this message.';
+        const icon=document.createElement('img');icon.src=item.kind==='image'?'/assets/icons/photo.svg':'/assets/icons/file-description.svg';icon.alt='';icon.setAttribute('aria-hidden','true');
+        const name=document.createElement('span');name.textContent=item.name;
+        const remove=document.createElement('button');remove.type='button';remove.setAttribute('aria-label',`Remove ${item.name}`);remove.dataset.tip='Remove attachment';
+        const removeIcon=document.createElement('img');removeIcon.src='/assets/icons/x.svg';removeIcon.alt='';removeIcon.setAttribute('aria-hidden','true');remove.append(removeIcon);
+        remove.addEventListener('click',()=>{pendingAttachments.splice(index,1);renderPendingAttachments();input.focus()});
+        chip.append(icon,name,remove);return chip;
+      }));
+      attachmentList.hidden=!pendingAttachments.length;
+    };
+    addFile.addEventListener('click',()=>fileInput.click());
+    fileInput.addEventListener('change',async()=>{
+      const incoming=[...fileInput.files];fileInput.value='';
+      let imageNotice=false;
+      for(const file of incoming){
+        if(pendingAttachments.length>=3){announceStatus('Attach up to three files at a time.');break}
+        const name=String(file.name||'attachment').slice(0,100);
+        if(file.type.startsWith('image/')){
+          if(file.size>4*1024*1024){announceStatus(`${name} is over the 4 MB image limit.`);continue}
+          pendingAttachments.push({kind:'image',name,type:file.type,size:file.size});imageNotice=true;continue;
+        }
+        const extension=name.split('.').pop()?.toLowerCase();
+        if(!['txt','md','csv','json'].includes(extension)||file.size>256*1024){announceStatus('Use a TXT, Markdown, CSV or JSON file under 256 KB.');continue}
+        const text=(await file.text()).replace(/\0/g,'').trim().slice(0,6000);
+        if(!text){announceStatus(`${name} is empty.`);continue}
+        pendingAttachments.push({kind:'text',name,type:file.type||`text/${extension}`,size:file.size,text});
+      }
+      renderPendingAttachments();
+      if(imageNotice)announceStatus('Image added by name. The current guide cannot inspect its pixels.',{duration:3200});
+      input.focus();
+    });
+
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+    let recognition=null,listening=false,dictationStart='';
+    if(!SpeechRecognition){mic.disabled=true;mic.dataset.tip='Dictation is not supported in this browser.'}
+    else{
+      recognition=new SpeechRecognition();recognition.lang=navigator.language||'en-US';recognition.interimResults=true;recognition.continuous=false;
+      recognition.onstart=()=>{listening=true;dictationStart=input.value;mic.classList.add('is-listening');mic.setAttribute('aria-label','Stop dictation');mic.dataset.tip='Stop dictation';announceStatus('Listening…',{busy:true,duration:0})};
+      recognition.onresult=event=>{
+        let words='';for(let index=event.resultIndex;index<event.results.length;index++)words+=event.results[index][0].transcript;
+        input.value=[dictationStart.trim(),words.trim()].filter(Boolean).join(dictationStart.trim()?' ':'');grow();meter(false);
+      };
+      recognition.onerror=event=>{if(event.error!=='aborted')announceStatus(event.error==='not-allowed'?'Microphone permission was not granted.':'Dictation could not start.')};
+      recognition.onend=()=>{listening=false;mic.classList.remove('is-listening');mic.setAttribute('aria-label','Start dictation');mic.dataset.tip='Dictate a message';announceStatus(input.value.trim()?'Dictation added.':'Dictation stopped.');input.focus()};
+      mic.addEventListener('click',()=>{try{listening?recognition.stop():recognition.start()}catch{announceStatus('Dictation is already starting.')}});
+    }
 
     const pagePrompts={
       '/':['Show me relevant work','How does a project start?','What can you build?'],
@@ -282,7 +378,7 @@
       ? {...item,content:[item.content,item.journey.arrival].filter(Boolean).join('\n\n'),journey:undefined}
       : item
     );
-    let pending=false,audioCtx=null,peekTimer=0,confirmTimer=0;
+    let pending=false,activeController=null,audioCtx=null,peekTimer=0,confirmTimer=0;
 
     const rememberJourney=entry=>{
       try{
@@ -375,8 +471,29 @@
       return unique;
     };
 
+    function requestJourneyApproval(bubble,journey,entry){
+      if(!bubble||!journey?.href||bubble.querySelector('.assist-action-approval'))return;
+      let url;try{url=new URL(journey.href,location.href)}catch{return}
+      if(!isSafeDestination(url))return;
+      const row=document.createElement('div');row.className='assist-action-approval';row.setAttribute('role','group');row.setAttribute('aria-label','Approve site navigation');
+      const prompt=document.createElement('span');prompt.textContent=`Open ${journey.label||'this section'}?`;
+      const approve=document.createElement('button');approve.type='button';approve.className='assist-text-action';approve.textContent='Continue';approve.dataset.tip='Approve this site action';
+      const cancel=document.createElement('button');cancel.type='button';cancel.className='assist-text-action subtle';cancel.textContent='Not now';cancel.dataset.tip='Stay on this page';
+      approve.addEventListener('click',()=>{
+        row.remove();if(entry){entry.journey={...journey,pending:false};writeStored(transcript)}
+        guideJourney(journey,bubble);
+      });
+      cancel.addEventListener('click',()=>{
+        row.remove();if(entry){delete entry.journey;writeStored(transcript)}
+        announceStatus('Staying on this page.');
+      });
+      row.append(prompt,approve,cancel);bubble.append(row);scrollLatest({force:true});
+    }
+
     const restoreJourney=(bubble,journey)=>{
-      if(!bubble||!journey?.completed||!journey.status||!journey.arrival)return;
+      if(!bubble||!journey)return;
+      if(journey.pending){requestJourneyApproval(bubble,journey,transcript.find(item=>item.journey===journey));return}
+      if(!journey.completed||!journey.status||!journey.arrival)return;
       const steps=document.createElement('div');
       steps.className='assist-journey-steps';
       const step=document.createElement('div');
@@ -481,7 +598,7 @@
       if(entry.role==='user'&&entry.state!=='answered'){
         const retry=action('retry','Retry message',ICONS.retry);
         retry.classList.add('assist-retry-message');
-        retry.addEventListener('click',()=>{retry.disabled=true;entry.state='pending';writeStored(transcript);reply(entry.content,entry.id)});
+        retry.addEventListener('click',()=>{retry.disabled=true;entry.state='pending';writeStored(transcript);reply(entry.content,entry.id,entry.attachments||[])});
         actions.append(retry);
       }
       if(entry.role==='assistant'){
@@ -514,6 +631,17 @@
       if(!element)return;
       element.querySelector('.assist-message-meta')?.remove();addMessageTools(element,entry);
     };
+    const renderStoredAttachments=(content,attachments)=>{
+      if(!Array.isArray(attachments)||!attachments.length)return;
+      const list=document.createElement('div');list.className='assist-msg-attachments';
+      attachments.slice(0,3).forEach(item=>{
+        const chip=document.createElement('span');chip.className='assist-msg-attachment';
+        const image=document.createElement('img');image.src=item.kind==='image'?'/assets/icons/photo.svg':'/assets/icons/file-description.svg';image.alt='';image.setAttribute('aria-hidden','true');
+        const label=document.createElement('span');label.textContent=String(item.name||'attachment').slice(0,100);
+        chip.append(image,label);list.append(chip);
+      });
+      content.append(list);
+    };
 
     const add=(text,who,persisted=false,metadata=null)=>{
       const el=document.createElement('div');el.className='assist-msg '+who;
@@ -522,7 +650,7 @@
       if(who==='bot'){
         render(content,text);enhanceActions(content);
         if(metadata?.journey)restoreJourney(el,metadata.journey);
-      }else content.textContent=text;
+      }else{content.textContent=text;renderStoredAttachments(content,metadata?.attachments)}
       if(metadata)addMessageTools(el,metadata);
       log.appendChild(el);refreshLatestAssistant();scrollLatest({force:who==='me'});return el;
     };
@@ -760,7 +888,11 @@
       const body=document.createElement('span');body.textContent=message||'Try again, or contact Abat directly.';
       const actions=document.createElement('div');actions.className='assist-error-actions';
       if(retryable){
-        const retry=document.createElement('button');retry.type='button';retry.className='btn sm';retry.textContent='Try again';retry.onclick=()=>reply(question,userId);
+        const retry=document.createElement('button');retry.type='button';retry.className='btn sm';retry.textContent='Try again';
+        retry.onclick=()=>{
+          const entry=transcript.find(item=>item.role==='user'&&item.id===userId);
+          reply(question,userId,entry?.attachments||[]);
+        };
         actions.append(retry);
       }
       // Two routes, because a visitor the guide just turned away should not
@@ -771,9 +903,10 @@
       actions.append(contact,whatsapp);el.append(title,body,actions);log.appendChild(el);scrollLatest({force:true});
     };
 
-    const reply=async(text,userId)=>{
+    const reply=async(text,userId,attachments=[])=>{
       if(pending||!text)return;
-      pending=true;input.disabled=true;send.disabled=true;log.setAttribute('aria-busy','true');
+      pending=true;activeController=new AbortController();input.disabled=true;send.disabled=false;send.classList.add('is-generating');
+      send.setAttribute('aria-label','Stop response');send.dataset.tip='Stop response';send.querySelector('img').src='/assets/icons/square.svg';log.setAttribute('aria-busy','true');
       const loader=thinking();
       let bubble=null,answer='',frame=0;
       const ensureBubble=()=>{
@@ -784,7 +917,10 @@
       };
       const paint=()=>{frame=0;if(!answer)return;render(messageContent(ensureBubble()),answer);scrollLatest()};
       try{
-        const res=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:history.slice(-4),page:location.pathname,pageContext:currentPageContext()})});
+        const res=await fetch('/api/chat-stream',{method:'POST',signal:activeController.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({
+          message:text,history:history.slice(-4),page:location.pathname,pageContext:currentPageContext(),answerDepth,actionMode,
+          attachments:attachments.slice(0,3).map(item=>({kind:item.kind,name:item.name,type:item.type,size:item.size,text:item.kind==='text'?item.text:''}))
+        })});
         // The server reports what is left of today's budget. Say so once,
         // while there is still room to ask, rather than after the wall.
         const left=Number(res.headers.get('X-Guide-Remaining'));
@@ -830,6 +966,7 @@
         const userEntry=transcript.find(item=>item.role==='user'&&item.id===userId);
         if(userEntry){userEntry.state='answered';refreshUserTools(userEntry)}
         const assistantEntry={id:uid(),role:'assistant',content:answer,createdAt:Date.now(),replyTo:userId||null};
+        if(navigation.action&&actionMode==='ask')assistantEntry.journey={...navigation.action,pending:true};
         if(bubble)addMessageTools(bubble,assistantEntry);
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
@@ -840,7 +977,8 @@
           let destinationUrl=null;
           try{destinationUrl=new URL(destination.href,location.href)}catch{}
           if(destinationUrl&&isSafeDestination(destinationUrl)){
-            guideJourney(destination,bubble);
+            if(actionMode==='allow')guideJourney(destination,bubble);
+            else requestJourneyApproval(bubble,destination,assistantEntry);
           }
         }
       }catch(err){
@@ -848,21 +986,26 @@
         loader.remove();bubble?.remove();
         const userEntry=transcript.find(item=>item.role==='user'&&item.id===userId);
         if(userEntry){userEntry.state='failed';writeStored(transcript);refreshUserTools(userEntry)}
-        fail(err.detail||err.message,text,userId);
+        if(err?.name==='AbortError')announceStatus('Response stopped. You can retry the message.');
+        else fail(err.detail||err.message,text,userId);
       }finally{
-        pending=false;input.disabled=false;send.disabled=false;log.setAttribute('aria-busy','false');
+        pending=false;activeController=null;input.disabled=false;send.disabled=false;send.classList.remove('is-generating');
+        send.setAttribute('aria-label','Send');send.dataset.tip='Send message';send.querySelector('img').src='/assets/icons/arrow-up.svg';log.setAttribute('aria-busy','false');
         if(panel.classList.contains('is-open'))input.focus();
       }
     };
 
     const ask=text=>{
-      const clean=String(text||'').trim();if(!clean||pending)return;
+      const files=pendingAttachments.map(item=>({...item}));
+      const clean=String(text||'').trim()||(files.length?'Please review the attached project details.':'');if(!clean||pending)return;
       ensureAudio()?.resume().catch(()=>{});
-      const entry={id:uid(),role:'user',content:clean,createdAt:Date.now(),state:'pending'};
+      const storedAttachments=files.map(({kind,name,type,size,text})=>({kind,name,type,size,...(kind==='text'?{text}:{})}));
+      const entry={id:uid(),role:'user',content:clean,createdAt:Date.now(),state:'pending',attachments:storedAttachments};
       transcript.push(entry);add(clean,'me',true,entry);writeStored(transcript);
-      if(chips)chips.hidden=true;input.value='';grow();meter(false);reply(clean,entry.id);
+      pendingAttachments=[];renderPendingAttachments();
+      if(chips)chips.hidden=true;input.value='';grow();meter(false);reply(clean,entry.id,files);
     };
-    form.addEventListener('submit',e=>{e.preventDefault();ask(input.value)});
+    form.addEventListener('submit',e=>{e.preventDefault();if(pending){activeController?.abort();return}ask(input.value)});
     chips?.addEventListener('click',e=>{const button=e.target.closest('button');if(button)ask(button.textContent)});
 
     // Existing greeting messages were inserted as plain text before this module.

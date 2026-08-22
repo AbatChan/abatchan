@@ -92,28 +92,60 @@ html[data-theme="light"] .assist-error-actions button{color:#151519}
 .assist-chips button:hover{color:var(--paper);border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.1)}
 html[data-theme="light"] .assist-chips button:hover{color:#151519}
 
-.assist-form{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line);align-items:flex-end}
-.assist-form input,.assist-form textarea{flex:1;min-width:0;padding:11px 13px;border-radius:13px;
-  border:1px solid var(--edge);background:transparent;color:var(--paper);font:inherit;outline:none}
-/* Sized by JS up to a ceiling. resize:none keeps the drag handle from fighting
-   that; the line-height must match the JS measurement or the first row jumps. */
-.assist-form textarea{resize:none;overflow-y:hidden;line-height:1.45;max-height:132px;display:block}
-.assist-form input:focus,.assist-form textarea:focus{border-color:var(--signal)}
-.assist-form input:disabled,.assist-form textarea:disabled{opacity:.6;cursor:wait}
-html[data-theme="light"] .assist-form input,
+.assist-form{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:10px 12px 8px;padding:10px;
+  border:1px solid var(--edge);border-radius:19px;background:rgba(255,255,255,.025);box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+.assist-form textarea{display:block;width:100%;min-width:0;min-height:45px;max-height:132px;padding:7px 8px 4px;resize:none;overflow-y:hidden;
+  border:0;background:transparent;color:var(--paper);font:inherit;line-height:1.45;outline:none}
+.assist-form textarea::placeholder{color:color-mix(in srgb,var(--muted) 76%,transparent)}
+.assist-form:focus-within{border-color:color-mix(in srgb,var(--signal) 58%,var(--edge));box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 0 0 3px rgba(99,102,241,.08)}
+.assist-form textarea:disabled{opacity:.62;cursor:wait}
+html[data-theme="light"] .assist-form{background:rgba(20,20,24,.025);box-shadow:inset 0 1px 0 rgba(255,255,255,.65)}
 html[data-theme="light"] .assist-form textarea{color:#151519}
+
+.assist-composer-rail{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.assist-composer-group{display:flex;align-items:center;gap:3px;min-width:0}.assist-composer-end{margin-left:auto}
+.assist-composer-icon,.assist-composer-choice{min-height:34px;border:0;background:transparent;color:var(--muted);font:inherit;cursor:pointer;
+  transition:color .18s,background .18s,transform .18s var(--ease)}
+.assist-composer-icon{width:34px;flex:0 0 34px;display:grid;place-items:center;padding:0;border-radius:11px}
+.assist-composer-icon img,.assist-composer-choice img,.assist-send img,.assist-attachment img{width:18px;height:18px;filter:invert(1);opacity:.78}
+.assist-composer-choice{display:flex;align-items:center;gap:6px;max-width:138px;padding:0 7px;border-radius:10px;font-size:11.5px;white-space:nowrap}
+.assist-composer-choice>span{overflow:hidden;text-overflow:ellipsis}.assist-composer-choice .assist-choice-chevron{width:13px;height:13px;opacity:.58}
+.assist-composer-icon:hover,.assist-composer-choice:hover{color:var(--paper);background:rgba(255,255,255,.07)}
+.assist-composer-icon:hover img,.assist-composer-choice:hover img{opacity:1}
+.assist-composer-icon:focus-visible,.assist-composer-choice:focus-visible{outline:2px solid rgba(129,132,255,.62);outline-offset:1px;color:var(--paper)}
+html[data-theme="light"] .assist-composer-icon img,html[data-theme="light"] .assist-composer-choice img,html[data-theme="light"] .assist-send img,html[data-theme="light"] .assist-attachment img{filter:none}
+html[data-theme="light"] .assist-composer-icon:hover,html[data-theme="light"] .assist-composer-choice:hover{color:#151519;background:rgba(20,20,24,.06)}
+
+.assist-composer-menu-wrap{position:relative;min-width:0}.assist-composer-menu{position:absolute;z-index:20;bottom:calc(100% + 8px);left:0;width:220px;
+  padding:6px;border:1px solid var(--edge);border-radius:14px;background:rgba(18,18,22,.97);box-shadow:0 18px 46px rgba(0,0,0,.42);
+  backdrop-filter:blur(22px) saturate(170%);-webkit-backdrop-filter:blur(22px) saturate(170%)}
+.assist-composer-end .assist-composer-menu{left:auto;right:0}.assist-composer-menu[hidden]{display:none}
+.assist-composer-menu button{display:grid;width:100%;gap:2px;padding:9px 10px;border:0;border-radius:10px;background:transparent;color:var(--paper);font:inherit;text-align:left;cursor:pointer}
+.assist-composer-menu button:hover,.assist-composer-menu button[aria-checked="true"]{background:rgba(99,102,241,.13)}
+.assist-composer-menu strong{font-size:12px}.assist-composer-menu span{color:var(--muted);font-size:10.5px;line-height:1.35}
+html[data-theme="light"] .assist-composer-menu{background:rgba(250,250,248,.98);box-shadow:0 18px 46px rgba(20,20,28,.16)}
+html[data-theme="light"] .assist-composer-menu button{color:#151519}
+
+.assist-attachment-list{display:flex;gap:6px;min-width:0;overflow-x:auto;padding:1px 4px 2px;scrollbar-width:none}.assist-attachment-list::-webkit-scrollbar{display:none}
+.assist-attachment-list[hidden]{display:none}.assist-attachment{display:flex;align-items:center;gap:6px;max-width:210px;min-height:31px;padding:5px 6px 5px 8px;
+  border:1px solid var(--edge);border-radius:10px;background:rgba(255,255,255,.035);color:var(--paper);font-size:10.5px}
+.assist-attachment>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.assist-attachment button{width:22px;height:22px;display:grid;place-items:center;padding:0;border:0;border-radius:7px;background:transparent;cursor:pointer}
+.assist-attachment button:hover{background:rgba(255,255,255,.08)}.assist-attachment button img{width:13px;height:13px}
+.assist-msg-attachments{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.assist-msg-attachment{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid color-mix(in srgb,currentColor 15%,transparent);border-radius:8px;font-size:10px;color:var(--muted)}
+.assist-msg-attachment img{width:13px;height:13px;filter:invert(1);opacity:.72}html[data-theme="light"] .assist-msg-attachment img{filter:none}
+.assist-mic.is-listening{color:var(--signal-ink);background:rgba(99,102,241,.16);box-shadow:0 0 0 4px rgba(99,102,241,.08)}
 
 .assist-count{padding:0 16px;color:var(--muted);font-size:11px;line-height:1.45;min-height:0}
 .assist-count:empty{display:none}
 .assist-count.is-warn{color:var(--signal-ink,var(--signal))}
 /* The form aligns to flex-end so the textarea can grow downward, which means
    this no longer stretches to the row height. It has to state its own. */
-.assist-send{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border:0;border-radius:13px;cursor:pointer;
+.assist-send{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border:0;border-radius:50%;cursor:pointer;
   color:#fff;background:var(--signal);transition:transform .2s,opacity .2s}
 .assist-send:hover{transform:translateY(-2px)}
 .assist-send:disabled{opacity:.45;transform:none;cursor:default}
-.assist-send svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.assist-note{padding:0 16px 12px;color:var(--muted);font-size:11px;line-height:1.45;text-align:center}
+.assist-send img{width:18px;height:18px;filter:brightness(0) invert(1);opacity:1}.assist-send.is-generating img{width:14px;height:14px}
+.assist-note{padding:0 16px 11px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center}
 
 /* Navigation and reset feedback belongs to the interface, not the transcript. */
 .assist-system-status{position:absolute;z-index:8;top:66px;left:50%;max-width:calc(100% - 28px);
@@ -380,9 +412,7 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
     min-height:40px;
     padding:9px 12px!important;
   }
-  .assist-form{
-    padding-bottom:max(12px,env(safe-area-inset-bottom,0px))!important;
-  }
+  .assist-note{padding-bottom:max(11px,env(safe-area-inset-bottom,0px))}
   .assist-reply-peek{
     right:12px!important;
     bottom:82px!important;
@@ -399,7 +429,16 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
     column-gap:7px!important;
   }
   .assist-head>div p{display:none}
-  .assist-chips{grid-template-columns:1fr!important}}
+  .assist-chips{grid-template-columns:1fr!important}
+  .assist-form{margin-inline:9px;padding-inline:8px}
+  .assist-composer-choice{padding-inline:5px;gap:4px}
+  .assist-approval>img:first-child{display:none}
+  .assist-choice-chevron{display:none}}
+
+@media(hover:none){
+  .assist-composer-icon{width:40px;min-height:40px;flex-basis:40px}
+  .assist-composer-choice{min-height:40px}
+  .assist-send{width:40px;height:40px;flex-basis:40px}}
 
 
 @media(prefers-reduced-motion:reduce){
@@ -457,6 +496,14 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
 .assist-msg.bot a.assist-action-link:hover svg{opacity:1}
 .assist-msg.bot a.assist-action-link:focus-visible{outline:2px solid rgba(129,132,255,.58);outline-offset:3px}
 html[data-theme="light"] .assist-msg.bot a.assist-action-link{color:#4f46e5}
+
+.assist-action-approval{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:12px 0 3px;padding-top:10px;
+  border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);color:var(--muted);font-size:11.5px}
+.assist-action-approval>span{margin-right:2px}.assist-text-action{padding:0;border:0;background:transparent;color:var(--signal-ink);font:inherit;font-weight:680;
+  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer}
+.assist-text-action:hover{color:var(--paper)}.assist-text-action.subtle{color:var(--muted);font-weight:560}
+.assist-text-action:focus-visible{outline:2px solid rgba(129,132,255,.58);outline-offset:3px;border-radius:3px}
+html[data-theme="light"] .assist-text-action:hover{color:#151519}
 
 .assist-journey-steps{display:grid;gap:7px;margin:12px 0}
 .assist-journey-step{
