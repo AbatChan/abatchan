@@ -200,6 +200,11 @@
       .sort((a,b)=>a.distance-b.distance)[0]?.node;
     let journey=[];
     try{journey=JSON.parse(sessionStorage.getItem(JOURNEY_STORE)||'[]')}catch{}
+    const projectForm=pagePath()==='/contact'?document.querySelector('#project-form'):null;
+    const formState=projectForm?Object.fromEntries(['name','email','type','message'].map(name=>{
+      const field=projectForm.elements.namedItem(name);
+      return [name,String(field?.value||'').trim().slice(0,name==='message'?1800:180)];
+    })):null;
     return {
       title:document.title.slice(0,160),
       description:description.slice(0,320),
@@ -209,7 +214,8 @@
       activeSection:active?{id:active.id,label:active.querySelector('h1,h2,h3')?.textContent.trim()||''}:null,
       hash:location.hash.slice(0,101),
       sections,
-      journey:Array.isArray(journey)?journey.slice(-4):[]
+      journey:Array.isArray(journey)?journey.slice(-4):[],
+      formState
     };
   };
 

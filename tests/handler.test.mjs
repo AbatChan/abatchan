@@ -33,6 +33,8 @@ globalThis.fetch = async (url, opts = {}) => {
           ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll prepare the project enquiry for your review.\\",\\"status\\":\\"Organising the details you shared.\\",\\"arrival\\":\\"Ada Studio and abatchan4@gmail.com are ready.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"ada@example.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation for a five-person studio, needed in October.\\"},\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
           : deepSeekMode === 'form-update'
             ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll update the form.\\",\\"status\\":\\"Refreshing it.\\",\\"arrival\\":\\"The update is done.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry form\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"fullname@gmail.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation for a five-person studio, needed in October.\\"},\\"replace_fields\\":[\\"email\\"],\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
+            : deepSeekMode === 'form-derived-email'
+              ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll use the company name for the email.\\",\\"status\\":\\"Updating the form.\\",\\"arrival\\":\\"The email is updated.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry form\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"adastudio@gmail.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation for a five-person studio, needed in October.\\"},\\"replace_fields\\":[\\"email\\"],\\"derive_email_from_name\\":true,\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
             : deepSeekMode === 'form-update-invented'
               ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll update the email.\\",\\"status\\":\\"Refreshing it.\\",\\"arrival\\":\\"The update is done.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry form\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"invented@gmail.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation.\\"},\\"replace_fields\\":[\\"email\\"],\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
           : 'data: {"choices":[{"delta":{"content":"Connected systems, "}}]}\n\ndata: {"choices":[{"delta":{"content":"end to end."}}]}\n\ndata: [DONE]\n\n';
@@ -79,7 +81,7 @@ globalThis.fetch = async (url, opts = {}) => {
 
 const { default: handler } = await import('../api/chat-stream.js');
 
-const call = async (ip, message = 'what do you build?', page = '/', hash = '', history = []) => {
+const call = async (ip, message = 'what do you build?', page = '/', hash = '', history = [], pageState = {}) => {
   const headers = {};
   const chunks = [];
   let status = 200;
@@ -107,7 +109,7 @@ const call = async (ip, message = 'what do you build?', page = '/', hash = '', h
       'content-length': '60',
       'x-forwarded-for': ip
     },
-    body: { message, page, history, pageContext: { hash } }
+    body: { message, page, history, pageContext: { hash, ...pageState } }
   }, res);
   return { status, json, headers, text: chunks.join(''), chunkCount: chunks.length };
 };
@@ -262,6 +264,19 @@ check('spaced email syntax is normalized', updateText.includes('"email":"fullnam
 check('only email is authorized for replacement', updateText.includes('"replace_fields":["email"]'), true);
 check('departure names the verified replacement', updateText.includes('update the email address to fullname@gmail.com'), true);
 check('arrival confirms the exact verified replacement', updateText.includes('email address fullname@gmail.com'), true);
+
+console.log('\n=== the guide can inspect live form state and derive a requested email ===');
+table.clear();
+deepSeekMode = 'form-derived-email';
+const liveForm={formState:{name:'Ada Studio',email:'fullname@gmail.com',type:'Booking automation',message:'A booking automation for a five-person studio, needed in October.'}};
+result = await call('7.7.7.2', 'It is there as the name. Use it to form the email.', '/contact', '#project-form', [], liveForm);
+const derivedText=decodeURIComponent(result.text);
+const derivedSystem=lastDeepSeekBody.messages.find(item=>item.role==='system'&&item.content.includes('Current project form state'))?.content||'';
+check('current company name reaches the model as live state', derivedSystem.includes('"name":"Ada Studio"'), true);
+check('current email reaches the model as live state', derivedSystem.includes('"email":"fullname@gmail.com"'), true);
+check('verified company-name email is accepted', derivedText.includes('"email":"adastudio@gmail.com"'), true);
+check('derived update still replaces only email', derivedText.includes('"replace_fields":["email"]'), true);
+check('derived conclusion names the new address', derivedText.includes('email address adastudio@gmail.com'), true);
 
 console.log('\n=== an unverified replacement cannot pretend to update the form ===');
 table.clear();
