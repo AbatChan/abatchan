@@ -575,18 +575,21 @@
       if(pagePath()!=='/contact'||!form||!values||typeof values!=='object')return false;
       const limits={name:120,email:180,type:180,message:1800};
       const prepared=[];
+      const updated=[];
+      const replaceFields=new Set(Array.isArray(journey.replace_fields)?journey.replace_fields:[]);
       Object.entries(limits).forEach(([name,max])=>{
         const field=form.elements.namedItem(name);
         const value=String(values[name]||'').trim().slice(0,max);
-        if(!field||!value||field.value.trim())return;
+        const hasValue=Boolean(field?.value.trim());
+        if(!field||!value||(hasValue&&!replaceFields.has(name)))return;
         field.value=value;
         field.dataset.assistPrepared='true';
         field.closest('.field')?.classList.add('is-assist-prepared');
         field.dispatchEvent(new Event('input',{bubbles:true}));
         field.dispatchEvent(new Event('change',{bubbles:true}));
-        prepared.push(field.labels?.[0]?.textContent?.trim()||name);
+        (hasValue?updated:prepared).push(field.labels?.[0]?.textContent?.trim()||name);
       });
-      if(!prepared.length)return false;
+      if(!prepared.length&&!updated.length)return false;
       let note=form.querySelector('.assist-form-review');
       if(!note){
         note=document.createElement('div');
@@ -594,7 +597,9 @@
         note.setAttribute('role','status');
         form.prepend(note);
       }
-      note.textContent=`Nika prepared ${prepared.length} ${prepared.length===1?'field':'fields'} from your conversation. Review everything before opening the email.`;
+      note.textContent=updated.length
+        ? `Nika updated ${updated.join(', ')} from your latest instruction. Review everything before opening the email.`
+        : `Nika prepared ${prepared.length} ${prepared.length===1?'field':'fields'} from your conversation. Review everything before opening the email.`;
       const firstEmpty=[...form.querySelectorAll('[required]')].find(field=>!field.value.trim());
       (firstEmpty||form.querySelector('[data-assist-prepared]'))?.focus({preventScroll:true});
       return true;
@@ -656,7 +661,7 @@
       link.addEventListener('click',event=>{
         if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
         event.preventDefault();
-        navigateTo(href,label,{section_requested:journey.section_requested===true,form_prefill:journey.form_prefill});
+        navigateTo(href,label,{section_requested:journey.section_requested===true,form_prefill:journey.form_prefill,replace_fields:journey.replace_fields});
       });
       const host=arrival.querySelector('p:last-child')||arrival;
       host.append(document.createTextNode(' '),link);

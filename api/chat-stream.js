@@ -37,7 +37,8 @@ Voice and style:
 - For a specific target on another verified page that has no listed anchor, use the bare verified page route, set section_requested to true, and make label name the requested content precisely. The destination page resolves that label only against its safe target registry. Never invent a CSS selector.
 - When section_requested is true, label must name the exact requested section or content, never merely the destination page. For example, a request for monthly support uses label "Monthly support", not "Pricing page".
 - Use the recent guide navigation in page context when a visitor says "take me back" or refers to a place the guide just showed them. Only return an exact same-site destination already present in that journey or the verified directory.
-- When the visitor explicitly asks you to prepare, fill, or help complete the project enquiry form, use navigate_site for /contact#project-form and include form_prefill. Use only facts the visitor supplied in this conversation. Summarise their stated project context without inventing requirements, timing, budget, identity or contact details. Leave unknown fields empty. The website will show the prepared fields for review and will never submit for them. In departure, status, and arrival, never repeat or claim the prepared name, email, or other field values; describe only the preparation progress and ask the visitor to review the form.
+- When the visitor explicitly asks you to prepare, fill, or help complete the project enquiry form, use navigate_site for /contact#project-form and include form_prefill. Use only facts the visitor supplied in this conversation. Summarise their stated project context without inventing requirements, timing, budget, identity or contact details. Leave unknown fields empty. The website will show the prepared fields for review and will never submit for them.
+- When the latest visitor message explicitly corrects or replaces an existing form value, include that field in replace_fields and put the requested new value in form_prefill. Do not include unchanged fields in replace_fields. A correction journey should state exactly which verified field and value will change. If the visitor has not supplied a complete replacement value, ask for it instead of calling the tool or claiming an update.
 - Do not include form_prefill for an ordinary request to visit Contact, ask how to make contact, or view the form. Preparing fields requires an explicit request in the latest visitor message.
 
 Commercial guidance:
@@ -166,6 +167,7 @@ const NAV_TOOL={
         section_requested:{type:'boolean',description:'True only when the visitor explicitly asked for this particular section or described that section as their destination. False when they named only the page or asked generally.'},
         label:{type:'string',description:'A concise human label for the exact destination. When section_requested is true, name that requested content specifically, never only the page.'},
         form_prefill:{type:'object',description:'Optional project-enquiry values, only when the latest visitor message explicitly asks to prepare or fill that form. Omit facts the visitor did not supply. Never invent personal details, scope, timing, or budget.',properties:{name:{type:'string',description:'Visitor name or company exactly as supplied, otherwise empty.'},email:{type:'string',description:'Visitor email exactly as supplied, otherwise empty.'},type:{type:'string',description:'A short description of what the visitor said they are building.'},message:{type:'string',description:'A concise summary of the project context, desired outcome, constraints and timing the visitor actually supplied.'}},required:['name','email','type','message'],additionalProperties:false},
+        replace_fields:{type:'array',maxItems:4,uniqueItems:true,description:'Existing project-form fields the latest visitor message explicitly asked to correct or replace. Omit for initial preparation and replay. Never include unchanged fields.',items:{type:'string',enum:['name','email','type','message']}},
         related_links:{type:'array',maxItems:3,description:'Other verified destinations the visitor requested in the same message but which should not replace the active navigation. Return an empty array when there are none.',items:{type:'object',properties:{href:{type:'string',description:'A verified relative route and optional exact anchor from the directory.'},label:{type:'string',description:'A concise human label for this related destination.'}},required:['href','label'],additionalProperties:false}}
       },
       required:['departure','status','arrival','href','section_requested','label','related_links'],
@@ -434,7 +436,7 @@ export default async function handler(req,res){
         const formPrefill=targetPath==='/contact'&&action.form_prefill&&typeof action.form_prefill==='object'
           ? {
               name:String(action.form_prefill.name||'').trim().slice(0,120),
-              email:String(action.form_prefill.email||'').trim().slice(0,180),
+              email:String(action.form_prefill.email||'').trim().replace(/\\([@._+-])/g,'$1').replace(/\s*@\s*/g,'@').replace(/\s*\.\s*/g,'.').replace(/\s+/g,'').slice(0,180),
               type:cleanVoice(String(action.form_prefill.type||'').slice(0,180)),
               message:cleanVoice(String(action.form_prefill.message||'').slice(0,1800))
             }
@@ -446,26 +448,71 @@ export default async function handler(req,res){
           .join('\n')
           .replace(/\\([@._+-])/g,'$1')
           .toLowerCase();
+        const latestText=String(message||'').replace(/\\([@._+-])/g,'$1').toLowerCase();
+        const latestEmails=[...latestText.matchAll(/[a-z0-9_%+.-]+(?:\s+[a-z0-9_%+.-]+)*\s*@\s*[a-z0-9-]+(?:\s*\.\s*[a-z0-9-]+)+/gi)]
+          .map(match=>match[0].replace(/\s+/g,'').toLowerCase());
         if(formPrefill?.name&&!suppliedText.includes(formPrefill.name.toLowerCase()))formPrefill.name='';
-        if(formPrefill?.email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formPrefill.email)||!suppliedText.includes(formPrefill.email.toLowerCase())))formPrefill.email='';
+        if(formPrefill?.email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formPrefill.email)||(!suppliedText.replace(/\s+/g,'').includes(formPrefill.email.toLowerCase())&&!latestEmails.includes(formPrefill.email.toLowerCase()))))formPrefill.email='';
+        const requestedReplaceFields=[...new Set((Array.isArray(action.replace_fields)?action.replace_fields:[]).filter(field=>['name','email','type','message'].includes(field)))];
+        const replaceFields=requestedReplaceFields.filter(field=>{
+          const value=formPrefill?.[field];
+          if(!value)return false;
+          if(field==='email')return latestText.replace(/\s+/g,'').includes(value.toLowerCase());
+          if(field==='name')return latestText.includes(value.toLowerCase());
+          return true;
+        });
+        if(requestedReplaceFields.length&&!replaceFields.length){
+          const requested=requestedReplaceFields.length===1?requestedReplaceFields[0].replace('type','project type'):'requested fields';
+          res.write(`What exact ${requested} should I use? Send the complete replacement value and I’ll update only that field.`);
+          wrote=true;
+          res.end();
+          return;
+        }
         const hasPrefill=formPrefill&&Object.values(formPrefill).some(Boolean);
-        // A form-preparation conclusion is a UI confirmation, not a place for
-        // the model to recite personal data. Keeping it deterministic prevents
-        // the studio contact address from being mistaken for the visitor's.
-        const safeArrival=hasPrefill
-          ? 'The enquiry form is prepared for your review. Check each field before opening the email.'
-          : authoredArrival;
+        // Build form confirmations from server-verified values rather than the
+        // model's prose. This keeps the journey specific without allowing a
+        // guessed name, email, or stale field to be presented as applied.
+        const fieldLabel=field=>({name:'name / company',email:'email address',type:'project type',message:'project context'})[field]||field;
+        const replacementDetails=replaceFields.map(field=>field==='message'
+          ? 'the project context with the details you supplied'
+          : `the ${fieldLabel(field)} to ${formPrefill[field]}`);
+        const replacementResults=replaceFields.map(field=>field==='message'
+          ? 'the project context you supplied'
+          : `${fieldLabel(field)} ${formPrefill[field]}`);
+        const joinDetails=items=>items.length<2
+          ? items[0]||''
+          : `${items.slice(0,-1).join(', ')} and ${items.at(-1)}`;
+        const preparedFields=Object.entries(formPrefill||{}).filter(([,value])=>Boolean(value));
+        const preparationDetails=preparedFields.map(([field,value])=>field==='message'
+          ? 'the project context you supplied'
+          : `${fieldLabel(field)} ${value}`);
+        const preparedLabels=preparedFields.map(([field])=>fieldLabel(field));
+        const safeDeparture=replacementDetails.length
+          ? `I’ll update ${joinDetails(replacementDetails)}.`
+          : hasPrefill
+            ? `I’ll prepare the enquiry with ${joinDetails(preparationDetails)}.`
+            : departure;
+        const safeStatus=replacementDetails.length
+          ? `Applying ${replaceFields.length===1?'that verified change':'those verified changes'} to the project form.`
+          : hasPrefill
+            ? `Adding the verified ${joinDetails(preparedLabels)} to the project form.`
+            : status;
+        const safeArrival=replacementDetails.length
+          ? `The form now has ${joinDetails(replacementResults)}. Review everything before opening the email.`
+          : hasPrefill
+            ? `The enquiry form now includes ${joinDetails(preparationDetails)}. Review each field before opening the email.`
+            : authoredArrival;
         const arrival=relatedMarkup?`${safeArrival} ${relatedMarkup}`:safeArrival;
-        const authored=[departure,status,arrival,...relatedLinks.map(item=>item.label)];
+        const authored=[safeDeparture,safeStatus,arrival,...relatedLinks.map(item=>item.label)];
         const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
         // A prepare-form request still has useful work to do when the visitor
         // is already sitting at the form, so it must reach the client action
         // handler instead of being collapsed into an ordinary arrival reply.
         const alreadyThere=!hasPrefill&&targetPath===page&&((targetHash&&targetHash===(pageContext?.hash||''))||(!targetHash&&!sectionRequested));
         if(safeJourney&&alreadyThere&&!wrote){res.write(arrival);wrote=true;}
-        else if(safeJourney&&!wrote){res.write(departure);wrote=true;}
+        else if(safeJourney&&!wrote){res.write(safeDeparture);wrote=true;}
         if(safeJourney&&!alreadyThere&&href.startsWith('/')&&label){
-          const encoded=encodeURIComponent(JSON.stringify({href,label,departure,status,arrival,section_requested:sectionRequested,...(hasPrefill?{form_prefill:formPrefill}:{})}));
+          const encoded=encodeURIComponent(JSON.stringify({href,label,departure:safeDeparture,status:safeStatus,arrival,section_requested:sectionRequested,...(hasPrefill?{form_prefill:formPrefill}:{}),...(replaceFields.length?{replace_fields:replaceFields}:{})}));
           res.write(`\n<!--abatchan-nav:${actionToken}:${encoded}-->`);
         }
       }catch{}

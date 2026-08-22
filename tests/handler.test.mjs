@@ -31,6 +31,10 @@ globalThis.fetch = async (url, opts = {}) => {
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Opening pricing.\\",\\"status\\":\\"Loading prices.\\",\\"arrival\\":\\"You’re already on the pricing page. I can explain any option here.\\",\\"href\\":\\"/pricing#client-reviews\\",\\"section_requested\\":false,\\"label\\":\\"pricing\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
         : deepSeekMode === 'form-prefill'
           ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll prepare the project enquiry for your review.\\",\\"status\\":\\"Organising the details you shared.\\",\\"arrival\\":\\"Ada Studio and abatchan4@gmail.com are ready.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"ada@example.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation for a five-person studio, needed in October.\\"},\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
+          : deepSeekMode === 'form-update'
+            ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll update the form.\\",\\"status\\":\\"Refreshing it.\\",\\"arrival\\":\\"The update is done.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry form\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"fullname@gmail.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation for a five-person studio, needed in October.\\"},\\"replace_fields\\":[\\"email\\"],\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
+            : deepSeekMode === 'form-update-invented'
+              ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll update the email.\\",\\"status\\":\\"Refreshing it.\\",\\"arrival\\":\\"The update is done.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry form\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"invented@gmail.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation.\\"},\\"replace_fields\\":[\\"email\\"],\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
           : 'data: {"choices":[{"delta":{"content":"Connected systems, "}}]}\n\ndata: {"choices":[{"delta":{"content":"end to end."}}]}\n\ndata: [DONE]\n\n';
     const streamParts = deepSeekMode === 'long-content'
       ? [
@@ -225,11 +229,12 @@ deepSeekMode = 'form-prefill';
 result = await call('7.7.7.7', 'Prepare the form for Ada Studio, ada@example.com. We need booking automation for our five-person studio in October.');
 check('tool contract offers optional form preparation', Object.hasOwn(lastDeepSeekBody.tools[0].function.parameters.properties, 'form_prefill'), true);
 check('the prepared form uses the verified contact target', decodeURIComponent(result.text).includes('"href":"/contact#project-form"'), true);
+check('preparation introduction names verified values', decodeURIComponent(result.text).includes('Ada Studio')&&decodeURIComponent(result.text).includes('ada@example.com'), true);
 check('a supplied name survives validation', decodeURIComponent(result.text).includes('"name":"Ada Studio"'), true);
 check('a supplied email survives validation', decodeURIComponent(result.text).includes('"email":"ada@example.com"'), true);
 check('project context is carried for review', decodeURIComponent(result.text).includes('"type":"Booking automation"'), true);
 check('the conclusion cannot echo the wrong contact email', decodeURIComponent(result.text).includes('abatchan4@gmail.com'), false);
-check('the conclusion asks for review without reciting fields', decodeURIComponent(result.text).includes('The enquiry form is prepared for your review.'), true);
+check('the conclusion confirms the verified form contents', decodeURIComponent(result.text).includes('The enquiry form now includes')&&decodeURIComponent(result.text).includes('Review each field'), true);
 
 console.log('\n=== escaped email punctuation still counts as visitor supplied ===');
 table.clear();
@@ -245,14 +250,36 @@ result = await call('7.7.7.5', 'It is empty again. Help add it back.', '/contact
 check('a previously supplied name survives follow-up validation', decodeURIComponent(result.text).includes('"name":"Ada Studio"'), true);
 check('a previously supplied email survives follow-up validation', decodeURIComponent(result.text).includes('"email":"ada@example.com"'), true);
 
+console.log('\n=== an explicit correction replaces only the verified field ===');
+table.clear();
+deepSeekMode = 'form-update';
+result = await call('7.7.7.4', 'Update the email to full name @ gmail.com.', '/contact', '#project-form', [
+  {role:'user',content:'Prepare the form for Ada Studio, ada@example.com. We need booking automation for our five-person studio in October.'},
+  {role:'assistant',content:'I prepared the form for review.'}
+]);
+const updateText=decodeURIComponent(result.text);
+check('spaced email syntax is normalized', updateText.includes('"email":"fullname@gmail.com"'), true);
+check('only email is authorized for replacement', updateText.includes('"replace_fields":["email"]'), true);
+check('departure names the verified replacement', updateText.includes('update the email address to fullname@gmail.com'), true);
+check('arrival confirms the exact verified replacement', updateText.includes('email address fullname@gmail.com'), true);
+
+console.log('\n=== an unverified replacement cannot pretend to update the form ===');
+table.clear();
+deepSeekMode = 'form-update-invented';
+result = await call('7.7.7.3', 'Update the email.', '/contact', '#project-form');
+check('asks for the complete replacement value', result.text.includes('What exact email should I use?'), true);
+check('does not emit an unverified form action', result.text.includes('<!--abatchan-nav:'), false);
+
 console.log('\n=== preparing still works when the form is already in view ===');
 table.clear();
+deepSeekMode = 'form-prefill';
 result = await call('7.7.7.9', 'Prepare the form for Ada Studio, ada@example.com. We need booking automation for our five-person studio in October.', '/contact', '#project-form');
 check('same-section preparation still emits a client action', result.text.includes('<!--abatchan-nav:'), true);
 check('same-section preparation keeps the review payload', decodeURIComponent(result.text).includes('"form_prefill"'), true);
 
 console.log('\n=== invented personal details are removed from prepared forms ===');
 table.clear();
+deepSeekMode = 'form-prefill';
 result = await call('7.7.7.8', 'Prepare the form for my booking automation.');
 check('an unsupplied name is stripped', decodeURIComponent(result.text).includes('"name":""'), true);
 check('an unsupplied email is stripped', decodeURIComponent(result.text).includes('"email":""'), true);
