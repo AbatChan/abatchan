@@ -866,7 +866,11 @@
       scrollLatest({force:true});
     };
 
-    const typeArrival=(element,source)=>{
+    // Tool-call copy reaches the browser as one completed payload rather than
+    // token-by-token text. Give those authored journey messages the same
+    // progressive reveal as a normal streamed answer, without slowing or
+    // rebuilding ordinary chat responses that already stream from the model.
+    const typeJourneyMessage=(element,source)=>{
       const finalText=String(source||'').trim();
       const plainText=finalText
         .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
@@ -908,7 +912,7 @@
       for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:completed};break}}
       writeStored(transcript);
       scrollLatest({force:true});
-      typeArrival(arrival,journey.arrival).then(()=>notifyClosed(journey.arrival));
+      typeJourneyMessage(arrival,journey.arrival).then(()=>notifyClosed(journey.arrival));
     };
 
     const guideJourney=(journey,bubble)=>{
@@ -1111,8 +1115,16 @@
         answer+=decoder.decode();if(frame)cancelAnimationFrame(frame);
         const navigation=readNavigation(answer,res.headers.get('X-Abatchan-Action-Token'));
         answer=navigation.text;
-        if(answer)paint();
-        else throw new Error('The guide returned an empty response.');
+        if(!answer)throw new Error('The guide returned an empty response.');
+        if(navigation.action){
+          // A navigation departure is emitted only after the model's complete
+          // tool call has been validated, so it cannot genuinely stream over
+          // the network. Clear any single-frame paint and reveal it here before
+          // the progress card/action begins; the arrival follows the same path.
+          const content=messageContent(ensureBubble());
+          content.replaceChildren();
+          await typeJourneyMessage(content,answer);
+        }else paint();
         messageContent(bubble)?.classList.remove('is-streaming');
         if(bubble)enhanceActions(messageContent(bubble));
         const userEntry=transcript.find(item=>item.role==='user'&&item.id===userId);
