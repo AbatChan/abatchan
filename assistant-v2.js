@@ -20,6 +20,7 @@
   const ACTION_MODE_STORE='abatchanGuideActionModeV1';
   const ANSWER_DEPTH_STORE='abatchanGuideAnswerDepthV1';
   const MAX_STORED=24;
+  const MAX_ATTACHMENTS=10;
   const WHATSAPP='https://wa.me/2347041857921';
   const uid=()=>crypto.randomUUID?.()||`m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
 
@@ -127,7 +128,26 @@
     }catch{return []}
   };
   const writeStored=items=>{
-    try{localStorage.setItem(STORE,JSON.stringify(items.slice(-MAX_STORED)))}catch{}
+    const serializable=items.slice(-MAX_STORED).map(item=>({...item,
+      attachments:Array.isArray(item.attachments)?item.attachments.slice(0,MAX_ATTACHMENTS).map(({kind,name,type,size,text,previewData})=>({
+        kind,name,type,size,...(kind==='text'?{text}: {}),
+        ...(kind==='image'&&typeof previewData==='string'&&previewData.startsWith('data:image/')&&previewData.length<90000?{previewData}:{})
+      })):undefined
+    }));
+    try{localStorage.setItem(STORE,JSON.stringify(serializable))}catch{
+      // Browser storage is intentionally small. Keep thumbnails on the newest
+      // messages, then shed older previews before giving up on chat history.
+      const recentStart=Math.max(0,serializable.length-6);
+      const compact=serializable.map((item,index)=>index>=recentStart?item:{...item,
+        attachments:Array.isArray(item.attachments)?item.attachments.map(({previewData,...attachment})=>attachment):item.attachments
+      });
+      try{localStorage.setItem(STORE,JSON.stringify(compact))}catch{
+        const textOnly=compact.map(item=>({...item,
+          attachments:Array.isArray(item.attachments)?item.attachments.map(({previewData,...attachment})=>attachment):item.attachments
+        }));
+        try{localStorage.setItem(STORE,JSON.stringify(textOnly))}catch{}
+      }
+    }
   };
   const currentPageContext=()=>{
     const description=document.querySelector('meta[name="description"]')?.content||'';
@@ -227,6 +247,7 @@
     const addFile=form.querySelector('.assist-add');
     const fileInput=form.querySelector('.assist-file-input');
     const attachmentList=form.querySelector('.assist-attachment-list');
+    const attachmentError=form.querySelector('.assist-attachment-error');
     const approval=form.querySelector('.assist-approval');
     const approvalMenu=form.querySelector('.assist-approval-menu');
     const depth=form.querySelector('.assist-depth');
@@ -237,6 +258,23 @@
     let actionMode=storedChoice(ACTION_MODE_STORE,['ask','allow'],'ask');
     let answerDepth=storedChoice(ANSWER_DEPTH_STORE,['concise','detailed'],'concise');
     let pendingAttachments=[];
+    const previewUrls=new Set();
+    const formatSize=bytes=>{
+      const value=Number(bytes)||0;
+      if(value<1024)return `${value} B`;
+      if(value<1024*1024)return `${Math.max(1,Math.round(value/1024))} KB`;
+      return `${(value/1024/1024).toFixed(value>=10*1024*1024?0:1)} MB`;
+    };
+    const fileLabel=item=>{
+      const extension=String(item.name||'').split('.').pop()?.toUpperCase();
+      const type=item.kind==='image'?(extension||'IMAGE'):(extension||'FILE');
+      return `${type} · ${formatSize(item.size)}`;
+    };
+    const showAttachmentError=message=>{
+      attachmentError.textContent=message||'';
+      attachmentError.hidden=!message;
+    };
+    addEventListener('pagehide',()=>{previewUrls.forEach(url=>URL.revokeObjectURL(url));previewUrls.clear()});
 
     const closeComposerMenus=except=>{
       [[approval,approvalMenu],[depth,depthMenu]].forEach(([button,menu])=>{
@@ -272,36 +310,74 @@
 
     const renderPendingAttachments=()=>{
       attachmentList.replaceChildren(...pendingAttachments.map((item,index)=>{
-        const chip=document.createElement('div');chip.className='assist-attachment';
-        chip.dataset.tip=item.kind==='image'?'Image name only: the guide cannot inspect images yet.':'Project details will be read with this message.';
-        const icon=document.createElement('img');icon.src=item.kind==='image'?'/assets/icons/photo.svg':'/assets/icons/file-description.svg';icon.alt='';icon.setAttribute('aria-hidden','true');
-        const name=document.createElement('span');name.textContent=item.name;
+        const chip=document.createElement('div');chip.className=`assist-attachment is-${item.kind}`;
+        chip.setAttribute('aria-label',`Attached ${item.name}`);
+        let visual;
+        if(item.kind==='image'&&item.previewUrl){
+          visual=document.createElement('img');visual.className='assist-attachment-preview';visual.src=item.previewUrl;visual.alt='';
+        }else{
+          visual=document.createElement('span');visual.className='assist-attachment-icon';
+          const icon=document.createElement('img');icon.src='/assets/icons/file-description.svg';icon.alt='';icon.setAttribute('aria-hidden','true');visual.append(icon);
+        }
+        const details=document.createElement('span');details.className='assist-attachment-details';
+        const name=document.createElement('strong');name.textContent=item.name;
+        const meta=document.createElement('small');meta.textContent=fileLabel(item);details.append(name,meta);
         const remove=document.createElement('button');remove.type='button';remove.setAttribute('aria-label',`Remove ${item.name}`);remove.dataset.tip='Remove attachment';
         const removeIcon=document.createElement('img');removeIcon.src='/assets/icons/x.svg';removeIcon.alt='';removeIcon.setAttribute('aria-hidden','true');remove.append(removeIcon);
-        remove.addEventListener('click',()=>{pendingAttachments.splice(index,1);renderPendingAttachments();input.focus()});
-        chip.append(icon,name,remove);return chip;
+        remove.addEventListener('click',()=>{
+          const [removed]=pendingAttachments.splice(index,1);
+          if(removed?.previewUrl){URL.revokeObjectURL(removed.previewUrl);previewUrls.delete(removed.previewUrl)}
+          showAttachmentError('');renderPendingAttachments();input.focus();
+        });
+        chip.append(visual,details,remove);return chip;
       }));
       attachmentList.hidden=!pendingAttachments.length;
+      if(pendingAttachments.length)requestAnimationFrame(()=>attachmentList.scrollTo({left:attachmentList.scrollWidth,behavior:'smooth'}));
     };
+    const makeImageThumb=(file,source)=>new Promise(resolve=>{
+      const image=new Image();
+      image.onload=()=>{
+        try{
+          const longest=Math.max(image.naturalWidth,image.naturalHeight)||1;
+          const scale=Math.min(1,320/longest);
+          const canvas=document.createElement('canvas');
+          canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));
+          canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+          canvas.getContext('2d',{alpha:false}).drawImage(image,0,0,canvas.width,canvas.height);
+          resolve(canvas.toDataURL('image/jpeg',.66));
+        }catch{resolve('')}
+      };
+      image.onerror=()=>resolve('');image.src=source;
+    });
     addFile.addEventListener('click',()=>fileInput.click());
     fileInput.addEventListener('change',async()=>{
       const incoming=[...fileInput.files];fileInput.value='';
+      showAttachmentError('');
       let imageNotice=false;
       for(const file of incoming){
-        if(pendingAttachments.length>=3){announceStatus('Attach up to three files at a time.');break}
+        if(pendingAttachments.length>=MAX_ATTACHMENTS){showAttachmentError('You can attach up to 10 files. Remove one before adding another.');break}
         const name=String(file.name||'attachment').slice(0,100);
         if(file.type.startsWith('image/')){
-          if(file.size>4*1024*1024){announceStatus(`${name} is over the 4 MB image limit.`);continue}
-          pendingAttachments.push({kind:'image',name,type:file.type,size:file.size});imageNotice=true;continue;
+          if(file.size>4*1024*1024){showAttachmentError(`${name} is over the 4 MB image limit.`);continue}
+          const previewUrl=URL.createObjectURL(file);previewUrls.add(previewUrl);
+          const previewData=await makeImageThumb(file,previewUrl);
+          pendingAttachments.push({kind:'image',name,type:file.type,size:file.size,previewUrl,previewData});imageNotice=true;continue;
         }
         const extension=name.split('.').pop()?.toLowerCase();
-        if(!['txt','md','csv','json'].includes(extension)||file.size>256*1024){announceStatus('Use a TXT, Markdown, CSV or JSON file under 256 KB.');continue}
-        const text=(await file.text()).replace(/\0/g,'').trim().slice(0,6000);
-        if(!text){announceStatus(`${name} is empty.`);continue}
-        pendingAttachments.push({kind:'text',name,type:file.type||`text/${extension}`,size:file.size,text});
+        if(['txt','md','csv','json'].includes(extension)){
+          if(file.size>256*1024){showAttachmentError(`${name} is over the 256 KB text-file limit.`);continue}
+          const text=(await file.text()).replace(/\0/g,'').trim().slice(0,6000);
+          if(!text){showAttachmentError(`${name} is empty.`);continue}
+          pendingAttachments.push({kind:'text',name,type:file.type||`text/${extension}`,size:file.size,text});continue;
+        }
+        if(['pdf','doc','docx','rtf'].includes(extension)&&file.size<=4*1024*1024){
+          pendingAttachments.push({kind:'file',name,type:file.type||'application/octet-stream',size:file.size});continue;
+        }
+        showAttachmentError('Use images or TXT, Markdown, CSV, JSON, PDF, DOC, DOCX or RTF files.');
       }
       renderPendingAttachments();
-      if(imageNotice)announceStatus('Image added by name. The current guide cannot inspect its pixels.',{duration:3200});
+      if(pendingAttachments.length<MAX_ATTACHMENTS&&!attachmentError.textContent)showAttachmentError('');
+      if(imageNotice)announceStatus('Image preview added. The guide can use its name and details, but cannot inspect the pixels yet.',{duration:3200});
       input.focus();
     });
 
@@ -635,11 +711,19 @@
     const renderStoredAttachments=(content,attachments)=>{
       if(!Array.isArray(attachments)||!attachments.length)return;
       const list=document.createElement('div');list.className='assist-msg-attachments';
-      attachments.slice(0,3).forEach(item=>{
-        const chip=document.createElement('span');chip.className='assist-msg-attachment';
-        const image=document.createElement('img');image.src=item.kind==='image'?'/assets/icons/photo.svg':'/assets/icons/file-description.svg';image.alt='';image.setAttribute('aria-hidden','true');
-        const label=document.createElement('span');label.textContent=String(item.name||'attachment').slice(0,100);
-        chip.append(image,label);list.append(chip);
+      attachments.slice(0,MAX_ATTACHMENTS).forEach(item=>{
+        const card=document.createElement('div');card.className=`assist-msg-attachment is-${item.kind}`;
+        let visual;
+        if(item.kind==='image'&&(item.previewUrl||item.previewData)){
+          visual=document.createElement('img');visual.className='assist-msg-attachment-preview';visual.src=item.previewUrl||item.previewData;visual.alt=`Attached image: ${item.name}`;
+        }else{
+          visual=document.createElement('span');visual.className='assist-msg-attachment-icon';
+          const icon=document.createElement('img');icon.src=item.kind==='image'?'/assets/icons/photo.svg':'/assets/icons/file-description.svg';icon.alt='';icon.setAttribute('aria-hidden','true');visual.append(icon);
+        }
+        const details=document.createElement('span');details.className='assist-msg-attachment-details';
+        const name=document.createElement('strong');name.textContent=String(item.name||'attachment').slice(0,100);
+        const meta=document.createElement('small');meta.textContent=fileLabel(item);details.append(name,meta);
+        card.append(visual,details);list.append(card);
       });
       content.append(list);
     };
@@ -647,11 +731,17 @@
     const add=(text,who,persisted=false,metadata=null)=>{
       const el=document.createElement('div');el.className='assist-msg '+who;
       if(persisted)el.dataset.chatEntry='true';
-      const content=document.createElement('div');content.className='assist-message-content';el.appendChild(content);
+      const content=document.createElement('div');content.className='assist-message-content';
       if(who==='bot'){
+        el.appendChild(content);
         render(content,text);enhanceActions(content);
         if(metadata?.journey)restoreJourney(el,metadata.journey);
-      }else{content.textContent=text;renderStoredAttachments(content,metadata?.attachments)}
+      }else{
+        if(Array.isArray(metadata?.attachments)&&metadata.attachments.length)el.classList.add('has-attachments');
+        renderStoredAttachments(el,metadata?.attachments);
+        const body=document.createElement('div');body.className='assist-user-text';body.textContent=text;content.append(body);
+        el.appendChild(content);
+      }
       if(metadata)addMessageTools(el,metadata);
       log.appendChild(el);refreshLatestAssistant();scrollLatest({force:who==='me'});return el;
     };
@@ -920,7 +1010,7 @@
       try{
         const res=await fetch('/api/chat-stream',{method:'POST',signal:activeController.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({
           message:text,history:history.slice(-4),page:location.pathname,pageContext:currentPageContext(),answerDepth,actionMode,
-          attachments:attachments.slice(0,3).map(item=>({kind:item.kind,name:item.name,type:item.type,size:item.size,text:item.kind==='text'?item.text:''}))
+          attachments:attachments.slice(0,MAX_ATTACHMENTS).map(item=>({kind:item.kind,name:item.name,type:item.type,size:item.size,text:item.kind==='text'?item.text:''}))
         })});
         // The server reports what is left of today's budget. Say so once,
         // while there is still room to ask, rather than after the wall.
@@ -1000,8 +1090,8 @@
       const files=pendingAttachments.map(item=>({...item}));
       const clean=String(text||'').trim()||(files.length?'Please review the attached project details.':'');if(!clean||pending)return;
       ensureAudio()?.resume().catch(()=>{});
-      const storedAttachments=files.map(({kind,name,type,size,text})=>({kind,name,type,size,...(kind==='text'?{text}:{})}));
-      const entry={id:uid(),role:'user',content:clean,createdAt:Date.now(),state:'pending',attachments:storedAttachments};
+      const runtimeAttachments=files.slice(0,MAX_ATTACHMENTS).map(({kind,name,type,size,text,previewUrl,previewData})=>({kind,name,type,size,previewUrl,previewData,...(kind==='text'?{text}:{})}));
+      const entry={id:uid(),role:'user',content:clean,createdAt:Date.now(),state:'pending',attachments:runtimeAttachments};
       transcript.push(entry);add(clean,'me',true,entry);writeStored(transcript);
       pendingAttachments=[];renderPendingAttachments();
       if(chips)chips.hidden=true;input.value='';grow();meter(false);reply(clean,entry.id,files);

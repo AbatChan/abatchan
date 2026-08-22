@@ -32,6 +32,20 @@ No actionable P0, P1, or P2 visual differences remain for the requested structur
 
 final result: passed
 
+## Attachment layout and persistence
+
+- Compared the composer against `/Users/macbookair2020/Documents/Screenshots/Screenshot 2026-08-22 at 2.42.45 AM.png` and the sent-message layout against `/Users/macbookair2020/Documents/Screenshots/Screenshot 2026-08-22 at 2.44.34 AM.png`.
+- Browser evidence: `audit/assistant-attachments-qa.png`, `audit/assistant-attachments-sent-qa.png`, and `audit/assistant-attachments-comparison.png`.
+- Composer attachments now occupy the first row, with the writing field directly beneath them and the utility rail last.
+- Image thumbnails and document cards share the existing glass surface, indigo signal, icon treatment, and compact radius system rather than copying the reference palette.
+- The attachment strip follows the newest file horizontally. Eleven selected files produce ten cards and the visible message: `You can attach up to 10 files. Remove one before adding another.`
+- Sent attachments render in their own two-column grid above the separate indigo text bubble. The message wrapper itself remains transparent.
+- Compressed image previews persist through reload; browser verification restored real JPEG thumbnails with no fallback cards, while older previews are shed first if storage becomes tight.
+- The broad white icon filter was narrowed so `brightness(0) invert(1) !important` applies to interface icons without bleaching actual image previews.
+- Assistant response utilities use a final flex order, so copy, feedback, and time controls remain below streamed journey status and arrival content.
+
+final result: passed
+
 ## Tooltip and density refinement
 
 - Compared against `/Users/macbookair2020/Documents/Screenshots/Screenshot 2026-08-22 at 2.32.33 AM.png` at a 390 × 844 viewport.

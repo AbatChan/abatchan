@@ -671,7 +671,7 @@ const assistantPageContext=()=>{
 // could paint. They load here instead — started in parallel with the settings
 // call this function already waits on, so the launcher costs no extra time and
 // is never painted before the rules that position it arrive.
-const ASSISTANT_CSS='/assistant.css?v=12';
+const ASSISTANT_CSS='/assistant.css?v=13';
 const loadAssistantStyles=()=>new Promise(resolve=>{
   if(document.querySelector('link[data-assist-css]'))return resolve();
   const link=document.createElement('link');
@@ -713,9 +713,10 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
     '<div class="assist-log" role="log" aria-live="polite"></div>'+
     '<div class="assist-chips">'+ASSISTANT.chips.map(c=>`<button type="button">${c}</button>`).join('')+'</div>'+
     '<form class="assist-form">'+
-      '<textarea name="q" rows="1" autocomplete="off" maxlength="1000" placeholder="Ask about your project…" aria-label="Your question"></textarea>'+
       '<div class="assist-attachment-list" aria-live="polite" hidden></div>'+
-      '<input class="assist-file-input" type="file" accept="image/*,.txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" multiple hidden>'+
+      '<p class="assist-attachment-error" role="alert" hidden></p>'+
+      '<textarea name="q" rows="1" autocomplete="off" maxlength="1000" placeholder="Ask about your project…" aria-label="Your question"></textarea>'+
+      '<input class="assist-file-input" type="file" accept="image/*,.txt,.md,.csv,.json,.pdf,.doc,.docx,.rtf,text/plain,text/markdown,text/csv,application/json,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>'+
       '<div class="assist-composer-rail">'+
         '<div class="assist-composer-group">'+
           '<button class="assist-composer-icon assist-add" type="button" aria-label="Attach project details" data-tip="Attach project details"><img src="/assets/icons/plus.svg" alt="" aria-hidden="true"></button>'+
