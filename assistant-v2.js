@@ -866,11 +866,11 @@
       scrollLatest({force:true});
     };
 
-    // Tool-call copy reaches the browser as one completed payload rather than
-    // token-by-token text. Give those authored journey messages the same
-    // progressive reveal as a normal streamed answer, without slowing or
-    // rebuilding ordinary chat responses that already stream from the model.
-    const typeJourneyMessage=(element,source)=>{
+    // Tool-call copy and very short ordinary replies can reach the browser as
+    // one completed payload rather than token-by-token text. Give buffered
+    // messages a progressive reveal without rebuilding answers the visitor
+    // already watched stream from the model.
+    const typeBufferedMessage=(element,source)=>{
       const finalText=String(source||'').trim();
       const plainText=finalText
         .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
@@ -912,7 +912,7 @@
       for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:completed};break}}
       writeStored(transcript);
       scrollLatest({force:true});
-      typeJourneyMessage(arrival,journey.arrival).then(()=>notifyClosed(journey.arrival));
+      typeBufferedMessage(arrival,journey.arrival).then(()=>notifyClosed(journey.arrival));
     };
 
     const guideJourney=(journey,bubble)=>{
@@ -1064,14 +1064,14 @@
       pending=true;activeController=new AbortController();input.disabled=true;send.disabled=false;send.classList.add('is-generating');
       send.setAttribute('aria-label','Stop response');send.removeAttribute('data-tip');send.querySelector('img').src='/assets/icons/square.svg';log.setAttribute('aria-busy','true');
       const loader=thinking();
-      let bubble=null,answer='',frame=0;
+      let bubble=null,answer='',frame=0,paintedFrames=0;
       const ensureBubble=()=>{
         if(bubble)return bubble;
         loader.remove();
         bubble=add('','bot',true);messageContent(bubble).classList.add('is-streaming');
         return bubble;
       };
-      const paint=()=>{frame=0;if(!answer)return;render(messageContent(ensureBubble()),answer);scrollLatest()};
+      const paint=()=>{frame=0;if(!answer)return;render(messageContent(ensureBubble()),answer);paintedFrames+=1;scrollLatest()};
       try{
         const res=await fetch('/api/chat-stream',{method:'POST',signal:activeController.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({
           message:text,history:history.slice(-4),page:location.pathname,pageContext:currentPageContext(),answerDepth,actionMode,
@@ -1123,7 +1123,15 @@
           // the progress card/action begins; the arrival follows the same path.
           const content=messageContent(ensureBubble());
           content.replaceChildren();
-          await typeJourneyMessage(content,answer);
+          await typeBufferedMessage(content,answer);
+        }else if(paintedFrames<2){
+          // Short answers can remain entirely inside the server's rolling
+          // safety tail and therefore arrive as one final network chunk. If
+          // the visitor never saw progressive paints, reveal that buffered
+          // answer locally instead of flashing the complete reply at once.
+          const content=messageContent(ensureBubble());
+          content.replaceChildren();
+          await typeBufferedMessage(content,answer);
         }else paint();
         messageContent(bubble)?.classList.remove('is-streaming');
         if(bubble)enhanceActions(messageContent(bubble));
