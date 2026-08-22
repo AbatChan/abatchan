@@ -475,8 +475,8 @@ function normalizeRuntime(html, page) {
   html = html
     .replace(/<script src="\/(?:assistant-polish|mobile-viewport-fix|responsive-lamp|work-grid-layout-fix)\.js\?v=\d+"><\/script>/g, '')
     .replace(/\/styles\.css\?v=(?:20|21|22|23)/g, '/styles.css?v=24')
-    .replace(/\/script\.js\?v=(?:21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47)/g, '/script.js?v=48')
-    .replace(/\/assistant-v2\.js\?v=(?:10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37)/g, '/assistant-v2.js?v=38')
+    .replace(/\/script\.js\?v=(?:21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48)/g, '/script.js?v=49')
+    .replace(/\/assistant-v2\.js\?v=(?:10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38)/g, '/assistant-v2.js?v=39')
     .replace(/\/dynamic-work\.js\?v=11/g, '/dynamic-work.js?v=12');
 
   html = html.replace(/<img class="work-art"([^>]*)>/g, (tag, attrs) =>

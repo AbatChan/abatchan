@@ -75,8 +75,8 @@ html[data-theme="light"] .assist-panel{background:rgba(255,255,255,.72);
 .assist-msg.bot>.assist-message-content{width:100%;padding:0 2px 2px;color:inherit;background:transparent}
 html[data-theme="light"] .assist-msg.bot{color:#151519;background:transparent}
 .assist-msg.assist-error{max-width:100%;width:100%;display:grid;gap:7px;padding:13px;
-  border:1px solid rgba(129,132,255,.24);background:rgba(99,102,241,.08)}
-.assist-error>b{font-size:13px;line-height:1.3}
+  border:1px solid rgba(248,113,113,.42);background:rgba(239,68,68,.12)}
+.assist-error>b{color:#fca5a5;font-size:13px;line-height:1.3}
 .assist-error>span{color:var(--muted);font-size:13px;line-height:1.45}
 .assist-error-actions button,.assist-error-actions a{min-height:44px;display:inline-flex;align-items:center;
   justify-content:center;padding:8px 12px;border:1px solid var(--line);border-radius:11px;
@@ -188,10 +188,16 @@ html[data-theme="light"] .assist-msg-attachment{background:rgba(21,21,25,.035)}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transform:translate(-50%,-7px);
   pointer-events:none;transition:opacity .18s ease,transform .24s var(--ease)}
 .assist-system-status.is-on{opacity:1;transform:translate(-50%,0)}
+.assist-system-status.is-success{color:#86efac;border-color:rgba(52,211,153,.42);background:rgba(6,78,59,.92)}
+.assist-system-status.is-error{color:#fecaca;border-color:rgba(248,113,113,.48);background:rgba(89,20,20,.94)}
+.assist-system-status.is-warning{color:#fed7aa;border-color:rgba(251,146,60,.48);background:rgba(86,35,10,.94)}
 .assist-system-status.is-busy::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;
   border:2px solid rgba(255,255,255,.28);border-top-color:var(--signal);border-radius:50%;
   vertical-align:-1px;animation:assistStatusSpin .7s linear infinite}
 html[data-theme="light"] .assist-system-status{background:rgba(250,250,248,.92);color:#202025;box-shadow:0 10px 28px rgba(20,20,28,.16)}
+html[data-theme="light"] .assist-system-status.is-success{color:#087a55;border-color:rgba(5,150,105,.35);background:rgba(236,253,245,.96)}
+html[data-theme="light"] .assist-system-status.is-error{color:#b42318;border-color:rgba(220,38,38,.32);background:rgba(254,242,242,.97)}
+html[data-theme="light"] .assist-system-status.is-warning{color:#a64b00;border-color:rgba(234,88,12,.32);background:rgba(255,247,237,.97)}
 @keyframes assistStatusSpin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.assist-system-status{transition:none}.assist-system-status.is-busy::before{animation:none}}
 
@@ -486,7 +492,7 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
    its own class, and plain text like the line it sits near. */
 .assist-budget{
   margin:10px 2px 2px;
-  color:var(--signal-ink,var(--signal));
+  color:#fdba74;
   font-size:11.5px;
   line-height:1.5;
 }
@@ -576,7 +582,11 @@ html[data-theme="light"] .assist-text-action:hover{color:#151519}
    every target instead of inheriting a card's accent text. */
 .assist-guided-target>.assist-guide-marker{color:#fff;font-size:11px}
 .form .field.is-assist-prepared input,.form .field.is-assist-prepared textarea{border-color:rgba(99,102,241,.72);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
-.assist-form-review{grid-column:1/-1;padding:13px 15px;border:1px solid rgba(99,102,241,.38);border-radius:15px;background:rgba(99,102,241,.08);color:var(--paper);font-size:13px;line-height:1.45}
+.assist-form-review{grid-column:1/-1;padding:13px 15px;border:1px solid rgba(52,211,153,.4);border-radius:15px;background:rgba(16,185,129,.11);color:#bbf7d0;font-size:13px;line-height:1.45}
+html[data-theme="light"] .assist-msg.assist-error{border-color:rgba(220,38,38,.3);background:rgba(254,226,226,.7)}
+html[data-theme="light"] .assist-error>b{color:#b42318}
+html[data-theme="light"] .assist-budget{color:#a64b00}
+html[data-theme="light"] .assist-form-review{color:#087a55;border-color:rgba(5,150,105,.32);background:rgba(236,253,245,.86)}
 @keyframes assistTargetPulse{50%{outline-color:rgba(129,132,255,.28);outline-offset:13px}}
 @keyframes assistMarkerIn{from{opacity:0;transform:translateY(-5px) scale(.96)}}
 @media(max-width:640px){.assist-guide-marker{top:8px;right:8px}}

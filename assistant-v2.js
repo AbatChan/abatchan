@@ -352,12 +352,12 @@
     approvalMenu.addEventListener('click',event=>{
       const button=event.target.closest('[data-action-mode]');if(!button)return;
       actionMode=button.dataset.actionMode;try{localStorage.setItem(ACTION_MODE_STORE,actionMode)}catch{}
-      syncChoices();closeComposerMenus();announceStatus(actionMode==='allow'?'Site actions can run when you clearly ask.':'Site actions will ask first.');input.focus();
+      syncChoices();closeComposerMenus();announceStatus(actionMode==='allow'?'Site actions can run when you clearly ask.':'Site actions will ask first.',{tone:'success'});input.focus();
     });
     depthMenu.addEventListener('click',event=>{
       const button=event.target.closest('[data-answer-depth]');if(!button)return;
       answerDepth=button.dataset.answerDepth;try{localStorage.setItem(ANSWER_DEPTH_STORE,answerDepth)}catch{}
-      syncChoices();closeComposerMenus();announceStatus(answerDepth==='detailed'?'Detailed answers selected.':'Concise answers selected.');input.focus();
+      syncChoices();closeComposerMenus();announceStatus(answerDepth==='detailed'?'Detailed answers selected.':'Concise answers selected.',{tone:'success'});input.focus();
     });
     document.addEventListener('pointerdown',event=>{if(!event.target.closest('.assist-composer-menu-wrap'))closeComposerMenus()});
     form.addEventListener('keydown',event=>{if(event.key==='Escape')closeComposerMenus()});
@@ -432,7 +432,7 @@
       }
       renderPendingAttachments();
       if(pendingAttachments.length<MAX_ATTACHMENTS&&!attachmentError.textContent)showAttachmentError('');
-      if(imageNotice)announceStatus('Image preview added. The guide can use its name and details, but cannot inspect the pixels yet.',{duration:3200});
+      if(imageNotice)announceStatus('Image preview added. The guide can use its name and details, but cannot inspect the pixels yet.',{tone:'warning',duration:3200});
       input.focus();
     });
 
@@ -446,9 +446,9 @@
         let words='';for(let index=event.resultIndex;index<event.results.length;index++)words+=event.results[index][0].transcript;
         input.value=[dictationStart.trim(),words.trim()].filter(Boolean).join(dictationStart.trim()?' ':'');grow();meter(false);
       };
-      recognition.onerror=event=>{if(event.error!=='aborted')announceStatus(event.error==='not-allowed'?'Microphone permission was not granted.':'Dictation could not start.')};
-      recognition.onend=()=>{listening=false;mic.classList.remove('is-listening');mic.setAttribute('aria-label','Start dictation');mic.dataset.tip='Dictate a message';announceStatus(input.value.trim()?'Dictation added.':'Dictation stopped.');input.focus()};
-      mic.addEventListener('click',()=>{try{listening?recognition.stop():recognition.start()}catch{announceStatus('Dictation is already starting.')}});
+      recognition.onerror=event=>{if(event.error!=='aborted')announceStatus(event.error==='not-allowed'?'Microphone permission was not granted.':'Dictation could not start.',{tone:'error'})};
+      recognition.onend=()=>{listening=false;mic.classList.remove('is-listening');mic.setAttribute('aria-label','Start dictation');mic.dataset.tip='Dictate a message';announceStatus(input.value.trim()?'Dictation added.':'Dictation stopped.',{tone:input.value.trim()?'success':'neutral'});input.focus()};
+      mic.addEventListener('click',()=>{try{listening?recognition.stop():recognition.start()}catch{announceStatus('Dictation is already starting.',{tone:'warning'})}});
     }
 
     const pagePrompts={
@@ -785,7 +785,7 @@
       });
       cancel.addEventListener('click',()=>{
         row.remove();if(entry){delete entry.journey;writeStored(transcript)}
-        announceStatus('Staying on this page.');
+        announceStatus('Staying on this page.',{tone:'neutral'});
       });
       row.append(prompt,approve,cancel);bubble.append(row);scrollLatest({force:true});
     }
@@ -864,8 +864,8 @@
           const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';
           document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();
         }
-        announceStatus('Message copied.');
-      }catch{announceStatus('The message could not be copied.')}
+        announceStatus('Message copied.',{tone:'success'});
+      }catch{announceStatus('The message could not be copied.',{tone:'error'})}
     };
     const saveFeedback=async(entry,reaction,button)=>{
       if(!entry?.id||button.disabled)return;
@@ -881,13 +881,13 @@
           id:entry.id,reaction,response:entry.content,question:user?.content||'',page:pagePath(),createdAt:entry.createdAt||null
         })});
         if(!response.ok)throw new Error('feedback failed');
-        announceStatus(reaction==='helpful'?'Marked as helpful.':'Feedback sent to Abat.');
+        announceStatus(reaction==='helpful'?'Marked as helpful.':'Feedback sent to Abat.',{tone:'success'});
       }catch{
         entry.feedback=previous;writeStored(transcript);
         button.closest('.assist-message-actions')?.querySelectorAll('[data-reaction]').forEach(control=>{
           control.setAttribute('aria-pressed',String(control.dataset.reaction===previous));
         });
-        announceStatus('Feedback could not be sent.');
+        announceStatus('Feedback could not be sent.',{tone:'error'});
       }finally{button.disabled=false}
     };
     const addMessageTools=(element,entry)=>{
@@ -997,10 +997,12 @@
     systemStatus.hidden=true;
     head.after(systemStatus);
     let systemStatusTimer=0;
-    const announceStatus=(message,{busy=false,duration=1800}={})=>{
+    const announceStatus=(message,{busy=false,duration=1800,tone='neutral'}={})=>{
       clearTimeout(systemStatusTimer);
       systemStatus.textContent=message;
       systemStatus.classList.toggle('is-busy',busy);
+      systemStatus.classList.remove('is-success','is-error','is-warning','is-neutral');
+      systemStatus.classList.add(`is-${['success','error','warning'].includes(tone)?tone:'neutral'}`);
       systemStatus.hidden=false;
       requestAnimationFrame(()=>systemStatus.classList.add('is-on'));
       if(duration)systemStatusTimer=setTimeout(()=>{
@@ -1144,7 +1146,7 @@
       transcript=[];history.length=0;localStorage.removeItem(STORE);
       log.querySelectorAll('[data-chat-entry="true"]').forEach(el=>el.remove());
       chips&&(chips.hidden=false);clearUnread();resetClear();
-      announceStatus('Chat history cleared.');
+      announceStatus('Chat history cleared.',{tone:'success'});
     });
 
     const thinking=()=>{
@@ -1330,7 +1332,7 @@
         loader.remove();bubble?.remove();
         const userEntry=transcript.find(item=>item.role==='user'&&item.id===userId);
         if(userEntry){userEntry.state='failed';writeStored(transcript);refreshUserTools(userEntry)}
-        if(err?.name==='AbortError')announceStatus('Response stopped. You can retry the message.');
+        if(err?.name==='AbortError')announceStatus('Response stopped. You can retry the message.',{tone:'warning'});
         else fail(err.detail||err.message,text,userId);
       }finally{
         pending=false;activeController=null;input.disabled=false;send.disabled=false;send.classList.remove('is-generating');
