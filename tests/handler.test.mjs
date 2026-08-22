@@ -158,6 +158,7 @@ check('navigation tool is offered to DeepSeek', lastDeepSeekBody.tools[0].functi
 check('ordinary answers can stream as text', lastDeepSeekBody.tools.length, 1);
 check('model may answer normally or choose navigation', lastDeepSeekBody.tool_choice, 'auto');
 check('plain answers cannot fake an arrival', lastDeepSeekBody.messages[0].content.includes('Never claim that you are moving the visitor'), true);
+check('tool calls cannot duplicate their journey as ordinary prose', lastDeepSeekBody.messages[0].content.includes('return no ordinary assistant text beside the tool call'), true);
 check('generic page requests must omit anchors', lastDeepSeekBody.messages[0].content.includes('general page request must start at the top'), true);
 check('model-authored departure is streamed', result.text.startsWith('I’ll bring up the animated logo for you.'), true);
 check('server action is bound to response token', result.text.includes(`<!--abatchan-nav:${result.headers['x-abatchan-action-token']}:`), true);

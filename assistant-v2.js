@@ -659,7 +659,11 @@
         const parsed=JSON.parse(decodeURIComponent(match[1]));
         if(parsed&&typeof parsed.href==='string'&&typeof parsed.label==='string'&&typeof parsed.departure==='string'&&typeof parsed.status==='string'&&typeof parsed.arrival==='string')action=parsed;
       }catch{}
-      return {text:String(text).replace(match[0],'').trim(),action};
+      const visible=String(text).replace(match[0],'').trim();
+      // Some models occasionally mirror tool arguments into ordinary content.
+      // The validated action is authoritative: before approval the visitor
+      // should see only its departure, never an early status or arrival.
+      return {text:action?action.departure:visible,action};
     };
 
     const messageContent=element=>element?.querySelector(':scope > .assist-message-content')||element;
