@@ -19,6 +19,7 @@
   const TRANSITION_STORE='abatNavigationPending';
   const MAX_STORED=24;
   const WHATSAPP='https://wa.me/2347041857921';
+  const uid=()=>crypto.randomUUID?.()||`m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
 
   // Stable destinations for conversational navigation. Existing authored IDs
   // remain the source of truth; headings only receive an ID when the page did
@@ -108,9 +109,19 @@
   const readStored=()=>{
     try{
       const value=JSON.parse(localStorage.getItem(STORE)||'[]');
-      return Array.isArray(value)?value.filter(x=>
+      if(!Array.isArray(value))return [];
+      let waitingForReply=null;
+      return value.filter(x=>
         x&&['user','assistant'].includes(x.role)&&typeof x.content==='string'&&!isLegacyGreeting(x)
-      ).slice(-MAX_STORED):[];
+      ).slice(-MAX_STORED).map(item=>{
+        const next={...item,id:typeof item.id==='string'&&item.id?item.id:uid()};
+        if(Number.isFinite(Number(item.createdAt)))next.createdAt=Number(item.createdAt);
+        else delete next.createdAt;
+        if(next.role==='user')waitingForReply=next.id;
+        else if(!next.replyTo&&waitingForReply)next.replyTo=waitingForReply;
+        if(next.role==='assistant')waitingForReply=null;
+        return next;
+      });
     }catch{return []}
   };
   const writeStored=items=>{
@@ -261,6 +272,10 @@
       }
     });
     let transcript=readStored();
+    const answeredUsers=new Set(transcript.filter(item=>item.role==='assistant'&&item.replyTo).map(item=>item.replyTo));
+    transcript=transcript.map(item=>item.role==='user'
+      ? {...item,state:answeredUsers.has(item.id)?'answered':(item.state==='failed'?'failed':'pending')}
+      : item);
     // Journey UI is stored separately from the conversational text so it can
     // be rebuilt after reload without sending display metadata to the model.
     const history=transcript.slice(-8).map(item=>item?.journey?.completed
@@ -392,18 +407,129 @@
       return {text:String(text).replace(match[0],'').trim(),action};
     };
 
+    const messageContent=element=>element?.querySelector(':scope > .assist-message-content')||element;
+    const ICONS={
+      copy:'<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6" y="6" width="10" height="10" rx="2"/><path d="M13 6V4H6a2 2 0 0 0-2 2v7h2"/></svg>',
+      retry:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.2 6.1A6 6 0 1 0 16 11"/><path d="M15.2 2.8v3.6h-3.6"/></svg>',
+      like:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 8.2 9.8 3c.4-.8 1.6-.5 1.6.4v3.4h3.1c1.1 0 1.9 1 1.6 2l-1.2 5.3c-.2.7-.8 1.2-1.6 1.2H7.2z"/><path d="M3.8 8.2h3.4v7.1H3.8z"/></svg>',
+      dislike:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.2 11.8 2.6 5.2c.4.8 1.6.5 1.6-.4v-3.4h3.1c1.1 0 1.9-1 1.6-2l-1.2-5.3c-.2-.7-.8-1.2-1.6-1.2H7.2z"/><path d="M3.8 4.7h3.4v7.1H3.8z"/></svg>',
+      clock:'<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>'
+    };
+    const timeLabel=value=>{
+      const date=new Date(Number(value));
+      if(!Number.isFinite(date.getTime()))return 'Earlier';
+      const now=new Date();
+      const start=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate());
+      const day=Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());
+      const days=Math.round((start-day)/86400000);
+      const time=date.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+      if(days===0)return time;
+      if(days===1)return `Yesterday, ${time}`;
+      const options={month:'long',day:'numeric'};
+      if(date.getFullYear()!==now.getFullYear())options.year='numeric';
+      return `${date.toLocaleDateString(undefined,options)}, ${time}`;
+    };
+    const absoluteTime=value=>{
+      const date=new Date(Number(value));
+      return Number.isFinite(date.getTime())
+        ? date.toLocaleString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'})
+        : 'Earlier in this conversation';
+    };
+    const copyText=async text=>{
+      try{
+        if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);
+        else{
+          const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';
+          document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();
+        }
+        announceStatus('Message copied.');
+      }catch{announceStatus('The message could not be copied.')}
+    };
+    const saveFeedback=async(entry,reaction,button)=>{
+      if(!entry?.id||button.disabled)return;
+      const previous=entry.feedback||'';
+      entry.feedback=reaction;writeStored(transcript);
+      button.closest('.assist-message-actions')?.querySelectorAll('[data-reaction]').forEach(control=>{
+        control.setAttribute('aria-pressed',String(control.dataset.reaction===reaction));
+      });
+      button.disabled=true;
+      try{
+        const user=transcript.find(item=>item.id===entry.replyTo);
+        const response=await fetch('/api/guide-feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+          id:entry.id,reaction,response:entry.content,question:user?.content||'',page:pagePath(),createdAt:entry.createdAt||null
+        })});
+        if(!response.ok)throw new Error('feedback failed');
+        announceStatus(reaction==='helpful'?'Marked as helpful.':'Feedback sent to Abat.');
+      }catch{
+        entry.feedback=previous;writeStored(transcript);
+        button.closest('.assist-message-actions')?.querySelectorAll('[data-reaction]').forEach(control=>{
+          control.setAttribute('aria-pressed',String(control.dataset.reaction===previous));
+        });
+        announceStatus('Feedback could not be sent.');
+      }finally{button.disabled=false}
+    };
+    const addMessageTools=(element,entry)=>{
+      if(!entry||!['user','assistant'].includes(entry.role))return;
+      element.dataset.messageId=entry.id;
+      const meta=document.createElement('div');meta.className='assist-message-meta';
+      const actions=document.createElement('div');actions.className='assist-message-actions';
+      const action=(name,tip,icon)=>{
+        const button=document.createElement('button');button.type='button';button.className='assist-message-tool';
+        button.dataset.tip=tip;button.setAttribute('aria-label',tip);button.innerHTML=icon;return button;
+      };
+      const copy=action('copy','Copy message',ICONS.copy);copy.addEventListener('click',()=>copyText(entry.content));actions.append(copy);
+      if(entry.role==='user'&&entry.state!=='answered'){
+        const retry=action('retry','Retry message',ICONS.retry);
+        retry.classList.add('assist-retry-message');
+        retry.addEventListener('click',()=>{retry.disabled=true;entry.state='pending';writeStored(transcript);reply(entry.content,entry.id)});
+        actions.append(retry);
+      }
+      if(entry.role==='assistant'){
+        ['helpful','not-helpful'].forEach(reaction=>{
+          const helpful=reaction==='helpful';
+          const button=action(reaction,helpful?'Helpful response':'Report a problem',helpful?ICONS.like:ICONS.dislike);
+          button.dataset.reaction=reaction;button.setAttribute('aria-pressed',String(entry.feedback===reaction));
+          button.addEventListener('click',()=>saveFeedback(entry,reaction,button));actions.append(button);
+        });
+      }
+      const time=document.createElement('time');time.className='assist-message-time';
+      if(entry.createdAt)time.dateTime=new Date(entry.createdAt).toISOString();
+      time.dataset.tip=absoluteTime(entry.createdAt);time.innerHTML=ICONS.clock+`<span>${escapeText(timeLabel(entry.createdAt))}</span>`;
+      meta.append(actions,time);element.appendChild(meta);
+      if(!element.dataset.toolsBound){
+        element.dataset.toolsBound='true';
+        element.addEventListener('click',event=>{
+          if(matchMedia('(hover:hover)').matches||event.target.closest('a,button'))return;
+          log.querySelectorAll('.assist-msg.show-actions').forEach(node=>{if(node!==element)node.classList.remove('show-actions')});
+          element.classList.toggle('show-actions');
+        });
+      }
+    };
+    const refreshLatestAssistant=()=>{
+      log.querySelectorAll('.assist-msg.bot.is-latest').forEach(node=>node.classList.remove('is-latest'));
+      [...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1)?.classList.add('is-latest');
+    };
+    const refreshUserTools=entry=>{
+      const element=log.querySelector(`.assist-msg.me[data-message-id="${CSS.escape(entry.id)}"]`);
+      if(!element)return;
+      element.querySelector('.assist-message-meta')?.remove();addMessageTools(element,entry);
+    };
+
     const add=(text,who,persisted=false,metadata=null)=>{
       const el=document.createElement('div');el.className='assist-msg '+who;
       if(persisted)el.dataset.chatEntry='true';
+      const content=document.createElement('div');content.className='assist-message-content';el.appendChild(content);
       if(who==='bot'){
-        render(el,text);enhanceActions(el);
+        render(content,text);enhanceActions(content);
         if(metadata?.journey)restoreJourney(el,metadata.journey);
-      }else el.textContent=text;
-      log.appendChild(el);scrollLatest({force:who==='me'});return el;
+      }else content.textContent=text;
+      if(metadata)addMessageTools(el,metadata);
+      log.appendChild(el);refreshLatestAssistant();scrollLatest({force:who==='me'});return el;
     };
 
     if(transcript.length){
       transcript.forEach(item=>add(item.content,item.role==='assistant'?'bot':'me',true,item));
+      refreshLatestAssistant();
       chips&&(chips.hidden=true);
     }
     const pinIntro=()=>{
@@ -624,7 +750,7 @@
       if(event.target===panel&&panel.classList.contains('is-open'))settleLatest();
     });
 
-    const fail=(error,question)=>{
+    const fail=(error,question,userId)=>{
       const message=typeof error==='string'?error:error?.message;
       const heading=(typeof error==='object'&&error?.title)||'The guide lost its connection.';
       const retryable=typeof error==='object'&&error?.retryable!==undefined?!!error.retryable:true;
@@ -634,7 +760,7 @@
       const body=document.createElement('span');body.textContent=message||'Try again, or contact Abat directly.';
       const actions=document.createElement('div');actions.className='assist-error-actions';
       if(retryable){
-        const retry=document.createElement('button');retry.type='button';retry.className='btn sm';retry.textContent='Try again';retry.onclick=()=>reply(question);
+        const retry=document.createElement('button');retry.type='button';retry.className='btn sm';retry.textContent='Try again';retry.onclick=()=>reply(question,userId);
         actions.append(retry);
       }
       // Two routes, because a visitor the guide just turned away should not
@@ -645,7 +771,7 @@
       actions.append(contact,whatsapp);el.append(title,body,actions);log.appendChild(el);scrollLatest({force:true});
     };
 
-    const reply=async text=>{
+    const reply=async(text,userId)=>{
       if(pending||!text)return;
       pending=true;input.disabled=true;send.disabled=true;log.setAttribute('aria-busy','true');
       const loader=thinking();
@@ -653,10 +779,10 @@
       const ensureBubble=()=>{
         if(bubble)return bubble;
         loader.remove();
-        bubble=add('','bot',true);bubble.classList.add('is-streaming');
+        bubble=add('','bot',true);messageContent(bubble).classList.add('is-streaming');
         return bubble;
       };
-      const paint=()=>{frame=0;if(!answer)return;render(ensureBubble(),answer);scrollLatest()};
+      const paint=()=>{frame=0;if(!answer)return;render(messageContent(ensureBubble()),answer);scrollLatest()};
       try{
         const res=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:history.slice(-4),page:location.pathname,pageContext:currentPageContext()})});
         // The server reports what is left of today's budget. Say so once,
@@ -699,11 +825,15 @@
         answer=navigation.text;
         if(answer)paint();
         else throw new Error('The guide returned an empty response.');
-        bubble?.classList.remove('is-streaming');
-        if(bubble)enhanceActions(bubble)
+        messageContent(bubble)?.classList.remove('is-streaming');
+        if(bubble)enhanceActions(messageContent(bubble));
+        const userEntry=transcript.find(item=>item.role==='user'&&item.id===userId);
+        if(userEntry){userEntry.state='answered';refreshUserTools(userEntry)}
+        const assistantEntry={id:uid(),role:'assistant',content:answer,createdAt:Date.now(),replyTo:userId||null};
+        if(bubble)addMessageTools(bubble,assistantEntry);
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
-        transcript.push({role:'assistant',content:answer});writeStored(transcript);
+        transcript.push(assistantEntry);writeStored(transcript);refreshLatestAssistant();
         notifyClosed(answer);
         if(navigation.action){
           const destination=navigation.action;
@@ -715,7 +845,10 @@
         }
       }catch(err){
         if(frame)cancelAnimationFrame(frame);
-        loader.remove();bubble?.remove();fail(err.detail||err.message,text);
+        loader.remove();bubble?.remove();
+        const userEntry=transcript.find(item=>item.role==='user'&&item.id===userId);
+        if(userEntry){userEntry.state='failed';writeStored(transcript);refreshUserTools(userEntry)}
+        fail(err.detail||err.message,text,userId);
       }finally{
         pending=false;input.disabled=false;send.disabled=false;log.setAttribute('aria-busy','false');
         if(panel.classList.contains('is-open'))input.focus();
@@ -725,14 +858,17 @@
     const ask=text=>{
       const clean=String(text||'').trim();if(!clean||pending)return;
       ensureAudio()?.resume().catch(()=>{});
-      add(clean,'me',true);transcript.push({role:'user',content:clean});writeStored(transcript);
-      if(chips)chips.hidden=true;input.value='';grow();meter(false);reply(clean);
+      const entry={id:uid(),role:'user',content:clean,createdAt:Date.now(),state:'pending'};
+      transcript.push(entry);add(clean,'me',true,entry);writeStored(transcript);
+      if(chips)chips.hidden=true;input.value='';grow();meter(false);reply(clean,entry.id);
     };
     form.addEventListener('submit',e=>{e.preventDefault();ask(input.value)});
     chips?.addEventListener('click',e=>{const button=e.target.closest('button');if(button)ask(button.textContent)});
 
     // Existing greeting messages were inserted as plain text before this module.
     // Render any bot message that already contains Markdown-like syntax.
-    log.querySelectorAll('.assist-msg.bot').forEach(el=>{const text=el.textContent;if(/[\[*_`#]|\]\(/.test(text))render(el,text)});
+    log.querySelectorAll('.assist-msg.bot:not([data-chat-entry="true"])').forEach(el=>{
+      const text=el.textContent;if(/[\[*_`#]|\]\(/.test(text))render(el,text)
+    });
   });
 })();

@@ -46,13 +46,16 @@ html[data-theme="light"] .assist-panel{background:rgba(255,255,255,.72);
 
 .assist-log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
   padding:16px;display:flex;flex-direction:column;gap:12px}
-.assist-msg{padding:10px 13px;border-radius:16px;font-size:14px;line-height:1.5;white-space:pre-wrap;
+.assist-msg{padding:0;border-radius:16px;font-size:14px;line-height:1.5;white-space:pre-wrap;
   animation:assistIn .3s var(--ease) both}
 @keyframes assistIn{from{opacity:0;transform:translateY(6px)}}
-.assist-msg.bot{align-self:stretch;width:100%;max-width:100%;padding:12px 2px 14px;border-radius:0;
+.assist-msg.bot{align-self:stretch;width:100%;max-width:100%;padding:0;border-radius:0;
   color:var(--paper);background:transparent;box-shadow:none}
-.assist-msg.me{align-self:flex-end;border-bottom-right-radius:6px;
-  color:#fff;background:linear-gradient(150deg,#7d80ff,var(--signal))}
+.assist-msg.me{align-self:flex-end;display:grid;justify-items:end;color:#fff;background:transparent}
+.assist-message-content{min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.assist-msg.me>.assist-message-content{padding:10px 13px;border-radius:16px;border-bottom-right-radius:6px;
+  color:#fff;background:linear-gradient(150deg,#7d80ff,var(--signal));white-space:pre-wrap}
+.assist-msg.bot>.assist-message-content{width:100%;padding:12px 2px 2px;color:inherit;background:transparent}
 html[data-theme="light"] .assist-msg.bot{color:#151519;background:transparent}
 .assist-msg.assist-error{max-width:100%;width:100%;display:grid;gap:7px;padding:13px;
   border:1px solid rgba(129,132,255,.24);background:rgba(99,102,241,.08)}
@@ -145,12 +148,12 @@ html[data-theme="light"] .assist-system-status{background:rgba(250,250,248,.92);
 .assist-msg{max-width:calc(100% - 12px);min-width:0;overflow-wrap:anywhere;word-break:break-word}
 .assist-msg.me{white-space:pre-wrap}
 .assist-msg.bot{white-space:normal}
-.assist-msg.bot>*{max-width:100%;overflow-wrap:anywhere;word-break:break-word}
-.assist-msg.bot>*:first-child{margin-top:0}.assist-msg.bot>*:last-child{margin-bottom:0}
-.assist-msg.bot p{margin:0 0 .82em;line-height:1.58}
-.assist-msg.bot ul,.assist-msg.bot ol{margin:.35em 0 .9em;padding-left:1.25em;display:grid;gap:.38em}
-.assist-msg.bot li{line-height:1.5}.assist-msg.bot li::marker{color:var(--signal)}
-.assist-msg.bot strong{font-weight:720;color:var(--paper)}
+.assist-msg.bot>.assist-message-content>*{max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.assist-msg.bot>.assist-message-content>*:first-child{margin-top:0}.assist-msg.bot>.assist-message-content>*:last-child{margin-bottom:0}
+.assist-msg.bot>.assist-message-content p{margin:0 0 .82em;line-height:1.58}
+.assist-msg.bot>.assist-message-content ul,.assist-msg.bot>.assist-message-content ol{margin:.35em 0 .9em;padding-left:1.25em;display:grid;gap:.38em}
+.assist-msg.bot>.assist-message-content li{line-height:1.5}.assist-msg.bot>.assist-message-content li::marker{color:var(--signal)}
+.assist-msg.bot>.assist-message-content strong{font-weight:720;color:var(--paper)}
 html[data-theme="light"] .assist-msg.bot strong{color:#151519}
 /* Links the model writes into an answer. The error block is also a .bot
    message, so without :not(.btn) this repaints its action buttons as underlined
@@ -162,7 +165,33 @@ html[data-theme="light"] .assist-msg.bot strong{color:#151519}
 .assist-msg.bot pre code{padding:0;background:none;color:inherit;white-space:pre;overflow-wrap:normal;word-break:normal}
 .assist-msg.bot blockquote{margin:.7em 0;padding:.2em 0 .2em .9em;border-left:3px solid var(--signal);color:var(--muted)}
 .assist-msg.bot h1,.assist-msg.bot h2,.assist-msg.bot h3{margin:.85em 0 .4em;font-size:1em;line-height:1.35;letter-spacing:-.015em}
-.assist-msg.is-streaming::after{content:"";display:inline-block;width:2px;height:.88em;margin-left:3px;vertical-align:-.08em;border-radius:1px;background:var(--signal);animation:assist-caret .75s steps(1) infinite}
+.assist-message-content.is-streaming::after{content:"";display:inline-block;width:2px;height:.88em;margin-left:3px;vertical-align:-.08em;border-radius:1px;background:var(--signal);animation:assist-caret .75s steps(1) infinite}
+
+/* Message utilities stay visually quiet until the message is relevant. The
+   newest guide reply keeps its useful actions visible, while its timestamp and
+   every older row appear on hover, keyboard focus, or a deliberate tap. */
+.assist-message-meta{display:flex;align-items:center;gap:8px;min-height:30px;margin-top:3px;color:var(--muted)}
+.assist-msg.me>.assist-message-meta{justify-content:flex-end}
+.assist-msg.bot>.assist-message-meta{justify-content:flex-start;padding-inline:1px}
+.assist-message-actions{display:flex;align-items:center;gap:2px;opacity:0;transform:translateY(-2px);pointer-events:none;
+  transition:opacity .16s ease,transform .2s var(--ease)}
+.assist-message-tool{width:28px;height:28px;display:grid;place-items:center;padding:0;border:0;border-radius:9px;
+  color:var(--muted);background:transparent;cursor:pointer;transition:color .18s,background .18s,transform .18s var(--ease)}
+.assist-message-tool svg,.assist-message-time svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
+.assist-message-tool:hover{color:var(--paper);background:rgba(255,255,255,.075);transform:translateY(-1px)}
+.assist-message-tool:focus-visible{outline:2px solid rgba(129,132,255,.62);outline-offset:1px;color:var(--paper)}
+.assist-message-tool:disabled{opacity:.42;cursor:wait;transform:none}
+.assist-message-tool[aria-pressed="true"]{color:var(--signal-ink,var(--signal));background:rgba(99,102,241,.14)}
+.assist-message-time{display:inline-flex;align-items:center;gap:5px;min-height:28px;font-size:10.5px;line-height:1;
+  white-space:nowrap;opacity:0;transform:translateY(-2px);pointer-events:none;transition:opacity .16s ease,transform .2s var(--ease)}
+.assist-message-time svg{width:13px;height:13px}
+.assist-msg:hover .assist-message-actions,.assist-msg:focus-within .assist-message-actions,.assist-msg.show-actions .assist-message-actions,
+.assist-msg:hover .assist-message-time,.assist-msg:focus-within .assist-message-time,.assist-msg.show-actions .assist-message-time{
+  opacity:1;transform:none;pointer-events:auto}
+.assist-msg.bot.is-latest .assist-message-actions{opacity:1;transform:none;pointer-events:auto}
+html[data-theme="light"] .assist-message-tool:hover{color:#151519;background:rgba(21,21,25,.065)}
+@media(hover:none){.assist-message-meta{min-height:32px}.assist-message-tool{width:30px;height:30px}}
+@media(prefers-reduced-motion:reduce){.assist-message-actions,.assist-message-time{transition:none}.assist-message-tool{transition:none}}
 .assist-clear{margin-left:auto;margin-right:28px;display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--line);border-radius:11px;background:transparent;color:var(--muted);cursor:pointer;transition:color .2s,border-color .2s,background .2s,width .2s}
 .assist-clear:hover,.assist-clear:focus-visible{color:var(--paper);border-color:rgba(99,102,241,.52);background:rgba(99,102,241,.1)}
 html[data-theme="light"] .assist-clear:hover,html[data-theme="light"] .assist-clear:focus-visible{color:#151519}
