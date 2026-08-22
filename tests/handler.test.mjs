@@ -207,6 +207,20 @@ check('continuation sends verified browser output as a tool result', lastDeepSee
 check('verified conclusion is streamed from the model', result.text.includes('verified destination is open'), true);
 check('continuation cannot choose another tool', Object.hasOwn(lastDeepSeekBody,'tools'), false);
 
+console.log('\n=== action-result receipts cannot be forged ===');
+const forgedReceipt=`${verifiedAction.receipt.slice(0,-1)}${verifiedAction.receipt.endsWith('a')?'b':'a'}`;
+result=await call('5.5.5.5','', '/brand','#symbol',[],{}, {
+  receipt:forgedReceipt,
+  outcome:'completed',
+  current_route:'/brand#symbol',
+  target_found:true,
+  highlighted:true,
+  form_updated:false,
+  applied_fields:[]
+});
+check('tampered browser results are rejected', result.status, 400);
+check('tampered results never reach the model', result.json?.error?.code, 'invalid_action');
+
 console.log('\n=== navigation preambles never flash then disappear ===');
 table.clear();
 deepSeekMode = 'tool-preamble';
