@@ -383,8 +383,8 @@ html[data-theme="light"] .terminal-top i{background:#c9c9c6}
    positioned fixed. A CSS ::after tooltip would be clipped by .site-header,
    which needs overflow:hidden for the glass rim. */
 .tip{position:fixed;z-index:400;left:0;top:0;pointer-events:none;
-  padding:7px 11px;border-radius:10px;max-width:220px;
-  font-size:12px;line-height:1.35;letter-spacing:.01em;white-space:nowrap;
+  width:max-content;max-width:min(280px,calc(100vw - 24px));padding:7px 11px;border-radius:10px;
+  font-size:12px;line-height:1.35;letter-spacing:.01em;white-space:normal;text-align:center;overflow-wrap:anywhere;
   color:var(--paper);background:rgba(18,18,22,.78);
   backdrop-filter:blur(14px) saturate(180%);-webkit-backdrop-filter:blur(14px) saturate(180%);
   box-shadow:0 0 0 1px rgba(255,255,255,.09),0 14px 30px rgba(0,0,0,.42);

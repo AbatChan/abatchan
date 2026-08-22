@@ -223,6 +223,7 @@
     const form=oldForm.cloneNode(true);oldForm.replaceWith(form);
     const chips=oldChips?.cloneNode(true);if(oldChips&&chips)oldChips.replaceWith(chips);
     const input=form.querySelector('textarea,input');const send=form.querySelector('.assist-send');
+    send.removeAttribute('data-tip');
     const addFile=form.querySelector('.assist-add');
     const fileInput=form.querySelector('.assist-file-input');
     const attachmentList=form.querySelector('.assist-attachment-list');
@@ -906,7 +907,7 @@
     const reply=async(text,userId,attachments=[])=>{
       if(pending||!text)return;
       pending=true;activeController=new AbortController();input.disabled=true;send.disabled=false;send.classList.add('is-generating');
-      send.setAttribute('aria-label','Stop response');send.dataset.tip='Stop response';send.querySelector('img').src='/assets/icons/square.svg';log.setAttribute('aria-busy','true');
+      send.setAttribute('aria-label','Stop response');send.removeAttribute('data-tip');send.querySelector('img').src='/assets/icons/square.svg';log.setAttribute('aria-busy','true');
       const loader=thinking();
       let bubble=null,answer='',frame=0;
       const ensureBubble=()=>{
@@ -990,7 +991,7 @@
         else fail(err.detail||err.message,text,userId);
       }finally{
         pending=false;activeController=null;input.disabled=false;send.disabled=false;send.classList.remove('is-generating');
-        send.setAttribute('aria-label','Send');send.dataset.tip='Send message';send.querySelector('img').src='/assets/icons/arrow-up.svg';log.setAttribute('aria-busy','false');
+        send.setAttribute('aria-label','Send');send.removeAttribute('data-tip');send.querySelector('img').src='/assets/icons/arrow-up.svg';log.setAttribute('aria-busy','false');
         if(panel.classList.contains('is-open'))input.focus();
       }
     };

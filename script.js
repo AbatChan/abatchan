@@ -671,7 +671,7 @@ const assistantPageContext=()=>{
 // could paint. They load here instead — started in parallel with the settings
 // call this function already waits on, so the launcher costs no extra time and
 // is never painted before the rules that position it arrive.
-const ASSISTANT_CSS='/assistant.css?v=11';
+const ASSISTANT_CSS='/assistant.css?v=12';
 const loadAssistantStyles=()=>new Promise(resolve=>{
   if(document.querySelector('link[data-assist-css]'))return resolve();
   const link=document.createElement('link');
@@ -707,7 +707,7 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
   panel.innerHTML=
     '<div class="assist-head">'+
       '<img src="/assets/abatchan-symbol-indigo-tight.svg" alt="" width="504" height="309">'+
-      '<div><b>abatchan guide</b><span>site answers, with a human fallback</span></div>'+
+      '<div><b>abatchan guide</b><span>site help, backed by Abat</span></div>'+
       '<i class="assist-dot" aria-hidden="true"></i>'+
     '</div>'+
     '<div class="assist-log" role="log" aria-live="polite"></div>'+
@@ -730,7 +730,7 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
             '<div class="assist-composer-menu assist-depth-menu" role="menu" hidden><button type="button" role="menuitemradio" data-answer-depth="concise"><strong>Concise</strong><span>Fast, focused answers</span></button><button type="button" role="menuitemradio" data-answer-depth="detailed"><strong>Detailed</strong><span>More context when useful</span></button></div>'+
           '</div>'+
           '<button class="assist-composer-icon assist-mic" type="button" aria-label="Start dictation" data-tip="Dictate a message"><img src="/assets/icons/microphone.svg" alt="" aria-hidden="true"></button>'+
-          '<button class="assist-send" type="submit" aria-label="Send" data-tip="Send message"><img src="/assets/icons/arrow-up.svg" alt="" aria-hidden="true"></button>'+
+          '<button class="assist-send" type="submit" aria-label="Send"><img src="/assets/icons/arrow-up.svg" alt="" aria-hidden="true"></button>'+
         '</div>'+
       '</div>'+
     '</form>'+

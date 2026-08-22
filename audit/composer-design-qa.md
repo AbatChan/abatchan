@@ -31,3 +31,14 @@
 No actionable P0, P1, or P2 visual differences remain for the requested structural translation.
 
 final result: passed
+
+## Tooltip and density refinement
+
+- Compared against `/Users/macbookair2020/Documents/Screenshots/Screenshot 2026-08-22 at 2.32.33 AM.png` at a 390 × 844 viewport.
+- Long tooltip copy now uses centered normal wrapping, a 280px cap, and a 12px viewport gutter. The approval tooltip measured 234px wide, stayed fully inside the viewport, and had no horizontal text overflow.
+- The composer was tightened from 10px to 8px internal padding, with a 38px writing area and a 36px desktop send control. Touch devices retain the existing 40px control targets.
+- The explanatory note has horizontal padding only. Its top and bottom padding both resolve to 0px.
+- The send and stop states retain their accessible names but expose no visual tooltip.
+- The header subtitle now reads `site help, backed by Abat`, reducing visual noise without losing the human-support promise.
+
+final result: passed
