@@ -57,7 +57,7 @@ html[data-theme="light"] .assist-panel{background:rgba(255,255,255,.72);
 .assist-msg.me>.assist-message-content{padding:10px 13px;border-radius:16px;border-bottom-right-radius:6px;
   color:#fff;background:linear-gradient(150deg,#7d80ff,var(--signal));white-space:pre-wrap}
 .assist-msg.me.has-attachments>.assist-message-content{width:auto;max-width:100%}
-.assist-msg.bot>.assist-message-content{width:100%;padding:12px 2px 2px;color:inherit;background:transparent}
+.assist-msg.bot>.assist-message-content{width:100%;padding:0 2px 2px;color:inherit;background:transparent}
 html[data-theme="light"] .assist-msg.bot{color:#151519;background:transparent}
 .assist-msg.assist-error{max-width:100%;width:100%;display:grid;gap:7px;padding:13px;
   border:1px solid rgba(129,132,255,.24);background:rgba(99,102,241,.08)}
@@ -115,7 +115,7 @@ html[data-theme="light"] .assist-form textarea{color:#151519}
 .assist-composer-icon:hover,.assist-composer-choice:hover{color:var(--paper);background:rgba(255,255,255,.07)}
 .assist-composer-icon:hover img,.assist-composer-choice:hover img{opacity:1}
 .assist-composer-icon:focus-visible,.assist-composer-choice:focus-visible{outline:2px solid rgba(129,132,255,.62);outline-offset:1px;color:var(--paper)}
-html[data-theme="light"] .assist-composer-icon img,html[data-theme="light"] .assist-composer-choice img,html[data-theme="light"] .assist-send img,html[data-theme="light"] .assist-attachment img:not(.assist-attachment-preview){filter:none!important}
+html[data-theme="light"] .assist-composer-icon img,html[data-theme="light"] .assist-composer-choice img,html[data-theme="light"] .assist-attachment img:not(.assist-attachment-preview){filter:none!important}
 html[data-theme="light"] .assist-composer-icon:hover,html[data-theme="light"] .assist-composer-choice:hover{color:#151519;background:rgba(20,20,24,.06)}
 
 .assist-composer-menu-wrap{position:relative;min-width:0}.assist-composer-menu{position:absolute;z-index:20;bottom:calc(100% + 8px);left:0;width:220px;
@@ -162,7 +162,7 @@ html[data-theme="light"] .assist-msg-attachment{background:rgba(21,21,25,.035)}
   color:#fff;background:var(--signal);transition:transform .2s,opacity .2s}
 .assist-send:hover{transform:translateY(-2px)}
 .assist-send:disabled{opacity:.45;transform:none;cursor:default}
-.assist-send img{width:18px;height:18px;filter:brightness(0) invert(1);opacity:1}.assist-send.is-generating img{width:14px;height:14px}
+.assist-send img{width:18px;height:18px;filter:brightness(0) invert(1)!important;opacity:1}.assist-send.is-generating img{width:14px;height:14px}
 .assist-note{padding:0 16px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center}
 
 /* Navigation and reset feedback belongs to the interface, not the transcript. */
@@ -542,7 +542,8 @@ html[data-theme="light"] .assist-text-action:hover{color:#151519}
 .assist-journey-step.is-active i{border:2px solid color-mix(in srgb,var(--signal) 28%,transparent);border-top-color:var(--signal);animation:assistJourneySpin .72s linear infinite}
 .assist-journey-step.is-done i{background:color-mix(in srgb,var(--signal) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--signal) 46%,transparent)}
 .assist-journey-step.is-done i::after{content:"";position:absolute;left:4px;top:3px;width:5px;height:3px;border-left:1.5px solid var(--signal-ink,var(--signal));border-bottom:1.5px solid var(--signal-ink,var(--signal));transform:rotate(-45deg)}
-.assist-journey-arrival{padding-top:2px}
+.assist-journey-arrival{padding-top:2px;margin-bottom:0}
+.assist-msg.bot>.assist-message-content .assist-journey-arrival>p:last-child{margin-bottom:0}
 .assist-journey-arrival.is-streaming::after{content:"";display:inline-block;width:2px;height:.88em;margin-left:3px;vertical-align:-.08em;border-radius:1px;background:var(--signal);animation:assist-caret .75s steps(1) infinite}
 @keyframes assistJourneySpin{to{transform:rotate(1turn)}}
 @media(prefers-reduced-motion:reduce){.assist-journey-step.is-active i{animation:none;border-color:var(--signal)}.assist-journey-arrival.is-streaming::after{animation:none}}

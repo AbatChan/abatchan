@@ -107,6 +107,7 @@
 
   const isLegacyGreeting=item=>item?.role==='assistant'&&(
     /^Hey,\s+I(?:'|’)?m the abatchan guide\b/i.test(item.content)||
+    /^Hey,\s+I(?:'|’)?m Nika\b/i.test(item.content)||
     /^Hi\.\s+Ask me anything about the work, pricing, or how a project runs\./i.test(item.content)
   );
   const readStored=()=>{

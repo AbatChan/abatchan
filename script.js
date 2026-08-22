@@ -650,7 +650,7 @@ const ASSISTANT={
   // This path only runs if that never happens and reports a real connection
   // state instead of impersonating the model with keyword-matched replies.
   endpoint:null,
-  greeting:"Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?",
+  greeting:"Hey, I'm Nika. I know the work, pricing, process, and how to reach Abat. What are you trying to build?",
   chips:['What do you build?','How much does it cost?','How long does it take?','What can you help with?']
 };
 const LEGACY_ASSISTANT_GREETING="Hi. Ask me anything about the work, pricing, or how a project runs.";
@@ -671,7 +671,7 @@ const assistantPageContext=()=>{
 // could paint. They load here instead — started in parallel with the settings
 // call this function already waits on, so the launcher costs no extra time and
 // is never painted before the rules that position it arrive.
-const ASSISTANT_CSS='/assistant.css?v=14';
+const ASSISTANT_CSS='/assistant.css?v=15';
 const loadAssistantStyles=()=>new Promise(resolve=>{
   if(document.querySelector('link[data-assist-css]'))return resolve();
   const link=document.createElement('link');
@@ -688,8 +688,13 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
   const settings=await loadPublicSettings();
   if(settings?.['assistant.enabled']===false)return;
   await styles;
-  if(typeof settings?.['assistant.greeting']==='string'&&settings['assistant.greeting']!==LEGACY_ASSISTANT_GREETING){
-    ASSISTANT.greeting=settings['assistant.greeting'];
+  const storedGreeting=settings?.['assistant.greeting'];
+  const retiredGreetings=[
+    LEGACY_ASSISTANT_GREETING,
+    "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?"
+  ];
+  if(typeof storedGreeting==='string'&&!retiredGreetings.includes(storedGreeting)){
+    ASSISTANT.greeting=storedGreeting;
   }
   const ICON_CHAT='<svg class="chat" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg>';
   const ICON_CLOSE='<svg class="close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
@@ -703,11 +708,11 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
 
   const panel=document.createElement('div');
   panel.className='assist-panel';panel.setAttribute('role','dialog');
-  panel.setAttribute('aria-label','abatchan assistant');panel.setAttribute('aria-modal','false');
+  panel.setAttribute('aria-label','Nika, abatchan assistant');panel.setAttribute('aria-modal','false');
   panel.innerHTML=
     '<div class="assist-head">'+
       '<img src="/assets/abatchan-symbol-indigo-tight.svg" alt="" width="504" height="309">'+
-      '<div><b>abatchan guide</b><span>site help, backed by Abat</span></div>'+
+      '<div><b>Nika</b><span>site help, backed by Abat</span></div>'+
       '<i class="assist-dot" aria-hidden="true"></i>'+
     '</div>'+
     '<div class="assist-log" role="log" aria-live="polite"></div>'+

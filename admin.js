@@ -845,14 +845,15 @@
 
   // ------------------------------------------------------------ assistant
   let assistantRows = {};
-  const CANONICAL_GREETING = "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?";
+  const CANONICAL_GREETING = "Hey, I'm Nika. I know the work, pricing, process, and how to reach Abat. What are you trying to build?";
+  const RETIRED_GREETING = "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?";
   const LEGACY_GREETING = 'Hi. Ask me anything about the work, pricing, or how a project runs.';
   const CANONICAL_OWNER_PROMPT = 'Sound like a warm, practical studio guide rather than a support script. Lead with the answer, keep it concise, and give one useful next step. Refer to the owner as Abat. Prices are starting points, never quotes. If a visitor needs a human decision or a fact you do not have, say so plainly and point them to the contact page.';
   async function loadAssistant() {
     try {
       const rows = await sb.select('settings', 'key=like.assistant.%25&select=key,value,is_public');
       assistantRows = Object.fromEntries(rows.map(row => [row.key, row.value]));
-      const greeting = !assistantRows['assistant.greeting'] || assistantRows['assistant.greeting'] === LEGACY_GREETING
+      const greeting = !assistantRows['assistant.greeting'] || [LEGACY_GREETING, RETIRED_GREETING].includes(assistantRows['assistant.greeting'])
         ? CANONICAL_GREETING
         : assistantRows['assistant.greeting'];
       const ownerPrompt = !assistantRows['assistant.system'] || String(assistantRows['assistant.system']).includes('Websites start at $750')
