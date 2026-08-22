@@ -30,7 +30,7 @@ globalThis.fetch = async (url, opts = {}) => {
         : deepSeekMode === 'same-page'
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Opening pricing.\\",\\"status\\":\\"Loading prices.\\",\\"arrival\\":\\"You’re already on the pricing page. I can explain any option here.\\",\\"href\\":\\"/pricing#client-reviews\\",\\"section_requested\\":false,\\"label\\":\\"pricing\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
         : deepSeekMode === 'form-prefill'
-          ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll prepare the project enquiry for your review.\\",\\"status\\":\\"Organising the details you shared.\\",\\"arrival\\":\\"The form is prepared. Check each field before opening the email.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"ada@example.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation for a five-person studio, needed in October.\\"},\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
+          ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll prepare the project enquiry for your review.\\",\\"status\\":\\"Organising the details you shared.\\",\\"arrival\\":\\"Ada Studio and abatchan4@gmail.com are ready.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"ada@example.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation for a five-person studio, needed in October.\\"},\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
           : 'data: {"choices":[{"delta":{"content":"Connected systems, "}}]}\n\ndata: {"choices":[{"delta":{"content":"end to end."}}]}\n\ndata: [DONE]\n\n';
     const streamParts = deepSeekMode === 'long-content'
       ? [
@@ -75,7 +75,7 @@ globalThis.fetch = async (url, opts = {}) => {
 
 const { default: handler } = await import('../api/chat-stream.js');
 
-const call = async (ip, message = 'what do you build?', page = '/', hash = '') => {
+const call = async (ip, message = 'what do you build?', page = '/', hash = '', history = []) => {
   const headers = {};
   const chunks = [];
   let status = 200;
@@ -103,7 +103,7 @@ const call = async (ip, message = 'what do you build?', page = '/', hash = '') =
       'content-length': '60',
       'x-forwarded-for': ip
     },
-    body: { message, page, pageContext: { hash } }
+    body: { message, page, history, pageContext: { hash } }
   }, res);
   return { status, json, headers, text: chunks.join(''), chunkCount: chunks.length };
 };
@@ -228,6 +228,22 @@ check('the prepared form uses the verified contact target', decodeURIComponent(r
 check('a supplied name survives validation', decodeURIComponent(result.text).includes('"name":"Ada Studio"'), true);
 check('a supplied email survives validation', decodeURIComponent(result.text).includes('"email":"ada@example.com"'), true);
 check('project context is carried for review', decodeURIComponent(result.text).includes('"type":"Booking automation"'), true);
+check('the conclusion cannot echo the wrong contact email', decodeURIComponent(result.text).includes('abatchan4@gmail.com'), false);
+check('the conclusion asks for review without reciting fields', decodeURIComponent(result.text).includes('The enquiry form is prepared for your review.'), true);
+
+console.log('\n=== escaped email punctuation still counts as visitor supplied ===');
+table.clear();
+result = await call('7.7.7.6', 'Prepare the form for Ada Studio, ada\\@example.com. We need booking automation for our five-person studio in October.');
+check('a markdown-escaped supplied email survives validation', decodeURIComponent(result.text).includes('"email":"ada@example.com"'), true);
+
+console.log('\n=== a follow-up can restore details supplied earlier in the conversation ===');
+table.clear();
+result = await call('7.7.7.5', 'It is empty again. Help add it back.', '/contact', '#project-form', [
+  {role:'user',content:'Prepare the form for Ada Studio, ada\\@example.com. We need booking automation for our five-person studio in October.'},
+  {role:'assistant',content:'I prepared the form for review.'}
+]);
+check('a previously supplied name survives follow-up validation', decodeURIComponent(result.text).includes('"name":"Ada Studio"'), true);
+check('a previously supplied email survives follow-up validation', decodeURIComponent(result.text).includes('"email":"ada@example.com"'), true);
 
 console.log('\n=== preparing still works when the form is already in view ===');
 table.clear();

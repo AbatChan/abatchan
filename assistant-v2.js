@@ -609,6 +609,7 @@
       rememberJourney({from:current,to:destination+url.hash,label:label||'the section',at:Date.now()});
       if(destination===current){
         revealTarget(url,label,Boolean(handoff?.section_requested));
+        prepareProjectForm(handoff);
         return false;
       }
       try{

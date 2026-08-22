@@ -37,7 +37,7 @@ Voice and style:
 - For a specific target on another verified page that has no listed anchor, use the bare verified page route, set section_requested to true, and make label name the requested content precisely. The destination page resolves that label only against its safe target registry. Never invent a CSS selector.
 - When section_requested is true, label must name the exact requested section or content, never merely the destination page. For example, a request for monthly support uses label "Monthly support", not "Pricing page".
 - Use the recent guide navigation in page context when a visitor says "take me back" or refers to a place the guide just showed them. Only return an exact same-site destination already present in that journey or the verified directory.
-- When the visitor explicitly asks you to prepare, fill, or help complete the project enquiry form, use navigate_site for /contact#project-form and include form_prefill. Use only facts the visitor supplied in this conversation. Summarise their stated project context without inventing requirements, timing, budget, identity or contact details. Leave unknown fields empty. The website will show the prepared fields for review and will never submit for them.
+- When the visitor explicitly asks you to prepare, fill, or help complete the project enquiry form, use navigate_site for /contact#project-form and include form_prefill. Use only facts the visitor supplied in this conversation. Summarise their stated project context without inventing requirements, timing, budget, identity or contact details. Leave unknown fields empty. The website will show the prepared fields for review and will never submit for them. In departure, status, and arrival, never repeat or claim the prepared name, email, or other field values; describe only the preparation progress and ask the visitor to review the form.
 - Do not include form_prefill for an ordinary request to visit Contact, ask how to make contact, or view the form. Preparing fields requires an explicit request in the latest visitor message.
 
 Commercial guidance:
@@ -429,9 +429,6 @@ export default async function handler(req,res){
             : null;
         }).filter(Boolean).filter((item,index,list)=>item.href!==href&&index===list.findIndex(other=>other.href===item.href));
         const relatedMarkup=relatedLinks.map(item=>`[${item.label}](${item.href})`).join(' · ');
-        const arrival=relatedMarkup?`${authoredArrival} ${relatedMarkup}`:authoredArrival;
-        const authored=[departure,status,arrival,...relatedLinks.map(item=>item.label)];
-        const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
         const targetPath=href.split('#')[0]||'/';
         const targetHash=href.includes('#')?`#${href.split('#').slice(1).join('#')}`:'';
         const formPrefill=targetPath==='/contact'&&action.form_prefill&&typeof action.form_prefill==='object'
@@ -445,9 +442,22 @@ export default async function handler(req,res){
         // Personal identifiers must appear literally in the visitor's latest
         // message. This prevents the model from guessing a name or email while
         // still allowing it to organise the project description for review.
-        if(formPrefill?.name&&!message.toLowerCase().includes(formPrefill.name.toLowerCase()))formPrefill.name='';
-        if(formPrefill?.email&&!message.toLowerCase().includes(formPrefill.email.toLowerCase()))formPrefill.email='';
+        const suppliedText=[...history.filter(item=>item.role==='user').map(item=>item.content),message]
+          .join('\n')
+          .replace(/\\([@._+-])/g,'$1')
+          .toLowerCase();
+        if(formPrefill?.name&&!suppliedText.includes(formPrefill.name.toLowerCase()))formPrefill.name='';
+        if(formPrefill?.email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formPrefill.email)||!suppliedText.includes(formPrefill.email.toLowerCase())))formPrefill.email='';
         const hasPrefill=formPrefill&&Object.values(formPrefill).some(Boolean);
+        // A form-preparation conclusion is a UI confirmation, not a place for
+        // the model to recite personal data. Keeping it deterministic prevents
+        // the studio contact address from being mistaken for the visitor's.
+        const safeArrival=hasPrefill
+          ? 'The enquiry form is prepared for your review. Check each field before opening the email.'
+          : authoredArrival;
+        const arrival=relatedMarkup?`${safeArrival} ${relatedMarkup}`:safeArrival;
+        const authored=[departure,status,arrival,...relatedLinks.map(item=>item.label)];
+        const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
         // A prepare-form request still has useful work to do when the visitor
         // is already sitting at the form, so it must reach the client action
         // handler instead of being collapsed into an ordinary arrival reply.
