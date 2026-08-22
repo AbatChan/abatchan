@@ -525,7 +525,7 @@
         const rect=range.getBoundingClientRect();
         if(!rect.width&&!rect.height){hideSelectionAction();return}
         selectedSiteText=text;selectionAction.hidden=false;
-        const width=selectionAction.offsetWidth||286,height=selectionAction.offsetHeight||44;
+        const width=selectionAction.offsetWidth||236,height=selectionAction.offsetHeight||36;
         const left=Math.min(innerWidth-width-10,Math.max(10,rect.left+rect.width/2-width/2));
         const above=rect.top-height-10;
         const top=above>=10?above:Math.min(innerHeight-height-10,rect.bottom+10);

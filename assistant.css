@@ -28,20 +28,20 @@
   border:1px solid rgba(129,132,255,.7);animation:assistPing 2.6s var(--ease) 3}
 @keyframes assistPing{0%{transform:scale(1);opacity:.8}70%,100%{transform:scale(1.5);opacity:0}}
 
-.assist-selection-action{position:fixed;z-index:480;display:flex;align-items:stretch;min-height:44px;border:0;border-radius:14px;overflow:hidden;color:var(--paper);background:rgba(15,15,18,.76);backdrop-filter:blur(18px) saturate(190%);-webkit-backdrop-filter:blur(18px) saturate(190%);box-shadow:0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.08),0 14px 36px rgba(0,0,0,.34);font:600 13px/1 var(--font-body,inherit);animation:assistSelectionIn .18s var(--ease) both}
+.assist-selection-action{position:fixed;z-index:480;display:flex;align-items:stretch;min-height:36px;border:0;border-radius:11px;overflow:hidden;color:var(--paper);background:rgba(15,15,18,.76);backdrop-filter:blur(18px) saturate(190%);-webkit-backdrop-filter:blur(18px) saturate(190%);box-shadow:0 0 0 1px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.08),0 10px 28px rgba(0,0,0,.3);font:600 12px/1 var(--font-body,inherit);animation:assistSelectionIn .18s var(--ease) both}
 .assist-selection-action[hidden]{display:none}
-.assist-selection-action button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 13px;border:0;border-right:1px solid rgba(255,255,255,.1);color:inherit;background:transparent;font:inherit;white-space:nowrap;cursor:pointer}
+.assist-selection-action button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:36px;padding:0 10px;border:0;border-right:1px solid rgba(255,255,255,.1);color:inherit;background:transparent;font:inherit;white-space:nowrap;cursor:pointer}
 .assist-selection-action button:last-child{border-right:0}
 .assist-selection-action button:hover{background:rgba(255,255,255,.09)}
 .assist-selection-action button:focus-visible{position:relative;z-index:1;outline:3px solid rgba(129,132,255,.55);outline-offset:-3px}
-.assist-selection-action img{width:21px;height:14px;object-fit:contain}
+.assist-selection-action img{width:18px;height:11px;object-fit:contain}
 html[data-theme="light"] .assist-selection-action{color:#151519;background:rgba(250,250,248,.8);box-shadow:0 0 0 1px rgba(20,20,24,.12),inset 0 1px 0 rgba(255,255,255,.8),0 14px 32px rgba(20,20,28,.16)}
 html[data-theme="light"] .assist-selection-action button{border-right-color:rgba(20,20,24,.1)}
 html[data-theme="light"] .assist-selection-action button:last-child{border-right:0}
 html[data-theme="light"] .assist-selection-action button:hover{background:rgba(20,20,24,.06)}
 @keyframes assistSelectionIn{from{opacity:0;transform:translateY(5px) scale(.96)}}
 
-@media(max-width:420px){.assist-selection-action button{padding:0 10px;font-size:12px}.assist-selection-action img{display:none}}
+@media(max-width:420px){.assist-selection-action button{padding:0 8px;font-size:11.5px}.assist-selection-action img{display:none}}
 
 .assist-panel{position:fixed;right:22px;bottom:90px;z-index:300;height:min(560px,calc(100svh - 140px));
   display:flex;flex-direction:column;
