@@ -5,6 +5,7 @@
 - Structural reference: `/Users/macbookair2020/Documents/Screenshots/Screenshot 2026-08-22 at 2.07.27 AM.png`
 - Browser-rendered implementation: `audit/composer-desktop-local.jpg`
 - Focused comparison: `audit/composer-comparison.png`
+- Deployed mobile verification: `audit/composer-mobile-preview.png`
 - State: dark theme, guide open, default `Ask first` approval mode, `Concise` answer depth.
 
 ## Visual findings
@@ -12,6 +13,7 @@
 - The writing area and bottom utility rail follow the reference structure without copying its palette or branding.
 - The composer keeps the existing abatchan indigo signal, glass surface, typography, rounded geometry, and tooltip behavior.
 - The rail stays legible inside the existing 380px guide panel. Labels truncate safely, icon targets remain distinct, and the circular send control retains primary emphasis.
+- At a 390 × 844 viewport the page and composer remain exactly 390px wide, with no horizontal overflow; the 344px rail fits its 344px client width.
 - The approval choice and answer-depth choice open upward so their menus do not collide with the viewport bottom.
 - Project-detail attachments appear as compact removable chips rather than expanding the utility rail.
 
