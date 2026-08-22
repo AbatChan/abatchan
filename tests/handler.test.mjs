@@ -19,7 +19,9 @@ globalThis.fetch = async (url, opts = {}) => {
   }
   if (u.includes('api.deepseek.com')) {
     lastDeepSeekBody = JSON.parse(opts.body);
-    const sse = deepSeekMode === 'tool' || deepSeekMode === 'tool-preamble'
+    const sse = deepSeekMode === 'multi-tool'
+      ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll highlight the hardware and software concept.\\",\\"status\\":\\"Finding both requested projects.\\",\\"arrival\\":\\"The dashboard is highlighted, and the WordPress AI project is linked here.\\",\\"href\\":\\"/work#work-smart-motorcycle-dashboard\\",\\"section_requested\\":true,\\"label\\":\\"Smart motorcycle dashboard\\",\\"related_links\\":[{\\"href\\":\\"/work#work-estimatio-ai\\",\\"label\\":\\"Estimatio AI\\"}]}"}}]}}]}\n\ndata: [DONE]\n\n'
+      : deepSeekMode === 'tool' || deepSeekMode === 'tool-preamble'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring up the animated logo for you.\\",\\"status\\":\\"Finding the symbol sequence…\\",\\"arrival\\":\\"You’re at the animated logo now. Want to explore how the symbol is constructed next?\\",\\"href\\":\\"/brand#symbol\\",\\"section_requested\\":true,\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
       : deepSeekMode === 'about-name'
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Let me bring the name explanation into view.\\",\\"status\\":\\"Finding the identity note.\\",\\"arrival\\":\\"Here it is. The highlighted paragraph explains how the names relate.\\",\\"href\\":\\"/about#name-explanation\\",\\"section_requested\\":true,\\"label\\":\\"name explanation\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
@@ -180,6 +182,14 @@ check('provisional preamble is withheld', result.text.includes('Let me check the
 check('validated departure remains visible', result.text.startsWith('I’ll bring up the animated logo for you.'), true);
 check('multi-destination turns must keep every requested part', lastDeepSeekBody.messages[0].content.includes('Never silently discard an earlier clause'), true);
 check('visitor-led page changes are acknowledged without inventing an error', lastDeepSeekBody.messages[0].content.includes('visitor moved afterward'), true);
+
+console.log('\n=== multi-destination requests keep clickable alternatives ===');
+table.clear();
+deepSeekMode = 'multi-tool';
+result = await call('5.5.5.52', 'Show both projects, then highlight the hardware and software one.');
+check('tool contract requires related destinations', lastDeepSeekBody.tools[0].function.parameters.required.includes('related_links'), true);
+check('secondary destination becomes a Markdown link', decodeURIComponent(result.text).includes('[Estimatio AI](/work#work-estimatio-ai)'), true);
+check('primary destination remains the active journey', decodeURIComponent(result.text).includes('"href":"/work#work-smart-motorcycle-dashboard"'), true);
 
 console.log('\n=== a precise About fact can be highlighted ===');
 table.clear();

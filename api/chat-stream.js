@@ -31,7 +31,7 @@ Voice and style:
 - Never claim that you are moving the visitor, that a destination is loading, or that they have arrived in an ordinary text answer. Those claims are truthful only inside a navigate_site journey. If you do not call the tool, answer the question and offer a relative link instead.
 - For a navigation tool call, write the complete journey in your own voice: a departure, one short contextual progress update, and an arrival. Make every part specific to this request and destination. Vary the language naturally instead of reusing a stock template.
 - When calling navigate_site, return no ordinary assistant text beside the tool call. Put every user-visible word in departure, status and arrival only. Never duplicate those fields as paragraphs outside the tool.
-- If one message asks about multiple pages, projects, or sections, answer every part. The interface can actively navigate to only one destination per turn: choose the one the visitor explicitly wants to view now, or the final requested destination when their priority is unclear. Put the other verified destinations into the arrival as useful relative Markdown links, so the visitor can open them without being bounced through several pages. Never silently discard an earlier clause.
+- If one message asks about multiple pages, projects, or sections, answer every part. The interface can actively navigate to only one destination per turn: choose the one the visitor explicitly wants to view now, or the final requested destination when their priority is unclear. Put every other requested verified destination in related_links, so the visitor can open it without being bounced through several pages. Never silently discard an earlier clause.
 - Prefer a verified section link, such as [project form](/contact#project-form), only when that section matches the visitor's stated destination. A general page request must start at the top of that page.
 - The live page context includes automatically registered highlight targets for headings, cards, FAQs, projects, forms, fields and meaningful copy. When the visitor explicitly asks to highlight or reveal one of those targets on the current page, set section_requested to true and use its exact listed anchor.
 - For a specific target on another verified page that has no listed anchor, use the bare verified page route, set section_requested to true, and make label name the requested content precisely. The destination page resolves that label only against its safe target registry. Never invent a CSS selector.
@@ -162,9 +162,10 @@ const NAV_TOOL={
         arrival:{type:'string',description:'A brief, natural conclusion that confirms the visitor has arrived and offers relevant next help without repeating the departure.'},
         href:{type:'string',description:'One verified relative page route, optionally with an exact anchor listed in live context or the verified directory. Omit the anchor for a general page request and when a safe exact target on another page is known only by label.'},
         section_requested:{type:'boolean',description:'True only when the visitor explicitly asked for this particular section or described that section as their destination. False when they named only the page or asked generally.'},
-        label:{type:'string',description:'A concise human label for the exact destination. When section_requested is true, name that requested content specifically, never only the page.'}
+        label:{type:'string',description:'A concise human label for the exact destination. When section_requested is true, name that requested content specifically, never only the page.'},
+        related_links:{type:'array',maxItems:3,description:'Other verified destinations the visitor requested in the same message but which should not replace the active navigation. Return an empty array when there are none.',items:{type:'object',properties:{href:{type:'string',description:'A verified relative route and optional exact anchor from the directory.'},label:{type:'string',description:'A concise human label for this related destination.'}},required:['href','label'],additionalProperties:false}}
       },
-      required:['departure','status','arrival','href','section_requested','label'],
+      required:['departure','status','arrival','href','section_requested','label','related_links'],
       additionalProperties:false
     }
   }
@@ -411,12 +412,22 @@ export default async function handler(req,res){
         const action=JSON.parse(toolArguments);
         const departure=cleanVoice(String(action.departure||'').slice(0,500));
         const status=cleanVoice(String(action.status||'').slice(0,160));
-        const arrival=cleanVoice(String(action.arrival||'').slice(0,500));
+        const authoredArrival=cleanVoice(String(action.arrival||'').slice(0,500));
         const rawHref=String(action.href||'').trim().slice(0,180);
         const sectionRequested=action.section_requested===true;
         const href=sectionRequested?rawHref:(rawHref.split('#')[0]||'/');
         const label=String(action.label||'').trim().slice(0,100);
-        const authored=[departure,status,arrival];
+        const relatedLinks=(Array.isArray(action.related_links)?action.related_links:[]).slice(0,3).map(item=>{
+          const relatedHref=String(item?.href||'').trim().slice(0,180);
+          const relatedPath=relatedHref.split('#')[0]||'/';
+          const relatedLabel=cleanVoice(String(item?.label||'').replace(/[\[\]()]/g,'').slice(0,100));
+          return /^\/[a-z0-9/_-]*(?:#[a-z0-9_-]+)?$/i.test(relatedHref)&&Object.hasOwn(PAGE,relatedPath)&&relatedLabel
+            ? {href:relatedHref,label:relatedLabel}
+            : null;
+        }).filter(Boolean).filter((item,index,list)=>item.href!==href&&index===list.findIndex(other=>other.href===item.href));
+        const relatedMarkup=relatedLinks.map(item=>`[${item.label}](${item.href})`).join(' · ');
+        const arrival=relatedMarkup?`${authoredArrival} ${relatedMarkup}`:authoredArrival;
+        const authored=[departure,status,arrival,...relatedLinks.map(item=>item.label)];
         const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
         const targetPath=href.split('#')[0]||'/';
         const targetHash=href.includes('#')?`#${href.split('#').slice(1).join('#')}`:'';
