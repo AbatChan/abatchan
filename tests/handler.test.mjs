@@ -19,7 +19,14 @@ globalThis.fetch = async (url, opts = {}) => {
   }
   if (u.includes('api.deepseek.com')) {
     lastDeepSeekBody = JSON.parse(opts.body);
-    const sse = deepSeekMode === 'multi-tool'
+    const isActionContinuation=lastDeepSeekBody.messages?.some(item=>item.role==='tool');
+    const sse = isActionContinuation
+      ? 'data: {"choices":[{"delta":{"content":"The verified destination is open and the requested content is highlighted. [Open it again](/pricing#monthly-support)"}}]}\n\ndata: [DONE]\n\n'
+      : deepSeekMode === 'conditional-tool'
+      ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"A dashboard platform is the suitable service, starting from $2,500. I found two relevant projects for you.\\",\\"status\\":\\"Opening the relevant work after your approval.\\",\\"arrival\\":\\"The relevant work is now in view.\\",\\"requires_approval\\":true,\\"href\\":\\"/work\\",\\"section_requested\\":false,\\"label\\":\\"relevant work\\",\\"related_links\\":[{\\"href\\":\\"/work#work-smart-motorcycle-dashboard\\",\\"label\\":\\"Smart motorcycle dashboard\\"},{\\"href\\":\\"/work#work-estimatio-ai\\",\\"label\\":\\"Estimatio AI\\"}]}"}}]}}]}\n\ndata: [DONE]\n\n'
+      : deepSeekMode === 'form-domain-update'
+      ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll change the email to hello@northstar.com.\\",\\"status\\":\\"Updating only the email field.\\",\\"arrival\\":\\"The email has been updated.\\",\\"requires_approval\\":false,\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry form\\",\\"form_prefill\\":{\\"name\\":\\"Northstar Creative\\",\\"email\\":\\"hello@northstar.com\\",\\"type\\":\\"Booking and payment automation\\",\\"message\\":\\"A five-person booking and payment automation system.\\"},\\"replace_fields\\":[\\"email\\"],\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
+      : deepSeekMode === 'multi-tool'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll highlight the hardware and software concept.\\",\\"status\\":\\"Finding both requested projects.\\",\\"arrival\\":\\"The dashboard is highlighted, and the WordPress AI project is linked here.\\",\\"href\\":\\"/work#work-smart-motorcycle-dashboard\\",\\"section_requested\\":true,\\"label\\":\\"Smart motorcycle dashboard\\",\\"related_links\\":[{\\"href\\":\\"/work#work-estimatio-ai\\",\\"label\\":\\"Estimatio AI\\"}]}"}}]}}]}\n\ndata: [DONE]\n\n'
       : deepSeekMode === 'tool' || deepSeekMode === 'tool-preamble'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring up the animated logo for you.\\",\\"status\\":\\"Finding the symbol sequence…\\",\\"arrival\\":\\"You’re at the animated logo now. Want to explore how the symbol is constructed next?\\",\\"href\\":\\"/brand#symbol\\",\\"section_requested\\":true,\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
@@ -81,7 +88,7 @@ globalThis.fetch = async (url, opts = {}) => {
 
 const { default: handler } = await import('../api/chat-stream.js');
 
-const call = async (ip, message = 'what do you build?', page = '/', hash = '', history = [], pageState = {}) => {
+const call = async (ip, message = 'what do you build?', page = '/', hash = '', history = [], pageState = {}, actionResult = null) => {
   const headers = {};
   const chunks = [];
   let status = 200;
@@ -109,7 +116,7 @@ const call = async (ip, message = 'what do you build?', page = '/', hash = '', h
       'content-length': '60',
       'x-forwarded-for': ip
     },
-    body: { message, page, history, pageContext: { hash, ...pageState } }
+    body: { message, page, history, pageContext: { hash, ...pageState }, ...(actionResult?{actionResult}:{}) }
   }, res);
   return { status, json, headers, text: chunks.join(''), chunkCount: chunks.length };
 };
@@ -181,6 +188,24 @@ check('action carries exact verified destination', decodeURIComponent(result.tex
 check('action records explicit section intent', decodeURIComponent(result.text).includes('"section_requested":true'), true);
 check('action carries one model-authored status', decodeURIComponent(result.text).includes('"status":"Finding the symbol sequence…"'), true);
 check('action carries model-authored arrival', decodeURIComponent(result.text).includes('"arrival":"You’re at the animated logo now.'), true);
+const actionMatch=result.text.match(/<!--abatchan-nav:[^:]+:([^>]+)-->/);
+const verifiedAction=JSON.parse(decodeURIComponent(actionMatch[1]));
+check('validated action carries a signed result receipt', typeof verifiedAction.receipt==='string'&&verifiedAction.receipt.includes('.'), true);
+
+console.log('\n=== verified tool results return to the model before its conclusion ===');
+result=await call('5.5.5.5','', '/brand','#symbol',[],{}, {
+  receipt:verifiedAction.receipt,
+  outcome:'completed',
+  current_route:'/brand#symbol',
+  target_found:true,
+  highlighted:true,
+  form_updated:false,
+  applied_fields:[]
+});
+check('continuation sends the original structured tool call', lastDeepSeekBody.messages.some(item=>item.role==='assistant'&&item.tool_calls?.[0]?.function?.name==='navigate_site'), true);
+check('continuation sends verified browser output as a tool result', lastDeepSeekBody.messages.some(item=>item.role==='tool'&&item.content.includes('"highlighted":true')), true);
+check('verified conclusion is streamed from the model', result.text.includes('verified destination is open'), true);
+check('continuation cannot choose another tool', Object.hasOwn(lastDeepSeekBody,'tools'), false);
 
 console.log('\n=== navigation preambles never flash then disappear ===');
 table.clear();
@@ -198,6 +223,15 @@ result = await call('5.5.5.52', 'Show both projects, then highlight the hardware
 check('tool contract requires related destinations', lastDeepSeekBody.tools[0].function.parameters.required.includes('related_links'), true);
 check('secondary destination becomes a Markdown link', decodeURIComponent(result.text).includes('[Estimatio AI](/work#work-estimatio-ai)'), true);
 check('primary destination remains the active journey', decodeURIComponent(result.text).includes('"href":"/work#work-smart-motorcycle-dashboard"'), true);
+
+console.log('\n=== an explicit wait-for-approval request stays structured ===');
+table.clear();
+deepSeekMode='conditional-tool';
+result=await call('5.5.5.53','Mo fẹ́ kọ dashboard kan fún ile-iṣẹ kekere kan. Explain the suitable service in simple English, show me relevant work, but don’t leave this page until I approve.');
+const conditionalText=decodeURIComponent(result.text);
+check('tool schema represents explicit approval', lastDeepSeekBody.tools[0].function.parameters.required.includes('requires_approval'), true);
+check('model can require approval regardless of browser default', conditionalText.includes('"requires_approval":true'), true);
+check('related work is visible before approval', conditionalText.includes('[Smart motorcycle dashboard](/work#work-smart-motorcycle-dashboard)')&&conditionalText.includes('[Estimatio AI](/work#work-estimatio-ai)'), true);
 
 console.log('\n=== a precise About fact can be highlighted ===');
 table.clear();
@@ -258,12 +292,22 @@ deepSeekMode = 'form-update';
 result = await call('7.7.7.4', 'Update the email to full name @ gmail.com.', '/contact', '#project-form', [
   {role:'user',content:'Prepare the form for Ada Studio, ada@example.com. We need booking automation for our five-person studio in October.'},
   {role:'assistant',content:'I prepared the form for review.'}
-]);
+], {formState:{name:'Ada Studio',email:'ada@example.com',type:'Booking automation',message:'A booking automation for a five-person studio, needed in October.'}});
 const updateText=decodeURIComponent(result.text);
 check('spaced email syntax is normalized', updateText.includes('"email":"fullname@gmail.com"'), true);
 check('only email is authorized for replacement', updateText.includes('"replace_fields":["email"]'), true);
 check('departure names the verified replacement', updateText.includes('update the email address to fullname@gmail.com'), true);
 check('arrival confirms the exact verified replacement', updateText.includes('email address fullname@gmail.com'), true);
+
+console.log('\n=== the model can apply a contextual email transformation without keyword routing ===');
+table.clear();
+deepSeekMode='form-domain-update';
+result=await call('7.7.7.41','Change the email from .test to .com.','/contact','#project-form',[],{
+  formState:{name:'Northstar Creative',email:'hello@northstar.test',type:'Booking and payment automation',message:'A five-person booking and payment automation system.'}
+});
+const domainUpdate=decodeURIComponent(result.text);
+check('model-proposed complete address is accepted from authoritative form state', domainUpdate.includes('"email":"hello@northstar.com"'), true);
+check('only the model-selected email field changes', domainUpdate.includes('"replace_fields":["email"]'), true);
 
 console.log('\n=== the guide can inspect live form state and derive a requested email ===');
 table.clear();

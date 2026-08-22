@@ -573,7 +573,8 @@
       ? {...item,content:item.content,journeyRoute:true,journey:undefined}
       : item
     );
-    let pending=false,activeController=null,audioCtx=null,peekTimer=0,confirmTimer=0;
+    let pending=false,activeController=null,audioCtx=null,peekTimer=0,confirmTimer=0,formGuidanceTimer=0;
+    const GUIDANCE_DURATION=4200;
 
     const requestHistory=()=>{
       const recent=history.slice(-8);
@@ -633,7 +634,7 @@
 
     const revealTarget=(url,label,preferExact=false)=>{
       const target=targetFor(url,label,preferExact);
-      if(!target)return false;
+      if(!target)return {found:false,highlighted:false,label:String(label||'')};
       const pageTop=!url.hash&&!preferExact;
       document.querySelectorAll('.assist-guided-target').forEach(node=>node.classList.remove('assist-guided-target'));
       target.classList.add('assist-guided-target');
@@ -644,17 +645,26 @@
       marker.textContent=label||'Here';
       marker.setAttribute('aria-hidden','true');
       target.appendChild(marker);
-      setTimeout(()=>{target.classList.remove('assist-guided-target');marker.remove()},4200);
-      return true;
+      setTimeout(()=>{target.classList.remove('assist-guided-target');marker.remove()},GUIDANCE_DURATION);
+      return {found:true,highlighted:true,label:String(label||targetText(target)).slice(0,120),id:String(target.id||'').slice(0,100)};
+    };
+
+    const clearFormGuidance=form=>{
+      clearTimeout(formGuidanceTimer);
+      form?.querySelectorAll('.field.is-assist-prepared').forEach(field=>field.classList.remove('is-assist-prepared'));
+      form?.querySelectorAll('[data-assist-prepared]').forEach(field=>delete field.dataset.assistPrepared);
+      form?.querySelector('.assist-form-review')?.remove();
     };
 
     const prepareProjectForm=journey=>{
       const values=journey?.form_prefill;
       const form=document.querySelector('#project-form');
-      if(pagePath()!=='/contact'||!form||!values||typeof values!=='object')return false;
+      if(pagePath()!=='/contact'||!form||!values||typeof values!=='object')return {updated:false,appliedFields:[]};
+      clearFormGuidance(form);
       const limits={name:120,email:180,type:180,message:1800};
       const prepared=[];
       const updated=[];
+      const appliedFields=[];
       const replaceFields=new Set(Array.isArray(journey.replace_fields)?journey.replace_fields:[]);
       Object.entries(limits).forEach(([name,max])=>{
         const field=form.elements.namedItem(name);
@@ -666,9 +676,10 @@
         field.closest('.field')?.classList.add('is-assist-prepared');
         field.dispatchEvent(new Event('input',{bubbles:true}));
         field.dispatchEvent(new Event('change',{bubbles:true}));
+        appliedFields.push(name);
         (hasValue?updated:prepared).push(field.labels?.[0]?.textContent?.trim()||name);
       });
-      if(!prepared.length&&!updated.length)return false;
+      if(!prepared.length&&!updated.length)return {updated:false,appliedFields:[]};
       let note=form.querySelector('.assist-form-review');
       if(!note){
         note=document.createElement('div');
@@ -679,9 +690,16 @@
       note.textContent=updated.length
         ? `Nika updated ${updated.join(', ')} from your latest instruction. Review everything before opening the email.`
         : `Nika prepared ${prepared.length} ${prepared.length===1?'field':'fields'} from your conversation. Review everything before opening the email.`;
+      const clearPreparedField=event=>{
+        event.currentTarget.closest('.field')?.classList.remove('is-assist-prepared');
+        delete event.currentTarget.dataset.assistPrepared;
+        if(!form.querySelector('.field.is-assist-prepared'))form.querySelector('.assist-form-review')?.remove();
+      };
+      form.querySelectorAll('[data-assist-prepared]').forEach(field=>field.addEventListener('input',clearPreparedField,{once:true}));
+      formGuidanceTimer=setTimeout(()=>clearFormGuidance(form),GUIDANCE_DURATION);
       const firstEmpty=[...form.querySelectorAll('[required]')].find(field=>!field.value.trim());
       (firstEmpty||form.querySelector('[data-assist-prepared]'))?.focus({preventScroll:true});
-      return true;
+      return {updated:true,appliedFields:[...new Set(appliedFields)],prepared,changed:updated};
     };
 
     const navigateTo=(href,label,handoff=null)=>{
@@ -1067,24 +1085,68 @@
       });
     };
 
-    const completeJourney=(bubble,journey)=>{
+    const actionResultFor=(journey,revealResult,formResult,note='')=>{
+      let destination=null;
+      try{destination=new URL(journey.href,location.href)}catch{}
+      const routeMatches=Boolean(destination&&publicPath(destination)===pagePath());
+      const targetFound=journey.section_requested===true?revealResult?.found===true:routeMatches;
+      const formExpected=Boolean(journey.form_prefill&&Object.values(journey.form_prefill).some(Boolean));
+      const formUpdated=!formExpected||formResult?.updated===true;
+      return {
+        receipt:journey.receipt,
+        outcome:routeMatches&&targetFound&&formUpdated?'completed':routeMatches?'partial':'failed',
+        current_route:`${pagePath()}${location.hash}`,
+        target_found:targetFound,
+        highlighted:revealResult?.highlighted===true,
+        form_updated:formResult?.updated===true,
+        applied_fields:formResult?.appliedFields||[],
+        note
+      };
+    };
+
+    const streamActionConclusion=async(journey,result,arrival)=>{
+      if(!journey?.receipt)throw new Error('This action has no verification receipt.');
+      const response=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        actionResult:result,page:pagePath(),pageContext:currentPageContext(),answerDepth
+      })});
+      if(!response.ok||!response.body)throw new Error('The action result could not be confirmed.');
+      const reader=response.body.getReader(),decoder=new TextDecoder();
+      let text='',frame=0;
+      const paint=()=>{frame=0;render(arrival,text);enhanceActions(arrival);scrollLatest({force:true})};
+      while(true){
+        const {done,value}=await reader.read();if(done)break;
+        text+=decoder.decode(value,{stream:true});
+        if(!frame)frame=requestAnimationFrame(paint);
+      }
+      text+=decoder.decode();if(frame)cancelAnimationFrame(frame);
+      if(!text.trim())throw new Error('The action result was empty.');
+      paint();
+      return text.trim();
+    };
+
+    const completeJourney=async(bubble,journey,result)=>{
       if(!bubble||!journey?.arrival||bubble.dataset.journeyComplete)return;
       bubble.dataset.journeyComplete='true';
       bubble.querySelector('.assist-journey-step.is-active')?.classList.replace('is-active','is-done');
       const arrival=document.createElement('div');
       arrival.className='assist-journey-arrival';
       bubble.appendChild(arrival);
+      scrollLatest({force:true});
+      let conclusion='';
+      try{conclusion=await streamActionConclusion(journey,result,arrival)}
+      catch{
+        await typeBufferedMessage(arrival,journey.arrival);
+        conclusion=journey.arrival;
+      }
+      journey.arrival=conclusion;
       for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){
         transcript[i]={...transcript[i],journey:{...journey,pending:false,completed:true}};break
       }}
-      for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:journey.departure,journeyRoute:true};break}}
+      for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:`${journey.departure}\n${conclusion}`,journeyRoute:true};break}}
       writeStored(transcript);
+      appendJourneyFallback(arrival,journey);
       scrollLatest({force:true});
-      typeBufferedMessage(arrival,journey.arrival).then(()=>{
-        appendJourneyFallback(arrival,journey);
-        scrollLatest({force:true});
-        notifyClosed(journey.arrival);
-      });
+      notifyClosed(conclusion);
     };
 
     const guideJourney=(journey,bubble)=>{
@@ -1100,13 +1162,14 @@
           return;
         }
         let finished=false;
+        let revealResult={found:false,highlighted:false},formResult={updated:false,appliedFields:[]};
         const arrive=()=>{
           if(finished)return;finished=true;
-          setTimeout(()=>completeJourney(bubble,journey),280);
+          setTimeout(()=>completeJourney(bubble,journey,actionResultFor(journey,revealResult,formResult)),280);
         };
         addEventListener('scrollend',arrive,{once:true});
-        revealTarget(url,journey.label,journey.section_requested===true);
-        prepareProjectForm(journey);
+        revealResult=revealTarget(url,journey.label,journey.section_requested===true);
+        formResult=prepareProjectForm(journey);
         setTimeout(arrive,900);
       },320);
     };
@@ -1123,10 +1186,10 @@
           const url=new URL(handoff.href,location.href);
           const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
           journeyStep(bubble,handoff.status);
-          revealTarget(url,handoff.label,handoff.section_requested===true);
-          prepareProjectForm(handoff);
+          const revealResult=revealTarget(url,handoff.label,handoff.section_requested===true);
+          const formResult=prepareProjectForm(handoff);
           const transition=document.querySelector('.page-transition');
-          const finish=()=>completeJourney(bubble,handoff);
+          const finish=()=>completeJourney(bubble,handoff,actionResultFor(handoff,revealResult,formResult));
           if(transition?.classList.contains('is-arriving'))transition.addEventListener('transitionend',finish,{once:true});
           setTimeout(finish,720);
         },120);
@@ -1312,7 +1375,8 @@
         const userEntry=transcript.find(item=>item.role==='user'&&item.id===userId);
         if(userEntry){userEntry.state='answered';refreshUserTools(userEntry)}
         const assistantEntry={id:uid(),role:'assistant',content:answer,createdAt:Date.now(),replyTo:userId||null};
-        if(navigation.action&&actionMode==='ask')assistantEntry.journey={...navigation.action,pending:true};
+        const needsApproval=navigation.action&&(actionMode==='ask'||navigation.action.requires_approval===true);
+        if(needsApproval)assistantEntry.journey={...navigation.action,pending:true};
         if(bubble)addMessageTools(bubble,assistantEntry);
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
@@ -1323,8 +1387,8 @@
           let destinationUrl=null;
           try{destinationUrl=new URL(destination.href,location.href)}catch{}
           if(destinationUrl&&isSafeDestination(destinationUrl)){
-            if(actionMode==='allow')guideJourney(destination,bubble);
-            else requestJourneyApproval(bubble,destination,assistantEntry);
+            if(needsApproval)requestJourneyApproval(bubble,destination,assistantEntry);
+            else guideJourney(destination,bubble);
           }
         }
       }catch(err){

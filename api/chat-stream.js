@@ -1,6 +1,6 @@
 // POST /api/chat-stream
 // Streams plain UTF-8 text while keeping provider and Supabase secrets private.
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { COMMERCIAL_GUIDE } from './commercial-guide.js';
 import { consume } from './quota.js';
 
@@ -29,8 +29,9 @@ Voice and style:
 - Questions such as "Where am I?", "What page is this?" and "Where are we currently?" ask for the current location. Answer them without calling navigate_site, even if the previous turn involved navigation.
 - Treat an explicit instruction or clear consent to move, take, bring, send, put, show, or lead the visitor to a site destination as navigation intent in any language, including indirect wording. In that case you must call navigate_site rather than merely describing the move.
 - Never claim that you are moving the visitor, that a destination is loading, or that they have arrived in an ordinary text answer. Those claims are truthful only inside a navigate_site journey. If you do not call the tool, answer the question and offer a relative link instead.
-- For a navigation tool call, write the complete journey in your own voice: a departure, one short contextual progress update, and an arrival. Make every part specific to this request and destination. Vary the language naturally instead of reusing a stock template.
+- For a navigation tool call, write a departure and one short contextual progress update in your own voice. The arrival is only a fallback if the verified completion call cannot be made; the normal final conclusion is written after the browser reports what actually happened. Make every part specific to this request and destination. Vary the language naturally instead of reusing a stock template.
 - When calling navigate_site, return no ordinary assistant text beside the tool call. Put every user-visible word in departure, status and arrival only. Never duplicate those fields as paragraphs outside the tool.
+- If the visitor asks to see a destination but explicitly says not to leave until they approve, still call navigate_site and set requires_approval true. Use departure to answer any requested explanation before approval, and put requested alternatives in related_links. Do not flatten an approval request into ordinary prose.
 - If one message asks about multiple pages, projects, or sections, answer every part. The interface can actively navigate to only one destination per turn: choose the one the visitor explicitly wants to view now, or the final requested destination when their priority is unclear. Put every other requested verified destination in related_links, so the visitor can open it without being bounced through several pages. Never silently discard an earlier clause.
 - Prefer a verified section link, such as [project form](/contact#project-form), only when that section matches the visitor's stated destination. A general page request must start at the top of that page.
 - The live page context includes automatically registered highlight targets for headings, cards, FAQs, projects, forms, fields and meaningful copy. When the visitor explicitly asks to highlight or reveal one of those targets on the current page, set section_requested to true and use its exact listed anchor.
@@ -164,7 +165,8 @@ const NAV_TOOL={
       properties:{
         departure:{type:'string',description:'A brief, natural response confirming where you are taking the visitor.'},
         status:{type:'string',description:'One short, context-specific progress update for the journey. Write it naturally; do not recycle a generic status.'},
-        arrival:{type:'string',description:'A brief, natural conclusion that confirms the visitor has arrived and offers relevant next help without repeating the departure.'},
+        arrival:{type:'string',description:'A brief fallback conclusion used only if the browser cannot request a verified post-action conclusion. Do not assume success beyond the requested destination.'},
+        requires_approval:{type:'boolean',description:'True when the latest visitor message explicitly says to wait, ask, confirm, or obtain approval before moving or changing the form. False otherwise. The browser permission setting can still require approval.'},
         href:{type:'string',description:'One verified relative page route, optionally with an exact anchor listed in live context or the verified directory. Omit the anchor for a general page request and when a safe exact target on another page is known only by label.'},
         section_requested:{type:'boolean',description:'True only when the visitor explicitly asked for this particular section or described that section as their destination. False when they named only the page or asked generally.'},
         label:{type:'string',description:'A concise human label for the exact destination. When section_requested is true, name that requested content specifically, never only the page.'},
@@ -173,10 +175,31 @@ const NAV_TOOL={
         derive_email_from_name:{type:'boolean',description:'True only when the latest visitor message explicitly asks to form the email from the current name/company field. The server verifies the derived address against live form state.'},
         related_links:{type:'array',maxItems:3,description:'Other verified destinations the visitor requested in the same message but which should not replace the active navigation. Return an empty array when there are none.',items:{type:'object',properties:{href:{type:'string',description:'A verified relative route and optional exact anchor from the directory.'},label:{type:'string',description:'A concise human label for this related destination.'}},required:['href','label'],additionalProperties:false}}
       },
-      required:['departure','status','arrival','href','section_requested','label','related_links'],
+      required:['departure','status','arrival','requires_approval','href','section_requested','label','related_links'],
       additionalProperties:false
     }
   }
+};
+
+const RECEIPT_TTL=2*60*1000;
+const receiptSecret=()=>process.env.ASSISTANT_ACTION_SECRET||process.env.DEEPSEEK_API_KEY||'';
+const signReceipt=payload=>{
+  const body=Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature=createHmac('sha256',receiptSecret()).update(body).digest('base64url');
+  return `${body}.${signature}`;
+};
+const readReceipt=value=>{
+  try{
+    const [body,signature,extra]=String(value||'').split('.');
+    if(!body||!signature||extra||!receiptSecret())return null;
+    const expected=createHmac('sha256',receiptSecret()).update(body).digest();
+    const supplied=Buffer.from(signature,'base64url');
+    if(expected.length!==supplied.length||!timingSafeEqual(expected,supplied))return null;
+    const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));
+    if(payload?.v!==1||!Number.isFinite(payload?.issuedAt)||Date.now()-payload.issuedAt>RECEIPT_TTL)return null;
+    if(!payload.action||!Object.hasOwn(PAGE,String(payload.action.href||'').split('#')[0]||'/'))return null;
+    return payload;
+  }catch{return null;}
 };
 
 const PAGE={
@@ -200,7 +223,10 @@ const hits=new Map();
 // obvious hammering cheaply; it cannot cap what the day costs. api/quota.js
 // does, with counters in the settings table every instance shares — one for
 // the site's day and one for each connection's day.
-const RATE={max:20,windowMs:10*60*1000};
+// A completed site action uses two requests: the initial tool decision and one
+// signed result continuation. Count both while preserving roughly the same
+// number of normal visitor turns as the previous single-request flow.
+const RATE={max:40,windowMs:10*60*1000};
 function allowed(ip){
   const now=Date.now(),record=hits.get(ip);
   if(!record||now>record.reset){hits.set(ip,{n:1,reset:now+RATE.windowMs});return true;}
@@ -271,24 +297,26 @@ export default async function handler(req,res){
   const contentType=String(req.headers['content-type']||'').toLowerCase();
   const contentLength=Number(req.headers['content-length']||0);
   if(!contentType.includes('application/json')||contentLength>24*1024)return sendError(res,413,'invalid_request','Send a shorter question.');
+  let body={};
+  try{body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});}catch{return sendError(res,400,'invalid_request','The question could not be read.');}
+  if(JSON.stringify(body).length>96*1024)return sendError(res,413,'invalid_request','Send a shorter question or fewer attachments.');
+  if(!process.env.DEEPSEEK_API_KEY)return sendError(res,503,'not_configured','The live model is not connected right now.');
+  const actionResult=body.actionResult&&typeof body.actionResult==='object'?body.actionResult:null;
+  const receipt=actionResult?readReceipt(actionResult.receipt):null;
+  if(actionResult&&!receipt)return sendError(res,400,'invalid_action','That site action could not be verified.');
   const ip=String(req.headers['x-forwarded-for']||'').split(',')[0].trim()||'unknown';
   if(!allowed(ip))return sendError(res,429,'rate_limited','There have been many questions from this connection. Try again in a few minutes.');
 
   // The ceiling that actually bounds the bill.
-  const usage=await consume(ip);
-  if(!usage.allowed){
+  const usage=receipt?{allowed:true,remaining:'',personal:''}:await consume(ip);
+  if(!receipt&&!usage.allowed){
     return usage.reason==='ip_daily'
       ? sendError(res,429,'ip_daily_limit','This connection has used its questions for today. Email or WhatsApp reaches Abat directly, with no limit.')
       : sendError(res,429,'daily_limit','The guide has answered all it can today. Send the question by email or WhatsApp and Abat will reply directly.');
   }
-  if(!process.env.DEEPSEEK_API_KEY)return sendError(res,503,'not_configured','The live model is not connected right now.');
-
-  let body={};
-  try{body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});}catch{return sendError(res,400,'invalid_request','The question could not be read.');}
-  if(JSON.stringify(body).length>96*1024)return sendError(res,413,'invalid_request','Send a shorter question or fewer attachments.');
-  const message=String(body.message||'').slice(0,1000).trim();
+  const message=String(receipt?.message||body.message||'').slice(0,1000).trim();
   if(!message)return sendError(res,400,'invalid_request','Enter a question first.');
-  const answerDepth=body.answerDepth==='detailed'?'detailed':'concise';
+  const answerDepth=(receipt?.answerDepth||body.answerDepth)==='detailed'?'detailed':'concise';
   const attachments=Array.isArray(body.attachments)?body.attachments.slice(0,10).map(item=>{
     const kind=['image','text','file'].includes(item?.kind)?item.kind:'file';
     return {
@@ -351,7 +379,28 @@ export default async function handler(req,res){
     const visitorMessage=attachmentContext?`${message}\n\nAttachments supplied with this turn:\n${attachmentContext}`:message;
 
     const routeCheck=`Final live-route check immediately before the visitor's newest message: the browser is on ${page}${pageContext?.hash||''}. This value is newer than every route mentioned in conversation history. If the visitor asks to go elsewhere, do not say they are already there.`;
-    const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify({model:model(settings['assistant.model']),thinking:{type:'disabled'},stream:true,max_tokens:answerDepth==='detailed'?720:420,temperature:.35,tools:[NAV_TOOL],tool_choice:'auto',messages:[{role:'system',content:system},...history,{role:'system',content:routeCheck},{role:'user',content:visitorMessage}]})});
+    const verifiedResult=receipt?{
+      outcome:['completed','partial','cancelled','failed'].includes(actionResult.outcome)?actionResult.outcome:'failed',
+      current_route:Object.hasOwn(PAGE,String(actionResult.current_route||'').split('#')[0]||'/')?String(actionResult.current_route).slice(0,180):`${page}${pageContext?.hash||''}`,
+      target_found:actionResult.target_found===true,
+      highlighted:actionResult.highlighted===true,
+      form_updated:actionResult.form_updated===true,
+      applied_fields:Array.isArray(actionResult.applied_fields)?actionResult.applied_fields.filter(field=>['name','email','type','message'].includes(field)).slice(0,4):[],
+      form_state:pageContext?.formState||null,
+      note:String(actionResult.note||'').replace(/[\r\n\0]/g,' ').trim().slice(0,240)
+    }:null;
+    const continuationInstruction='The website has now returned the verified result of your tool call. Continue naturally from that result in 1 to 3 short sentences. Confirm only what the result proves. If it was partial or failed, say so plainly and give the verified destination as a relative fallback link. Do not repeat the departure or progress update. Do not call another tool.';
+    const providerMessages=receipt
+      ? [
+          {role:'system',content:`${system}\n\n${continuationInstruction}`},
+          {role:'user',content:receipt.message},
+          {role:'assistant',content:null,tool_calls:[{id:receipt.callId,type:'function',function:{name:'navigate_site',arguments:JSON.stringify(receipt.action)}}]},
+          {role:'tool',tool_call_id:receipt.callId,content:JSON.stringify(verifiedResult)}
+        ]
+      : [{role:'system',content:system},...history,{role:'system',content:routeCheck},{role:'user',content:visitorMessage}];
+    const providerBody={model:model(settings['assistant.model']),thinking:{type:'disabled'},stream:true,max_tokens:receipt?260:(answerDepth==='detailed'?720:420),temperature:.35,messages:providerMessages};
+    if(!receipt){providerBody.tools=[NAV_TOOL];providerBody.tool_choice='auto';}
+    const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify(providerBody)});
     if(!upstream.ok){
       const detail=await upstream.text();
       console.error('assistant stream upstream',upstream.status,detail.slice(0,400));
@@ -360,8 +409,10 @@ export default async function handler(req,res){
 
     res.statusCode=200;
     // Lets the browser warn before it hits the wall rather than after.
-    res.setHeader('X-Guide-Remaining',String(usage.remaining));
-    res.setHeader('X-Guide-Personal',String(usage.personal));
+    if(!receipt){
+      res.setHeader('X-Guide-Remaining',String(usage.remaining));
+      res.setHeader('X-Guide-Personal',String(usage.personal));
+    }
     const actionToken=randomUUID();
     res.setHeader('Content-Type','text/plain; charset=utf-8');
     res.setHeader('X-Abatchan-Action-Token',actionToken);
@@ -428,6 +479,7 @@ export default async function handler(req,res){
         const departure=cleanVoice(String(action.departure||'').slice(0,500));
         const status=cleanVoice(String(action.status||'').slice(0,160));
         const authoredArrival=cleanVoice(String(action.arrival||'').slice(0,500));
+        const requiresApproval=action.requires_approval===true;
         const rawHref=String(action.href||'').trim().slice(0,180);
         const sectionRequested=action.section_requested===true;
         const href=sectionRequested?rawHref:(rawHref.split('#')[0]||'/');
@@ -458,23 +510,24 @@ export default async function handler(req,res){
           .join('\n')
           .replace(/\\([@._+-])/g,'$1')
           .toLowerCase();
-        const latestText=String(message||'').replace(/\\([@._+-])/g,'$1').toLowerCase();
-        const latestEmails=[...latestText.matchAll(/[a-z0-9_%+.-]+(?:\s+[a-z0-9_%+.-]+)*\s*@\s*[a-z0-9-]+(?:\s*\.\s*[a-z0-9-]+)+/gi)]
-          .map(match=>match[0].replace(/\s+/g,'').toLowerCase());
         const currentFormName=String(pageContext?.formState?.name||'').trim();
         const currentFormEmail=String(pageContext?.formState?.email||'').trim().toLowerCase();
         const derivedLocal=currentFormName.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
         const currentDomain=/^[^\s@]+@([^\s@]+\.[^\s@]+)$/.exec(currentFormEmail)?.[1]||'';
         const verifiedDerivedEmail=derivedLocal&&currentDomain?`${derivedLocal}@${currentDomain}`:'';
         const derivedEmailAllowed=action.derive_email_from_name===true&&formPrefill?.email.toLowerCase()===verifiedDerivedEmail;
-        if(formPrefill?.name&&!suppliedText.includes(formPrefill.name.toLowerCase()))formPrefill.name='';
-        if(formPrefill?.email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formPrefill.email)||(!suppliedText.replace(/\s+/g,'').includes(formPrefill.email.toLowerCase())&&!latestEmails.includes(formPrefill.email.toLowerCase())&&!derivedEmailAllowed)))formPrefill.email='';
         const requestedReplaceFields=[...new Set((Array.isArray(action.replace_fields)?action.replace_fields:[]).filter(field=>['name','email','type','message'].includes(field)))];
+        const requestedReplaceSet=new Set(requestedReplaceFields);
+        // The model interprets corrections from language and live form state.
+        // Code validates the proposed value and action boundary; it does not
+        // try to rediscover intent with trigger phrases or exact-text matching.
+        if(formPrefill?.name&&!requestedReplaceSet.has('name')&&!suppliedText.includes(formPrefill.name.toLowerCase()))formPrefill.name='';
+        if(formPrefill?.email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formPrefill.email)||(!requestedReplaceSet.has('email')&&!suppliedText.replace(/\s+/g,'').includes(formPrefill.email.toLowerCase())&&!derivedEmailAllowed)))formPrefill.email='';
         const replaceFields=requestedReplaceFields.filter(field=>{
           const value=formPrefill?.[field];
           if(!value)return false;
-          if(field==='email')return latestText.replace(/\s+/g,'').includes(value.toLowerCase())||derivedEmailAllowed;
-          if(field==='name')return latestText.includes(value.toLowerCase());
+          if(!pageContext?.formState||!String(pageContext.formState[field]||'').trim())return false;
+          if(field==='email')return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
           return true;
         });
         if(requestedReplaceFields.length&&!replaceFields.length){
@@ -503,11 +556,12 @@ export default async function handler(req,res){
           ? 'the project context you supplied'
           : `${fieldLabel(field)} ${value}`);
         const preparedLabels=preparedFields.map(([field])=>fieldLabel(field));
-        const safeDeparture=replacementDetails.length
+        const safeDepartureBase=replacementDetails.length
           ? `I’ll update ${joinDetails(replacementDetails)}.`
           : hasPrefill
             ? `I’ll prepare the enquiry with ${joinDetails(preparationDetails)}.`
             : departure;
+        const safeDeparture=requiresApproval&&relatedMarkup?`${safeDepartureBase} ${relatedMarkup}`:safeDepartureBase;
         const safeStatus=replacementDetails.length
           ? `Applying ${replaceFields.length===1?'that verified change':'those verified changes'} to the project form.`
           : hasPrefill
@@ -518,17 +572,20 @@ export default async function handler(req,res){
           : hasPrefill
             ? `The enquiry form now includes ${joinDetails(preparationDetails)}. Review each field before opening the email.`
             : authoredArrival;
-        const arrival=relatedMarkup?`${safeArrival} ${relatedMarkup}`:safeArrival;
+        const arrival=!requiresApproval&&relatedMarkup?`${safeArrival} ${relatedMarkup}`:safeArrival;
         const authored=[safeDeparture,safeStatus,arrival,...relatedLinks.map(item=>item.label)];
         const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
         // A prepare-form request still has useful work to do when the visitor
         // is already sitting at the form, so it must reach the client action
         // handler instead of being collapsed into an ordinary arrival reply.
-        const alreadyThere=!hasPrefill&&targetPath===page&&((targetHash&&targetHash===(pageContext?.hash||''))||(!targetHash&&!sectionRequested));
+        const alreadyThere=!hasPrefill&&!sectionRequested&&targetPath===page&&((targetHash&&targetHash===(pageContext?.hash||''))||!targetHash);
         if(safeJourney&&alreadyThere&&!wrote){res.write(arrival);wrote=true;}
         else if(safeJourney&&!wrote){res.write(safeDeparture);wrote=true;}
         if(safeJourney&&!alreadyThere&&href.startsWith('/')&&label){
-          const encoded=encodeURIComponent(JSON.stringify({href,label,departure:safeDeparture,status:safeStatus,arrival,section_requested:sectionRequested,...(hasPrefill?{form_prefill:formPrefill}:{}),...(replaceFields.length?{replace_fields:replaceFields}:{})}));
+          const verifiedAction={href,label,departure:safeDeparture,status:safeStatus,arrival,requires_approval:requiresApproval,section_requested:sectionRequested,related_links:relatedLinks,...(hasPrefill?{form_prefill:formPrefill}:{}),...(replaceFields.length?{replace_fields:replaceFields}:{})};
+          const callId=`call_${randomUUID().replace(/-/g,'')}`;
+          const actionReceipt=signReceipt({v:1,issuedAt:Date.now(),callId,message,answerDepth,action:verifiedAction});
+          const encoded=encodeURIComponent(JSON.stringify({...verifiedAction,receipt:actionReceipt}));
           res.write(`\n<!--abatchan-nav:${actionToken}:${encoded}-->`);
         }
       }catch{}
