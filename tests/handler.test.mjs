@@ -172,6 +172,7 @@ table.clear();
 deepSeekMode = 'about-name';
 result = await call('5.5.5.6', 'Highlight the name explanation.', '/about');
 check('name explanation is a verified destination', lastDeepSeekBody.messages[0].content.includes('[name explanation](/about#name-explanation)'), true);
+check('live route is repeated beside the newest message', lastDeepSeekBody.messages.at(-2).content.includes('browser is on /about'), true);
 check('exact name target is emitted', decodeURIComponent(result.text).includes('"href":"/about#name-explanation"'), true);
 check('exact request records section intent', decodeURIComponent(result.text).includes('"section_requested":true'), true);
 

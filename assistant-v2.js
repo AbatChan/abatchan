@@ -490,10 +490,20 @@
     // Journey UI is stored separately from the conversational text so it can
     // be rebuilt after reload without sending display metadata to the model.
     const history=transcript.slice(-8).map(item=>item?.journey?.completed
-      ? {...item,content:[item.content,item.journey.arrival].filter(Boolean).join('\n\n'),journey:undefined}
+      ? {...item,content:item.content,journeyRoute:true,journey:undefined}
       : item
     );
     let pending=false,activeController=null,audioCtx=null,peekTimer=0,confirmTimer=0;
+
+    const requestHistory=()=>{
+      const recent=history.slice(-8);
+      if(navigationState.source!=='visitor')return recent.slice(-4);
+      // A visitor can leave a page after Nika takes them there. Do not resend
+      // that completed journey's old route claim beside the new live context,
+      // or the model may treat “you are on Pricing” as newer than the browser.
+      const journeyQuestions=new Set(recent.filter(item=>item.journeyRoute&&item.replyTo).map(item=>item.replyTo));
+      return recent.filter(item=>!item.journeyRoute&&!journeyQuestions.has(item.id)).slice(-4);
+    };
 
     const rememberJourney=entry=>{
       try{
@@ -906,14 +916,13 @@
       if(!bubble||!journey?.arrival||bubble.dataset.journeyComplete)return;
       bubble.dataset.journeyComplete='true';
       bubble.querySelector('.assist-journey-step.is-active')?.classList.replace('is-active','is-done');
-      const completed=[journey.departure,journey.arrival].filter(Boolean).join('\n\n');
       const arrival=document.createElement('div');
       arrival.className='assist-journey-arrival';
       bubble.appendChild(arrival);
       for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){
         transcript[i]={...transcript[i],journey:{status:journey.status,arrival:journey.arrival,completed:true}};break
       }}
-      for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:completed};break}}
+      for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:journey.departure,journeyRoute:true};break}}
       writeStored(transcript);
       scrollLatest({force:true});
       typeBufferedMessage(arrival,journey.arrival).then(()=>notifyClosed(journey.arrival));
@@ -1078,7 +1087,7 @@
       const paint=()=>{frame=0;if(!answer)return;render(messageContent(ensureBubble()),answer);paintedFrames+=1;scrollLatest()};
       try{
         const res=await fetch('/api/chat-stream',{method:'POST',signal:activeController.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({
-          message:text,history:history.slice(-4),page:location.pathname,pageContext:currentPageContext(),answerDepth,actionMode,
+          message:text,history:requestHistory(),page:pagePath(),pageContext:currentPageContext(),answerDepth,actionMode,
           attachments:attachments.slice(0,MAX_ATTACHMENTS).map(item=>({kind:item.kind,name:item.name,type:item.type,size:item.size,text:item.kind==='text'?item.text:''}))
         })});
         // The server reports what is left of today's budget. Say so once,
