@@ -603,6 +603,33 @@
       return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>';
     };
 
+    // Guided actions keep a normal destination link in their conclusion. The
+    // automation remains the first path, while the real href is a durable
+    // fallback that can reopen or re-highlight the same place after reload.
+    const appendJourneyFallback=(arrival,journey)=>{
+      if(!arrival||!journey?.href||arrival.querySelector('.assist-journey-fallback'))return;
+      let url;
+      try{url=new URL(journey.href,location.href)}catch{return}
+      if(!isSafeDestination(url))return;
+      const href=publicPath(url)+url.hash;
+      const alreadyLinked=[...arrival.querySelectorAll('a[href]')].some(link=>{
+        try{const linked=new URL(link.getAttribute('href'),location.href);return publicPath(linked)+linked.hash===href}catch{return false}
+      });
+      if(alreadyLinked)return;
+      const label=String(journey.label||'destination').trim();
+      const link=document.createElement('a');
+      link.className='assist-action-link assist-journey-fallback';
+      link.href=href;
+      link.innerHTML=`${actionIcon(href)}<span>${escapeText(`Open ${label}`)}</span>`;
+      link.addEventListener('click',event=>{
+        if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+        event.preventDefault();
+        navigateTo(href,label,{section_requested:journey.section_requested===true});
+      });
+      const host=arrival.querySelector('p:last-child')||arrival;
+      host.append(document.createTextNode(' '),link);
+    };
+
     const enhanceActions=el=>{
       if(!el)return [];
       const internal=[];
@@ -663,6 +690,7 @@
       render(arrival,journey.arrival);
       bubble.append(steps,arrival);
       enhanceActions(arrival);
+      appendJourneyFallback(arrival,journey);
       bubble.dataset.journeyComplete='true';
     };
 
@@ -929,12 +957,16 @@
       arrival.className='assist-journey-arrival';
       bubble.appendChild(arrival);
       for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){
-        transcript[i]={...transcript[i],journey:{status:journey.status,arrival:journey.arrival,completed:true}};break
+        transcript[i]={...transcript[i],journey:{...journey,pending:false,completed:true}};break
       }}
       for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:journey.departure,journeyRoute:true};break}}
       writeStored(transcript);
       scrollLatest({force:true});
-      typeBufferedMessage(arrival,journey.arrival).then(()=>notifyClosed(journey.arrival));
+      typeBufferedMessage(arrival,journey.arrival).then(()=>{
+        appendJourneyFallback(arrival,journey);
+        scrollLatest({force:true});
+        notifyClosed(journey.arrival);
+      });
     };
 
     const guideJourney=(journey,bubble)=>{
