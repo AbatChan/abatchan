@@ -302,7 +302,7 @@
         try{url=new URL(link.getAttribute('href'),location.href)}catch{return}
         if(url.origin!==location.origin)return;
         const label=link.textContent.trim()||'Go there';
-        link.replaceWith(document.createTextNode(label));
+        link.remove();
         if(!isSafeDestination(url))return;
         internal.push({href:publicPath(url)+url.hash,label});
       });
