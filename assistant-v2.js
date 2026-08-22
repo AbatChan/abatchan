@@ -15,6 +15,7 @@
   const STORE='abatchanGuideHistoryV1';
   const NAV_STORE='abatchanGuideNavigationV1';
   const JOURNEY_STORE='abatchanGuideJourneyV1';
+  const PAGE_STORE='abatchanGuideCurrentPageV1';
   const TRANSITION_STORE='abatNavigationPending';
   const MAX_STORED=24;
   const WHATSAPP='https://wa.me/2347041857921';
@@ -40,6 +41,27 @@
   const pagePath=()=>location.pathname.replace(/\/index(?:\.html)?$/,'/').replace(/\.html$/,'').replace(/\/+$/,'')||'/';
   const publicPath=url=>(url.pathname.replace(/\.html$/,'').replace(/\/+$/,'')||'/');
   const isSafeDestination=url=>url.origin===location.origin&&PUBLIC_PATHS.has(publicPath(url));
+  let navigationState={source:'initial',from:null,to:pagePath()};
+  const syncNavigationState=()=>{
+    const current=pagePath();
+    try{
+      const previous=sessionStorage.getItem(PAGE_STORE);
+      let handoff=null;
+      try{handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null')}catch{}
+      let guidedTarget='';
+      try{if(handoff?.href)guidedTarget=publicPath(new URL(handoff.href,location.href))}catch{}
+      if(previous&&previous!==current){
+        const guided=guidedTarget===current;
+        navigationState={source:guided?'guide':'visitor',from:previous,to:current};
+        if(!guided)sessionStorage.removeItem(NAV_STORE);
+      }else if(!previous){
+        navigationState={source:'initial',from:null,to:current};
+      }
+      sessionStorage.setItem(PAGE_STORE,current);
+    }catch{navigationState={source:'unknown',from:null,to:current}}
+  };
+  syncNavigationState();
+  addEventListener('pageshow',syncNavigationState);
   const installSectionAnchors=()=>{
     const wanted=SECTION_TITLES[pagePath()]||{};
     const headings=[...document.querySelectorAll('main h1,main h2,main h3')];
@@ -111,6 +133,8 @@
       title:document.title.slice(0,160),
       description:description.slice(0,320),
       text,
+      path:pagePath(),
+      navigation:navigationState,
       activeSection:active?{id:active.id,label:active.querySelector('h1,h2,h3')?.textContent.trim()||''}:null,
       sections,
       journey:Array.isArray(journey)?journey.slice(-4):[]
