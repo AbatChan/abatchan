@@ -170,6 +170,7 @@
       path:pagePath(),
       navigation:navigationState,
       activeSection:active?{id:active.id,label:active.querySelector('h1,h2,h3')?.textContent.trim()||''}:null,
+      hash:location.hash.slice(0,101),
       sections,
       journey:Array.isArray(journey)?journey.slice(-4):[]
     };
@@ -478,9 +479,11 @@
     const revealTarget=(url,label)=>{
       const target=targetFor(url);
       if(!target)return false;
+      const pageTop=!url.hash;
       document.querySelectorAll('.assist-guided-target').forEach(node=>node.classList.remove('assist-guided-target'));
       target.classList.add('assist-guided-target');
-      target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+      if(pageTop)scrollTo({top:0,left:0,behavior:'auto'});
+      else target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
       const marker=document.createElement('span');
       marker.className='assist-guide-marker';
       marker.textContent=label||'Here';

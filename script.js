@@ -671,7 +671,7 @@ const assistantPageContext=()=>{
 // could paint. They load here instead — started in parallel with the settings
 // call this function already waits on, so the launcher costs no extra time and
 // is never painted before the rules that position it arrive.
-const ASSISTANT_CSS='/assistant.css?v=15';
+const ASSISTANT_CSS='/assistant.css?v=16';
 const loadAssistantStyles=()=>new Promise(resolve=>{
   if(document.querySelector('link[data-assist-css]'))return resolve();
   const link=document.createElement('link');
