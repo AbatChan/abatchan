@@ -129,14 +129,28 @@
     const log=panel.querySelector('.assist-log');
     let followLatest=true,autoScrollUntil=0;
     const nearLatest=()=>log.scrollHeight-log.scrollTop-log.clientHeight<72;
+    const bottomPosition=()=>Math.max(0,log.scrollHeight-log.clientHeight);
     const scrollLatest=({force=false,instant=false}={})=>{
       if(!force&&!followLatest)return;
       followLatest=true;
       autoScrollUntil=performance.now()+420;
       requestAnimationFrame(()=>log.scrollTo({
-        top:log.scrollHeight,
+        top:bottomPosition(),
         behavior:instant||matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'
       }));
+    };
+    // Opening changes the panel's available height while the intro may also be
+    // pinned above restored messages. Re-measure after those layout passes so
+    // reopening always lands on the actual last message, not the old maximum.
+    const settleLatest=()=>{
+      if(!panel.classList.contains('is-open'))return;
+      followLatest=true;
+      autoScrollUntil=performance.now()+700;
+      const place=()=>{
+        if(panel.classList.contains('is-open'))log.scrollTop=bottomPosition();
+      };
+      requestAnimationFrame(()=>{place();requestAnimationFrame(place)});
+      [80,220,420].forEach(delay=>setTimeout(place,delay));
     };
     log.addEventListener('scroll',()=>{
       if(performance.now()<autoScrollUntil)return;
@@ -548,7 +562,13 @@
       peekTimer=setTimeout(()=>peek.remove(),7000);chime();
     };
 
-    launch.addEventListener('click',()=>{if(panel.classList.contains('is-open'))clearUnread()});
+    launch.addEventListener('click',()=>{
+      if(!panel.classList.contains('is-open'))return;
+      clearUnread();settleLatest();
+    });
+    panel.addEventListener('transitionend',event=>{
+      if(event.target===panel&&panel.classList.contains('is-open'))settleLatest();
+    });
 
     const fail=(error,question)=>{
       const message=typeof error==='string'?error:error?.message;
