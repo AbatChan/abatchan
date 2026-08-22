@@ -196,8 +196,14 @@
       .slice(0,60)
       .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
     const active=[...document.querySelectorAll('main section[id],main article[id],main h2[id]')]
-      .map(node=>({node,distance:Math.abs(node.getBoundingClientRect().top-innerHeight*.32)}))
-      .sort((a,b)=>a.distance-b.distance)[0]?.node;
+      .map(node=>{
+        const rect=node.getBoundingClientRect();
+        const visible=Math.max(0,Math.min(rect.bottom,innerHeight)-Math.max(rect.top,0));
+        return {node,visible,distance:Math.abs(rect.top-innerHeight*.32)};
+      })
+      .filter(item=>item.visible>0)
+      .sort((a,b)=>b.visible-a.visible||a.distance-b.distance)[0]?.node;
+    const activeContext=active?.matches('h2')?(active.closest('section,article')||active.parentElement):active;
     let journey=[];
     try{journey=JSON.parse(sessionStorage.getItem(JOURNEY_STORE)||'[]')}catch{}
     const projectForm=pagePath()==='/contact'?document.querySelector('#project-form'):null;
@@ -211,7 +217,11 @@
       text,
       path:pagePath(),
       navigation:navigationState,
-      activeSection:active?{id:active.id,label:active.querySelector('h1,h2,h3')?.textContent.trim()||''}:null,
+      activeSection:active?{
+        id:active.id,
+        label:(active.matches('h1,h2,h3')?active:active.querySelector('h1,h2,h3'))?.textContent.trim()||active.dataset.assistTarget||'',
+        text:String(activeContext?.innerText||'').replace(/\s+/g,' ').trim().slice(0,1800)
+      }:null,
       hash:location.hash.slice(0,101),
       sections,
       journey:Array.isArray(journey)?journey.slice(-4):[],
@@ -482,6 +492,69 @@
       setTimeout(()=>{grow();meter(pasted.length>room)},0);
     });
     input.addEventListener('input',()=>{grow();meter(false)});
+
+    // Selected site copy can be handed to Nika without inventing a separate
+    // screenshot workflow. This compact toolbar keeps immediate explanation
+    // separate from adding context to a visitor-authored question.
+    const selectionAction=document.createElement('div');
+    selectionAction.className='assist-selection-action';selectionAction.hidden=true;
+    selectionAction.setAttribute('role','toolbar');selectionAction.setAttribute('aria-label','Actions for selected text');
+    const selectionButton=(label,action,brand=false)=>{
+      const button=document.createElement('button');button.type='button';button.dataset.selectionAction=action;
+      if(brand){
+        const mark=document.createElement('img');mark.src='/assets/abatchan-symbol-indigo-tight.svg';mark.alt='';mark.setAttribute('aria-hidden','true');
+        button.append(mark);
+      }
+      const text=document.createElement('span');text.textContent=label;button.append(text);selectionAction.append(button);
+      return button;
+    };
+    selectionButton('Add to chat','add');
+    selectionButton('Explain','explain');
+    selectionButton('Ask Nika','ask',true);
+    document.body.append(selectionAction);
+    let selectedSiteText='',selectionTimer=0;
+    const hideSelectionAction=()=>{selectionAction.hidden=true;selectedSiteText=''};
+    const placeSelectionAction=()=>{
+      clearTimeout(selectionTimer);
+      selectionTimer=setTimeout(()=>{
+        const selection=getSelection();
+        const text=String(selection?.toString()||'').replace(/\s+/g,' ').trim().slice(0,600);
+        if(!text||selection.isCollapsed||!selection.rangeCount){hideSelectionAction();return}
+        const range=selection.getRangeAt(0);const common=range.commonAncestorContainer.nodeType===1?range.commonAncestorContainer:range.commonAncestorContainer.parentElement;
+        if(!common?.closest('main')||common.closest('.assist-panel,input,textarea,button,a,[contenteditable="true"]')){hideSelectionAction();return}
+        const rect=range.getBoundingClientRect();
+        if(!rect.width&&!rect.height){hideSelectionAction();return}
+        selectedSiteText=text;selectionAction.hidden=false;
+        const width=selectionAction.offsetWidth||286,height=selectionAction.offsetHeight||44;
+        const left=Math.min(innerWidth-width-10,Math.max(10,rect.left+rect.width/2-width/2));
+        const above=rect.top-height-10;
+        const top=above>=10?above:Math.min(innerHeight-height-10,rect.bottom+10);
+        selectionAction.style.left=`${left}px`;selectionAction.style.top=`${top}px`;
+      },120);
+    };
+    document.addEventListener('selectionchange',placeSelectionAction);
+    selectionAction.addEventListener('pointerdown',event=>event.preventDefault());
+    selectionAction.addEventListener('click',event=>{
+      const action=event.target.closest('button')?.dataset.selectionAction;
+      if(!selectedSiteText||!action)return;
+      const quote=`“${selectedSiteText}”`;
+      const question=action==='explain'
+        ? `Explain this in the context of this page:\n${quote}`
+        : action==='ask'
+          ? `I want to ask about this part of the page:\n${quote}\n\n`
+          : quote;
+      input.value=input.value.trim()?`${input.value.trim()}\n\n${question}`:question;
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+      if(!panel.classList.contains('is-open'))launch.click();
+      hideSelectionAction();getSelection()?.removeAllRanges();
+      setTimeout(()=>{
+        if(action==='explain')form.requestSubmit?form.requestSubmit():form.dispatchEvent(new Event('submit',{cancelable:true}));
+        else{input.focus();input.setSelectionRange(input.value.length,input.value.length);settleLatest()}
+      },80);
+    });
+    addEventListener('scroll',hideSelectionAction,{passive:true});
+    addEventListener('resize',hideSelectionAction,{passive:true});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape')hideSelectionAction()});
     // Enter sends, Shift+Enter starts a new line.
     input.addEventListener('keydown',e=>{
       if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){

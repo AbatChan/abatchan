@@ -268,12 +268,16 @@ check('arrival confirms the exact verified replacement', updateText.includes('em
 console.log('\n=== the guide can inspect live form state and derive a requested email ===');
 table.clear();
 deepSeekMode = 'form-derived-email';
-const liveForm={formState:{name:'Ada Studio',email:'fullname@gmail.com',type:'Booking automation',message:'A booking automation for a five-person studio, needed in October.'}};
+const liveForm={
+  activeSection:{id:'project-form',label:'Tell me what needs to work.',text:'Share the project, current setup, required outcome, and timing.'},
+  formState:{name:'Ada Studio',email:'fullname@gmail.com',type:'Booking automation',message:'A booking automation for a five-person studio, needed in October.'}
+};
 result = await call('7.7.7.2', 'It is there as the name. Use it to form the email.', '/contact', '#project-form', [], liveForm);
 const derivedText=decodeURIComponent(result.text);
 const derivedSystem=lastDeepSeekBody.messages.find(item=>item.role==='system'&&item.content.includes('Current project form state'))?.content||'';
 check('current company name reaches the model as live state', derivedSystem.includes('"name":"Ada Studio"'), true);
 check('current email reaches the model as live state', derivedSystem.includes('"email":"fullname@gmail.com"'), true);
+check('the section in view reaches the model with its text', derivedSystem.includes('Current section text: Share the project, current setup, required outcome, and timing.'), true);
 check('verified company-name email is accepted', derivedText.includes('"email":"adastudio@gmail.com"'), true);
 check('derived update still replaces only email', derivedText.includes('"replace_fields":["email"]'), true);
 check('derived conclusion names the new address', derivedText.includes('email address adastudio@gmail.com'), true);
