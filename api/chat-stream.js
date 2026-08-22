@@ -33,6 +33,7 @@ Voice and style:
 - Prefer a verified section link, such as [project form](/contact#project-form), only when that section matches the visitor's stated destination. A general page request must start at the top of that page.
 - The live page context includes automatically registered highlight targets for headings, cards, FAQs, projects, forms, fields and meaningful copy. When the visitor explicitly asks to highlight or reveal one of those targets on the current page, set section_requested to true and use its exact listed anchor.
 - For a specific target on another verified page that has no listed anchor, use the bare verified page route, set section_requested to true, and make label name the requested content precisely. The destination page resolves that label only against its safe target registry. Never invent a CSS selector.
+- When section_requested is true, label must name the exact requested section or content, never merely the destination page. For example, a request for monthly support uses label "Monthly support", not "Pricing page".
 - Use the recent guide navigation in page context when a visitor says "take me back" or refers to a place the guide just showed them. Only return an exact same-site destination already present in that journey or the verified directory.
 
 Commercial guidance:
@@ -92,7 +93,7 @@ Page directory:
 - [Home](/): overview. Specific sections: [selected work](/#selected-work), [services](/#services), [delivery process](/#delivery-process), [client reviews](/#client-reviews), [start a project](/#start-project).
 - [Work](/work): portfolio projects and category filters. Published project anchors include [AI.EXE](/work#work-ai-exe), [Estimatio AI](/work#work-estimatio-ai), [AskForTransparency](/work#work-askfortransparency), [BookingKoala cleaning site](/work#work-bookingkoala-cleaning-site), [abatchan brand](/work#work-abatchan-brand), and [smart motorcycle dashboard](/work#work-smart-motorcycle-dashboard).
 - [About](/about): Abat, the studio, philosophy and principles. Specific sections: [name explanation](/about#name-explanation), [principles](/about#principles), [capabilities](/about#capabilities), [start a project](/about#start-project).
-- [Pricing](/pricing): starting prices and delivery expectations. Specific sections: [website](/pricing#website), [platform](/pricing#platform), [connected system](/pricing#system), [quoting process](/pricing#quote-process), [client reviews](/pricing#client-reviews), [pricing FAQ](/pricing#pricing-faq), [request a quote](/pricing#start-project).
+- [Pricing](/pricing): starting prices and delivery expectations. Specific sections: [website](/pricing#website), [platform](/pricing#platform), [connected system](/pricing#system), [monthly support](/pricing#monthly-support), [quoting process](/pricing#quote-process), [client reviews](/pricing#client-reviews), [pricing FAQ](/pricing#pricing-faq), [request a quote](/pricing#start-project).
 - [Process](/process): [Discovery](/process#discovery), [Scope](/process#scope), [Build](/process#build), [Launch](/process#launch), [Support](/process#support), and [working together](/process#working).
 - [Brand](/brand): name, slogan, symbol, colours, typography, voice and downloads. The animated logo reveal is in the symbol section. Specific sections: [name](/brand#name), [voice](/brand#voice), [logo animation and symbol](/brand#symbol), and [downloads](/brand#downloads).
 - [Contact](/contact): project enquiry and direct email. The exact enquiry destination is [project form](/contact#project-form).
@@ -159,7 +160,7 @@ const NAV_TOOL={
         arrival:{type:'string',description:'A brief, natural conclusion that confirms the visitor has arrived and offers relevant next help without repeating the departure.'},
         href:{type:'string',description:'One verified relative page route, optionally with an exact anchor listed in live context or the verified directory. Omit the anchor for a general page request and when a safe exact target on another page is known only by label.'},
         section_requested:{type:'boolean',description:'True only when the visitor explicitly asked for this particular section or described that section as their destination. False when they named only the page or asked generally.'},
-        label:{type:'string',description:'A concise human label for the destination.'}
+        label:{type:'string',description:'A concise human label for the exact destination. When section_requested is true, name that requested content specifically, never only the page.'}
       },
       required:['departure','status','arrival','href','section_requested','label'],
       additionalProperties:false

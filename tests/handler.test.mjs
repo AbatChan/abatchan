@@ -183,6 +183,8 @@ result = await call('5.5.5.7', 'Highlight monthly support.', '/pricing');
 check('same-page exact highlight still emits an action', result.text.includes('<!--abatchan-nav:'), true);
 check('safe resolver receives the semantic target label', decodeURIComponent(result.text).includes('"label":"Monthly support"'), true);
 check('bare verified page is retained for automatic resolution', decodeURIComponent(result.text).includes('"href":"/pricing"'), true);
+check('monthly support has a verified authored anchor', lastDeepSeekBody.messages[0].content.includes('[monthly support](/pricing#monthly-support)'), true);
+check('exact section labels cannot collapse to the page name', lastDeepSeekBody.messages[0].content.includes('label must name the exact requested section'), true);
 
 console.log('\n=== an already-open page is not navigated again ===');
 table.clear();

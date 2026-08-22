@@ -42,7 +42,8 @@
     '/brand':{'name':'One word, always lowercase.','voice':'What the brand says.','symbol':'Mirrored, open geometry.','downloads':'The short version.','start-project':'Need something not listed here?'}
   };
   const PRECISE_TARGETS={
-    '/about':{'name-explanation':{selector:'.about-copy>p:nth-of-type(2)',label:'name explanation'}}
+    '/about':{'name-explanation':{selector:'.about-copy>p:nth-of-type(2)',label:'name explanation'}},
+    '/pricing':{'monthly-support':{selector:'.scope-strip .scope-item:nth-child(3)',label:'Monthly support'}}
   };
   const targetText=node=>{
     const heading=node.matches('h1,h2,h3')?node:node.querySelector('h1,h2,h3');
@@ -522,19 +523,27 @@
       const normalizedQuery=[...wanted].join(' '),normalizedCandidate=[...available].join(' ');
       return matches/wanted.size+(normalizedCandidate.includes(normalizedQuery)?1:0);
     };
+    const closestTarget=label=>[...document.querySelectorAll('main [data-assist-target]')]
+      .map(node=>({node,score:targetScore(label,node.dataset.assistTarget)}))
+      .sort((a,b)=>b.score-a.score)[0];
     const targetFor=(url,label,preferExact=false)=>{
       installAutomaticTargets();
       if(!url.hash){
         if(preferExact&&label){
-          const ranked=[...document.querySelectorAll('main [data-assist-target]')]
-            .map(node=>({node,score:targetScore(label,node.dataset.assistTarget)}))
-            .sort((a,b)=>b.score-a.score)[0];
+          const ranked=closestTarget(label);
           if(ranked?.score>=.6)return ranked.node;
         }
         return document.querySelector('main h1,main');
       }
       try{
         const raw=document.getElementById(decodeURIComponent(url.hash.slice(1)));
+        // A model-supplied anchor must agree with the requested content. If it
+        // points at a different section, prefer the best matching safe target
+        // on this page rather than faithfully highlighting the wrong thing.
+        if(preferExact&&label&&(!raw||targetScore(label,targetText(raw))<.6)){
+          const ranked=closestTarget(label);
+          if(ranked?.score>=.6)return ranked.node;
+        }
         // Authored assistant targets are deliberately more precise than their
         // containing section. Everything else keeps the safer section-level
         // highlight used by the rest of the site.
