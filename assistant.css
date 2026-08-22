@@ -542,7 +542,7 @@ html[data-theme="light"] .assist-text-action:hover{color:#151519}
 .assist-journey-step.is-active i{border:2px solid color-mix(in srgb,var(--signal) 28%,transparent);border-top-color:var(--signal);animation:assistJourneySpin .72s linear infinite}
 .assist-journey-step.is-done i{background:color-mix(in srgb,var(--signal) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--signal) 46%,transparent)}
 .assist-journey-step.is-done i::after{content:"";position:absolute;left:4px;top:3px;width:5px;height:3px;border-left:1.5px solid var(--signal-ink,var(--signal));border-bottom:1.5px solid var(--signal-ink,var(--signal));transform:rotate(-45deg)}
-.assist-journey-arrival{margin-top:16px;padding-top:2px}
+.assist-journey-arrival{padding-top:2px}
 .assist-journey-arrival.is-streaming::after{content:"";display:inline-block;width:2px;height:.88em;margin-left:3px;vertical-align:-.08em;border-radius:1px;background:var(--signal);animation:assist-caret .75s steps(1) infinite}
 @keyframes assistJourneySpin{to{transform:rotate(1turn)}}
 @media(prefers-reduced-motion:reduce){.assist-journey-step.is-active i{animation:none;border-color:var(--signal)}.assist-journey-arrival.is-streaming::after{animation:none}}
