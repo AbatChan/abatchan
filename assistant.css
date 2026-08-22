@@ -110,7 +110,7 @@ html[data-theme="light"] .assist-form textarea{color:#151519}
 .assist-send:hover{transform:translateY(-2px)}
 .assist-send:disabled{opacity:.45;transform:none;cursor:default}
 .assist-send svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.assist-note{padding:0 16px 12px;color:var(--muted);font-size:11px;line-height:1.45}
+.assist-note{padding:0 16px 12px;color:var(--muted);font-size:11px;line-height:1.45;text-align:center}
 
 /* Navigation and reset feedback belongs to the interface, not the transcript. */
 .assist-system-status{position:absolute;z-index:8;top:66px;left:50%;max-width:calc(100% - 28px);
