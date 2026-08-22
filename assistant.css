@@ -45,11 +45,11 @@ html[data-theme="light"] .assist-panel{background:rgba(255,255,255,.72);
   box-shadow:0 0 0 3px rgba(53,192,122,.18)}
 
 .assist-log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
-  padding:16px;display:flex;flex-direction:column;gap:10px}
+  padding:16px;display:flex;flex-direction:column;gap:12px}
 .assist-msg{padding:10px 13px;border-radius:16px;font-size:14px;line-height:1.5;white-space:pre-wrap;
   animation:assistIn .3s var(--ease) both}
 @keyframes assistIn{from{opacity:0;transform:translateY(6px)}}
-.assist-msg.bot{align-self:stretch;width:100%;max-width:100%;padding:4px 2px;border-radius:0;
+.assist-msg.bot{align-self:stretch;width:100%;max-width:100%;padding:12px 2px 14px;border-radius:0;
   color:var(--paper);background:transparent;box-shadow:none}
 .assist-msg.me{align-self:flex-end;border-bottom-right-radius:6px;
   color:#fff;background:linear-gradient(150deg,#7d80ff,var(--signal))}
@@ -155,7 +155,7 @@ html[data-theme="light"] .assist-msg.bot strong{color:#151519}
 /* Links the model writes into an answer. The error block is also a .bot
    message, so without :not(.btn) this repaints its action buttons as underlined
    indigo text and beats .assist-error-actions .btn on the trailing element. */
-.assist-msg.bot a:not(.btn){color:var(--signal-ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.assist-msg.bot a:not(.btn):not(.assist-action-link){color:var(--signal-ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .assist-msg.bot a:hover{color:var(--paper)}html[data-theme="light"] .assist-msg.bot a:hover{color:#151519}
 .assist-msg.bot code{font:500 .88em/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;padding:.14em .38em;border-radius:6px;background:rgba(99,102,241,.12);color:var(--signal-ink);overflow-wrap:anywhere;word-break:break-word}
 .assist-msg.bot pre{max-width:100%;overflow:auto;margin:.7em 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.22);scrollbar-width:thin;scrollbar-color:rgba(99,102,241,.56) transparent}
@@ -411,7 +411,7 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
   padding-top:10px;
   border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);
 }
-.assist-response-actions button{
+.assist-response-actions a{
   min-height:38px;
   max-width:100%;
   display:inline-flex;
@@ -427,16 +427,17 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
   font-size:12px;
   font-weight:600;
   line-height:1.2;
+  text-decoration:none;
   cursor:pointer;
   transition:transform .2s var(--ease),border-color .2s,background .2s;
 }
-.assist-response-actions button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.assist-response-actions button svg{width:15px;height:15px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s var(--ease)}
-.assist-response-actions button:hover{transform:translateY(-1px);border-color:rgba(129,132,255,.72);background:rgba(99,102,241,.16)}
-.assist-response-actions button:hover svg{transform:translateX(2px)}
-.assist-response-actions button.is-primary{color:#fff;border-color:transparent;background:linear-gradient(145deg,#7c7fff,var(--signal))}
-.assist-response-actions button:focus-visible{outline:3px solid rgba(129,132,255,.42);outline-offset:2px}
-html[data-theme="light"] .assist-response-actions button:not(.is-primary){color:#27272d;background:rgba(79,70,229,.07)}
+.assist-response-actions a span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.assist-response-actions a svg{width:16px;height:16px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s var(--ease)}
+.assist-response-actions a:hover{color:var(--paper);transform:translateY(-1px);border-color:rgba(129,132,255,.72);background:rgba(99,102,241,.16)}
+.assist-response-actions a:hover svg{transform:scale(1.06)}
+.assist-response-actions a.is-primary{color:#fff;border-color:transparent;background:linear-gradient(145deg,#7c7fff,var(--signal))}
+.assist-response-actions a:focus-visible{outline:3px solid rgba(129,132,255,.42);outline-offset:2px}
+html[data-theme="light"] .assist-response-actions a:not(.is-primary){color:#27272d;background:rgba(79,70,229,.07)}
 
 .assist-journey-steps{display:grid;gap:7px;margin:12px 0}
 .assist-journey-step{
@@ -458,7 +459,7 @@ html[data-theme="light"] .assist-response-actions button:not(.is-primary){color:
 .assist-journey-step.is-active i{border:2px solid color-mix(in srgb,var(--signal) 28%,transparent);border-top-color:var(--signal);animation:assistJourneySpin .72s linear infinite}
 .assist-journey-step.is-done i{background:color-mix(in srgb,var(--signal) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--signal) 46%,transparent)}
 .assist-journey-step.is-done i::after{content:"";position:absolute;left:4px;top:3px;width:5px;height:3px;border-left:1.5px solid var(--signal-ink,var(--signal));border-bottom:1.5px solid var(--signal-ink,var(--signal));transform:rotate(-45deg)}
-.assist-journey-arrival{margin-top:12px}
+.assist-journey-arrival{margin-top:16px;padding-top:2px}
 @keyframes assistJourneySpin{to{transform:rotate(1turn)}}
 @media(prefers-reduced-motion:reduce){.assist-journey-step.is-active i{animation:none;border-color:var(--signal)}}
 
@@ -466,5 +467,5 @@ html[data-theme="light"] .assist-response-actions button:not(.is-primary){color:
 .assist-guide-marker{position:absolute;z-index:12;top:10px;right:10px;max-width:min(240px,70%);padding:7px 10px;border-radius:999px;color:#fff;background:rgba(79,70,229,.94);box-shadow:0 10px 30px rgba(79,70,229,.34);font:650 11px/1.2 Geist,Inter,sans-serif;letter-spacing:.01em;pointer-events:none;animation:assistMarkerIn .35s var(--ease) both}
 @keyframes assistTargetPulse{50%{outline-color:rgba(129,132,255,.28);outline-offset:13px}}
 @keyframes assistMarkerIn{from{opacity:0;transform:translateY(-5px) scale(.96)}}
-@media(max-width:640px){.assist-response-actions{display:grid;grid-template-columns:1fr}.assist-response-actions button{width:100%;min-height:44px}.assist-guide-marker{top:8px;right:8px}}
+@media(max-width:640px){.assist-response-actions{display:grid;grid-template-columns:1fr}.assist-response-actions a{width:100%;min-height:44px}.assist-guide-marker{top:8px;right:8px}}
 @media(prefers-reduced-motion:reduce){.assist-guided-target,.assist-guide-marker{animation:none}}

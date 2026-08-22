@@ -162,12 +162,12 @@ const NAV_TOOL={
       type:'object',
       properties:{
         departure:{type:'string',description:'A brief, natural response confirming where you are taking the visitor.'},
-        progress:{type:'array',description:'One short, context-specific progress update for the journey. Write it naturally; do not recycle a generic status.',items:{type:'string'},minItems:1,maxItems:1},
+        status:{type:'string',description:'One short, context-specific progress update for the journey. Write it naturally; do not recycle a generic status.'},
         arrival:{type:'string',description:'A brief, natural conclusion that confirms the visitor has arrived and offers relevant next help without repeating the departure.'},
         href:{type:'string',description:'One exact relative destination from the verified page directory, including the most specific anchor available.'},
         label:{type:'string',description:'A concise human label for the destination.'}
       },
-      required:['departure','progress','arrival','href','label'],
+      required:['departure','status','arrival','href','label'],
       additionalProperties:false
     }
   }
@@ -383,15 +383,15 @@ export default async function handler(req,res){
       try{
         const action=JSON.parse(toolArguments);
         const departure=String(action.departure||'').trim().slice(0,500);
-        const progress=Array.isArray(action.progress)?action.progress.map(item=>String(item||'').trim().slice(0,160)).filter(Boolean).slice(0,1):[];
+        const status=String(action.status||'').trim().slice(0,160);
         const arrival=String(action.arrival||'').trim().slice(0,500);
         const href=String(action.href||'').trim().slice(0,180);
         const label=String(action.label||'').trim().slice(0,100);
-        const authored=[departure,...progress,arrival];
+        const authored=[departure,status,arrival];
         const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
         if(safeJourney&&!wrote){res.write(departure);wrote=true;}
-        if(safeJourney&&progress.length===1&&href.startsWith('/')&&label){
-          const encoded=encodeURIComponent(JSON.stringify({href,label,departure,progress,arrival}));
+        if(safeJourney&&href.startsWith('/')&&label){
+          const encoded=encodeURIComponent(JSON.stringify({href,label,departure,status,arrival}));
           res.write(`\n<!--abatchan-nav:${actionToken}:${encoded}-->`);
         }
       }catch{}

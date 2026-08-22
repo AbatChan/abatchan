@@ -127,6 +127,21 @@
     if(!panel||panel.dataset.streamV2)return;
     panel.dataset.streamV2='true';
     const log=panel.querySelector('.assist-log');
+    let followLatest=true,autoScrollUntil=0;
+    const nearLatest=()=>log.scrollHeight-log.scrollTop-log.clientHeight<72;
+    const scrollLatest=({force=false,instant=false}={})=>{
+      if(!force&&!followLatest)return;
+      followLatest=true;
+      autoScrollUntil=performance.now()+420;
+      requestAnimationFrame(()=>log.scrollTo({
+        top:log.scrollHeight,
+        behavior:instant||matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'
+      }));
+    };
+    log.addEventListener('scroll',()=>{
+      if(performance.now()<autoScrollUntil)return;
+      followLatest=nearLatest();
+    },{passive:true});
     const oldForm=panel.querySelector('.assist-form');
     const oldChips=panel.querySelector('.assist-chips');
     const launch=document.querySelector('.assist-launch');
@@ -265,6 +280,18 @@
       return true;
     };
 
+    const actionIcon=href=>{
+      const path=String(href).split('#')[0];
+      if(path==='/contact')return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 4.5h13v9h-8l-3.5 3v-3H3.5z"/></svg>';
+      if(path==='/pricing')return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.5 3.5H16v5.5l-7 7-5-5 6.5-7.5z"/><circle cx="13.4" cy="6.2" r=".8"/></svg>';
+      if(path==='/work')return '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="6" width="14" height="10" rx="2"/><path d="M7 6V4h6v2M3 10h14"/></svg>';
+      if(path==='/process')return '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="15" cy="15" r="2"/><path d="M7 5h3a3 3 0 0 1 3 3v4M10 12l3 3 3-3"/></svg>';
+      if(path==='/brand')return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8l1.3 4.1 4.1 1.3-4.1 1.3-1.3 4.1-1.3-4.1-4.1-1.3 4.1-1.3zM15.5 12.5l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6z"/></svg>';
+      if(path==='/reviews')return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4.5h12v9H9l-4 3v-3H4zM7 8h6M7 10.5h4"/></svg>';
+      if(path==='/')return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 9.2L10 3.5l6.5 5.7V16h-5v-4h-3v4h-5z"/></svg>';
+      return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>';
+    };
+
     const enhanceActions=el=>{
       if(!el||el.dataset.actionsReady)return [];
       el.dataset.actionsReady='true';
@@ -283,12 +310,16 @@
       if(!unique.length)return [];
       const actions=document.createElement('div');actions.className='assist-response-actions';
       unique.forEach((item,index)=>{
-        const button=document.createElement('button');button.type='button';button.className=index===0?'is-primary':'';
-        button.innerHTML=`<span>${escapeText(item.label)}</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>`;
-        button.addEventListener('click',()=>navigateTo(item.href,item.label));
-        actions.append(button);
+        const link=document.createElement('a');link.href=item.href;link.className='assist-action-link'+(index===0?' is-primary':'');
+        link.innerHTML=`${actionIcon(item.href)}<span>${escapeText(item.label)}</span>`;
+        link.addEventListener('click',event=>{
+          if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+          event.preventDefault();navigateTo(item.href,item.label);
+        });
+        actions.append(link);
       });
       el.append(actions);
+      scrollLatest();
       return unique;
     };
 
@@ -302,7 +333,7 @@
       let action=null;
       try{
         const parsed=JSON.parse(decodeURIComponent(match[1]));
-        if(parsed&&typeof parsed.href==='string'&&typeof parsed.label==='string'&&typeof parsed.departure==='string'&&typeof parsed.arrival==='string'&&Array.isArray(parsed.progress)&&parsed.progress.length===1&&parsed.progress.every(item=>typeof item==='string'))action=parsed;
+        if(parsed&&typeof parsed.href==='string'&&typeof parsed.label==='string'&&typeof parsed.departure==='string'&&typeof parsed.status==='string'&&typeof parsed.arrival==='string')action=parsed;
       }catch{}
       return {text:String(text).replace(match[0],'').trim(),action};
     };
@@ -311,7 +342,7 @@
       const el=document.createElement('div');el.className='assist-msg '+who;
       if(persisted)el.dataset.chatEntry='true';
       if(who==='bot'){render(el,text);enhanceActions(el)}else el.textContent=text;
-      log.appendChild(el);log.scrollTop=log.scrollHeight;return el;
+      log.appendChild(el);scrollLatest({force:who==='me'});return el;
     };
 
     if(transcript.length){
@@ -369,7 +400,7 @@
       }
       step.classList.remove('is-active','is-done');
       step.classList.add(done?'is-done':'is-active');
-      log.scrollTop=log.scrollHeight;
+      scrollLatest({force:true});
     };
 
     const completeJourney=(bubble,journey)=>{
@@ -386,6 +417,7 @@
       for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){transcript[i]={...transcript[i],content:completed};break}}
       for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:completed};break}}
       writeStored(transcript);
+      scrollLatest({force:true});
       notifyClosed(journey.arrival);
     };
 
@@ -393,7 +425,7 @@
       let url;
       try{url=new URL(journey.href,location.href)}catch{return}
       if(!isSafeDestination(url))return;
-      journeyStep(bubble,journey.progress[0]);
+      journeyStep(bubble,journey.status);
       if(publicPath(url)!==pagePath()){
         navigateTo(journey.href,journey.label,journey);
         return;
@@ -413,13 +445,13 @@
     // points at the promised destination instead of starting over.
     try{
       const handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null');
-      if(handoff&&Date.now()-Number(handoff.at||0)<30000&&Array.isArray(handoff.progress)&&handoff.progress.length===1&&typeof handoff.arrival==='string'){
+      if(handoff&&Date.now()-Number(handoff.at||0)<30000&&typeof handoff.status==='string'&&typeof handoff.arrival==='string'){
         sessionStorage.removeItem(NAV_STORE);
         setTimeout(()=>{
           if(!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);
           const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
-          journeyStep(bubble,handoff.progress[0]);
+          journeyStep(bubble,handoff.status);
           revealTarget(url,handoff.label);
           const transition=document.querySelector('.page-transition');
           const finish=()=>completeJourney(bubble,handoff);
@@ -450,7 +482,7 @@
       el.className='assist-typing';el.setAttribute('role','status');
       el.setAttribute('aria-label','abatchan is thinking');
       el.innerHTML='<i></i><i></i><i></i>';
-      log.appendChild(el);log.scrollTop=log.scrollHeight;
+      log.appendChild(el);scrollLatest({force:true});
       return el;
     };
 
@@ -516,7 +548,7 @@
       const contact=document.createElement('a');contact.href='/contact';contact.className='btn primary sm';contact.textContent='Email Abat ↗';
       const whatsapp=document.createElement('a');whatsapp.href=WHATSAPP;whatsapp.className='btn sm assist-wa';
       whatsapp.target='_blank';whatsapp.rel='noopener noreferrer';whatsapp.textContent='WhatsApp ↗';
-      actions.append(contact,whatsapp);el.append(title,body,actions);log.appendChild(el);log.scrollTop=log.scrollHeight;
+      actions.append(contact,whatsapp);el.append(title,body,actions);log.appendChild(el);scrollLatest({force:true});
     };
 
     const reply=async text=>{
@@ -530,7 +562,7 @@
         bubble=add('','bot',true);bubble.classList.add('is-streaming');
         return bubble;
       };
-      const paint=()=>{frame=0;if(!answer)return;render(ensureBubble(),answer);log.scrollTop=log.scrollHeight};
+      const paint=()=>{frame=0;if(!answer)return;render(ensureBubble(),answer);scrollLatest()};
       try{
         const res=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history:history.slice(-4),page:location.pathname,pageContext:currentPageContext()})});
         // The server reports what is left of today's budget. Say so once,
@@ -550,7 +582,7 @@
           note.setAttribute('role','status');
           note.textContent=warning;
           log.append(note);
-          log.scrollTop=log.scrollHeight;
+          scrollLatest();
         }
         const type=res.headers.get('content-type')||'';
         if(!res.ok){
