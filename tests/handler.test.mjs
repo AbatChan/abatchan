@@ -19,7 +19,7 @@ globalThis.fetch = async (url, opts = {}) => {
   }
   if (u.includes('api.deepseek.com')) {
     lastDeepSeekBody = JSON.parse(opts.body);
-    const sse = deepSeekMode === 'tool'
+    const sse = deepSeekMode === 'tool' || deepSeekMode === 'tool-preamble'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring up the animated logo for you.\\",\\"status\\":\\"Finding the symbol sequence…\\",\\"arrival\\":\\"You’re at the animated logo now. Want to explore how the symbol is constructed next?\\",\\"href\\":\\"/brand#symbol\\",\\"section_requested\\":true,\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
       : deepSeekMode === 'about-name'
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Let me bring the name explanation into view.\\",\\"status\\":\\"Finding the identity note.\\",\\"arrival\\":\\"Here it is. The highlighted paragraph explains how the names relate.\\",\\"href\\":\\"/about#name-explanation\\",\\"section_requested\\":true,\\"label\\":\\"name explanation\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
@@ -33,6 +33,11 @@ globalThis.fetch = async (url, opts = {}) => {
           'data: {"choices":[{"delta":{"content":"'+('A'.repeat(120))+'"}}]}\n\n',
           'data: {"choices":[{"delta":{"content":"'+('B'.repeat(24))+'"}}]}\n\ndata: [DONE]\n\n'
         ]
+      : deepSeekMode === 'tool-preamble'
+        ? [
+            'data: {"choices":[{"delta":{"content":"Let me check the current page before I move you."}}]}\n\n',
+            sse
+          ]
       : [sse];
     const bytes = streamParts.map(part => new TextEncoder().encode(part));
     let part = 0;
@@ -166,6 +171,15 @@ check('action carries exact verified destination', decodeURIComponent(result.tex
 check('action records explicit section intent', decodeURIComponent(result.text).includes('"section_requested":true'), true);
 check('action carries one model-authored status', decodeURIComponent(result.text).includes('"status":"Finding the symbol sequence…"'), true);
 check('action carries model-authored arrival', decodeURIComponent(result.text).includes('"arrival":"You’re at the animated logo now.'), true);
+
+console.log('\n=== navigation preambles never flash then disappear ===');
+table.clear();
+deepSeekMode = 'tool-preamble';
+result = await call('5.5.5.51', 'Take me to the animated logo now.');
+check('provisional preamble is withheld', result.text.includes('Let me check the current page'), false);
+check('validated departure remains visible', result.text.startsWith('I’ll bring up the animated logo for you.'), true);
+check('multi-destination turns must keep every requested part', lastDeepSeekBody.messages[0].content.includes('Never silently discard an earlier clause'), true);
+check('visitor-led page changes are acknowledged without inventing an error', lastDeepSeekBody.messages[0].content.includes('visitor moved afterward'), true);
 
 console.log('\n=== a precise About fact can be highlighted ===');
 table.clear();

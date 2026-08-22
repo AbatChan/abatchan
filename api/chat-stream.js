@@ -25,11 +25,13 @@ Voice and style:
 - If the visitor asks to navigate to the page or exact section they are already viewing, do not call navigate_site. Say naturally that they are already there, then offer relevant help on that page.
 - Only the latest visitor message can authorize navigation for the current turn. An earlier request, prior consent, a previous journey or conversation momentum never carries permission into a later turn.
 - The current browser route supplied below is authoritative. Visitors can navigate by themselves between messages, so it overrides chat history, prior arrival claims and recent guide navigation.
+- When the latest browser state says the visitor moved pages themselves, acknowledge that naturally when it matters, for example "I can see you moved to Work." Do not describe a previously correct answer as a mistake merely because the visitor moved afterward.
 - Questions such as "Where am I?", "What page is this?" and "Where are we currently?" ask for the current location. Answer them without calling navigate_site, even if the previous turn involved navigation.
 - Treat an explicit instruction or clear consent to move, take, bring, send, put, show, or lead the visitor to a site destination as navigation intent in any language, including indirect wording. In that case you must call navigate_site rather than merely describing the move.
 - Never claim that you are moving the visitor, that a destination is loading, or that they have arrived in an ordinary text answer. Those claims are truthful only inside a navigate_site journey. If you do not call the tool, answer the question and offer a relative link instead.
 - For a navigation tool call, write the complete journey in your own voice: a departure, one short contextual progress update, and an arrival. Make every part specific to this request and destination. Vary the language naturally instead of reusing a stock template.
 - When calling navigate_site, return no ordinary assistant text beside the tool call. Put every user-visible word in departure, status and arrival only. Never duplicate those fields as paragraphs outside the tool.
+- If one message asks about multiple pages, projects, or sections, answer every part. The interface can actively navigate to only one destination per turn: choose the one the visitor explicitly wants to view now, or the final requested destination when their priority is unclear. Put the other verified destinations into the arrival as useful relative Markdown links, so the visitor can open them without being bounced through several pages. Never silently discard an earlier clause.
 - Prefer a verified section link, such as [project form](/contact#project-form), only when that section matches the visitor's stated destination. A general page request must start at the top of that page.
 - The live page context includes automatically registered highlight targets for headings, cards, FAQs, projects, forms, fields and meaningful copy. When the visitor explicitly asks to highlight or reveal one of those targets on the current page, set section_requested to true and use its exact listed anchor.
 - For a specific target on another verified page that has no listed anchor, use the bare verified page route, set section_requested to true, and make label name the requested content precisely. The destination page resolves that label only against its safe target registry. Never invent a CSS selector.
@@ -397,8 +399,14 @@ export default async function handler(req,res){
       if(tripped)break;
     }
     if(tripped&&!wrote){res.write(REFUSAL);wrote=true;}
-    else if(!tripped&&pendingText){res.write(pendingText);wrote=true;pendingText='';}
-    if(!tripped&&toolName==='navigate_site'&&toolArguments){
+    const hasNavigationTool=!tripped&&toolName==='navigate_site'&&Boolean(toolArguments);
+    // Some providers occasionally emit a short conversational preamble before
+    // their tool call despite being told not to. It is provisional, not model
+    // reasoning, and painting it makes the browser appear to delete a reply
+    // when the validated journey arrives. Keep that safety tail private when a
+    // navigation tool follows; ordinary non-tool answers still stream normally.
+    if(!tripped&&pendingText&&!hasNavigationTool){res.write(pendingText);wrote=true;pendingText='';}
+    if(hasNavigationTool){
       try{
         const action=JSON.parse(toolArguments);
         const departure=cleanVoice(String(action.departure||'').slice(0,500));
