@@ -397,7 +397,10 @@ export default async function handler(req,res){
       }catch{}
     }
     if(tripped)console.warn('assistant stream suppressed a prompt leak');
-    if(!wrote)res.write('I could not produce an answer this time. Please try again or use [contact](/contact).');
+    if(!wrote){
+      console.warn('assistant produced no usable action',{toolName:toolName||'none',toolArgumentBytes:toolArguments.length,plainTextBytes:head.length,tripped});
+      res.write('I could not produce an answer this time. Please try again or use [contact](/contact).');
+    }
     res.end();
   }catch(error){
     console.error('assistant stream failed',error);
