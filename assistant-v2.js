@@ -569,6 +569,37 @@
       return true;
     };
 
+    const prepareProjectForm=journey=>{
+      const values=journey?.form_prefill;
+      const form=document.querySelector('#project-form');
+      if(pagePath()!=='/contact'||!form||!values||typeof values!=='object')return false;
+      const limits={name:120,email:180,type:180,message:1800};
+      const prepared=[];
+      Object.entries(limits).forEach(([name,max])=>{
+        const field=form.elements.namedItem(name);
+        const value=String(values[name]||'').trim().slice(0,max);
+        if(!field||!value||field.value.trim())return;
+        field.value=value;
+        field.dataset.assistPrepared='true';
+        field.closest('.field')?.classList.add('is-assist-prepared');
+        field.dispatchEvent(new Event('input',{bubbles:true}));
+        field.dispatchEvent(new Event('change',{bubbles:true}));
+        prepared.push(field.labels?.[0]?.textContent?.trim()||name);
+      });
+      if(!prepared.length)return false;
+      let note=form.querySelector('.assist-form-review');
+      if(!note){
+        note=document.createElement('div');
+        note.className='assist-form-review';
+        note.setAttribute('role','status');
+        form.prepend(note);
+      }
+      note.textContent=`Nika prepared ${prepared.length} ${prepared.length===1?'field':'fields'} from your conversation. Review everything before opening the email.`;
+      const firstEmpty=[...form.querySelectorAll('[required]')].find(field=>!field.value.trim());
+      (firstEmpty||form.querySelector('[data-assist-prepared]'))?.focus({preventScroll:true});
+      return true;
+    };
+
     const navigateTo=(href,label,handoff=null)=>{
       let url;
       try{url=new URL(href,location.href)}catch{return}
@@ -624,7 +655,7 @@
       link.addEventListener('click',event=>{
         if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
         event.preventDefault();
-        navigateTo(href,label,{section_requested:journey.section_requested===true});
+        navigateTo(href,label,{section_requested:journey.section_requested===true,form_prefill:journey.form_prefill});
       });
       const host=arrival.querySelector('p:last-child')||arrival;
       host.append(document.createTextNode(' '),link);
@@ -660,7 +691,7 @@
       let url;try{url=new URL(journey.href,location.href)}catch{return}
       if(!isSafeDestination(url))return;
       const row=document.createElement('div');row.className='assist-action-approval';row.setAttribute('role','group');row.setAttribute('aria-label','Approve site navigation');
-      const prompt=document.createElement('span');prompt.textContent=`Open ${journey.label||'this section'}?`;
+      const prompt=document.createElement('span');prompt.textContent=journey.form_prefill?'Prepare the project enquiry?':`Open ${journey.label||'this section'}?`;
       const approve=document.createElement('button');approve.type='button';approve.className='assist-text-action';approve.textContent='Continue';approve.dataset.tip='Approve this site action';
       const cancel=document.createElement('button');cancel.type='button';cancel.className='assist-text-action subtle';cancel.textContent='Not now';cancel.dataset.tip='Stay on this page';
       approve.addEventListener('click',()=>{
@@ -988,6 +1019,7 @@
         };
         addEventListener('scrollend',arrive,{once:true});
         revealTarget(url,journey.label,journey.section_requested===true);
+        prepareProjectForm(journey);
         setTimeout(arrive,900);
       },320);
     };
@@ -1005,6 +1037,7 @@
           const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
           journeyStep(bubble,handoff.status);
           revealTarget(url,handoff.label,handoff.section_requested===true);
+          prepareProjectForm(handoff);
           const transition=document.querySelector('.page-transition');
           const finish=()=>completeJourney(bubble,handoff);
           if(transition?.classList.contains('is-arriving'))transition.addEventListener('transitionend',finish,{once:true});

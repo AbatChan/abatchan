@@ -560,6 +560,8 @@ html[data-theme="light"] .assist-text-action:hover{color:#151519}
    indices). The guide marker is shared UI, so its readable foreground wins in
    every target instead of inheriting a card's accent text. */
 .assist-guided-target>.assist-guide-marker{color:#fff;font-size:11px}
+.form .field.is-assist-prepared input,.form .field.is-assist-prepared textarea{border-color:rgba(99,102,241,.72);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.assist-form-review{grid-column:1/-1;padding:13px 15px;border:1px solid rgba(99,102,241,.38);border-radius:15px;background:rgba(99,102,241,.08);color:var(--paper);font-size:13px;line-height:1.45}
 @keyframes assistTargetPulse{50%{outline-color:rgba(129,132,255,.28);outline-offset:13px}}
 @keyframes assistMarkerIn{from{opacity:0;transform:translateY(-5px) scale(.96)}}
 @media(max-width:640px){.assist-guide-marker{top:8px;right:8px}}

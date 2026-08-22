@@ -37,6 +37,8 @@ Voice and style:
 - For a specific target on another verified page that has no listed anchor, use the bare verified page route, set section_requested to true, and make label name the requested content precisely. The destination page resolves that label only against its safe target registry. Never invent a CSS selector.
 - When section_requested is true, label must name the exact requested section or content, never merely the destination page. For example, a request for monthly support uses label "Monthly support", not "Pricing page".
 - Use the recent guide navigation in page context when a visitor says "take me back" or refers to a place the guide just showed them. Only return an exact same-site destination already present in that journey or the verified directory.
+- When the visitor explicitly asks you to prepare, fill, or help complete the project enquiry form, use navigate_site for /contact#project-form and include form_prefill. Use only facts the visitor supplied in this conversation. Summarise their stated project context without inventing requirements, timing, budget, identity or contact details. Leave unknown fields empty. The website will show the prepared fields for review and will never submit for them.
+- Do not include form_prefill for an ordinary request to visit Contact, ask how to make contact, or view the form. Preparing fields requires an explicit request in the latest visitor message.
 
 Commercial guidance:
 - Help visitors choose the right service based on what they describe.
@@ -163,6 +165,7 @@ const NAV_TOOL={
         href:{type:'string',description:'One verified relative page route, optionally with an exact anchor listed in live context or the verified directory. Omit the anchor for a general page request and when a safe exact target on another page is known only by label.'},
         section_requested:{type:'boolean',description:'True only when the visitor explicitly asked for this particular section or described that section as their destination. False when they named only the page or asked generally.'},
         label:{type:'string',description:'A concise human label for the exact destination. When section_requested is true, name that requested content specifically, never only the page.'},
+        form_prefill:{type:'object',description:'Optional project-enquiry values, only when the latest visitor message explicitly asks to prepare or fill that form. Omit facts the visitor did not supply. Never invent personal details, scope, timing, or budget.',properties:{name:{type:'string',description:'Visitor name or company exactly as supplied, otherwise empty.'},email:{type:'string',description:'Visitor email exactly as supplied, otherwise empty.'},type:{type:'string',description:'A short description of what the visitor said they are building.'},message:{type:'string',description:'A concise summary of the project context, desired outcome, constraints and timing the visitor actually supplied.'}},required:['name','email','type','message'],additionalProperties:false},
         related_links:{type:'array',maxItems:3,description:'Other verified destinations the visitor requested in the same message but which should not replace the active navigation. Return an empty array when there are none.',items:{type:'object',properties:{href:{type:'string',description:'A verified relative route and optional exact anchor from the directory.'},label:{type:'string',description:'A concise human label for this related destination.'}},required:['href','label'],additionalProperties:false}}
       },
       required:['departure','status','arrival','href','section_requested','label','related_links'],
@@ -431,11 +434,28 @@ export default async function handler(req,res){
         const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
         const targetPath=href.split('#')[0]||'/';
         const targetHash=href.includes('#')?`#${href.split('#').slice(1).join('#')}`:'';
-        const alreadyThere=targetPath===page&&((targetHash&&targetHash===(pageContext?.hash||''))||(!targetHash&&!sectionRequested));
+        const formPrefill=targetPath==='/contact'&&action.form_prefill&&typeof action.form_prefill==='object'
+          ? {
+              name:String(action.form_prefill.name||'').trim().slice(0,120),
+              email:String(action.form_prefill.email||'').trim().slice(0,180),
+              type:cleanVoice(String(action.form_prefill.type||'').slice(0,180)),
+              message:cleanVoice(String(action.form_prefill.message||'').slice(0,1800))
+            }
+          : null;
+        // Personal identifiers must appear literally in the visitor's latest
+        // message. This prevents the model from guessing a name or email while
+        // still allowing it to organise the project description for review.
+        if(formPrefill?.name&&!message.toLowerCase().includes(formPrefill.name.toLowerCase()))formPrefill.name='';
+        if(formPrefill?.email&&!message.toLowerCase().includes(formPrefill.email.toLowerCase()))formPrefill.email='';
+        const hasPrefill=formPrefill&&Object.values(formPrefill).some(Boolean);
+        // A prepare-form request still has useful work to do when the visitor
+        // is already sitting at the form, so it must reach the client action
+        // handler instead of being collapsed into an ordinary arrival reply.
+        const alreadyThere=!hasPrefill&&targetPath===page&&((targetHash&&targetHash===(pageContext?.hash||''))||(!targetHash&&!sectionRequested));
         if(safeJourney&&alreadyThere&&!wrote){res.write(arrival);wrote=true;}
         else if(safeJourney&&!wrote){res.write(departure);wrote=true;}
         if(safeJourney&&!alreadyThere&&href.startsWith('/')&&label){
-          const encoded=encodeURIComponent(JSON.stringify({href,label,departure,status,arrival,section_requested:sectionRequested}));
+          const encoded=encodeURIComponent(JSON.stringify({href,label,departure,status,arrival,section_requested:sectionRequested,...(hasPrefill?{form_prefill:formPrefill}:{})}));
           res.write(`\n<!--abatchan-nav:${actionToken}:${encoded}-->`);
         }
       }catch{}

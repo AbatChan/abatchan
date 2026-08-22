@@ -27,9 +27,11 @@ globalThis.fetch = async (url, opts = {}) => {
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Let me bring the name explanation into view.\\",\\"status\\":\\"Finding the identity note.\\",\\"arrival\\":\\"Here it is. The highlighted paragraph explains how the names relate.\\",\\"href\\":\\"/about#name-explanation\\",\\"section_requested\\":true,\\"label\\":\\"name explanation\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
         : deepSeekMode === 'auto-target'
           ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring that support option into view.\\",\\"status\\":\\"Locating the support details.\\",\\"arrival\\":\\"The monthly support option is highlighted now.\\",\\"href\\":\\"/pricing\\",\\"section_requested\\":true,\\"label\\":\\"Monthly support\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
-          : deepSeekMode === 'same-page'
+        : deepSeekMode === 'same-page'
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Opening pricing.\\",\\"status\\":\\"Loading prices.\\",\\"arrival\\":\\"You’re already on the pricing page. I can explain any option here.\\",\\"href\\":\\"/pricing#client-reviews\\",\\"section_requested\\":false,\\"label\\":\\"pricing\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
-        : 'data: {"choices":[{"delta":{"content":"Connected systems, "}}]}\n\ndata: {"choices":[{"delta":{"content":"end to end."}}]}\n\ndata: [DONE]\n\n';
+        : deepSeekMode === 'form-prefill'
+          ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll prepare the project enquiry for your review.\\",\\"status\\":\\"Organising the details you shared.\\",\\"arrival\\":\\"The form is prepared. Check each field before opening the email.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry\\",\\"form_prefill\\":{\\"name\\":\\"Ada Studio\\",\\"email\\":\\"ada@example.com\\",\\"type\\":\\"Booking automation\\",\\"message\\":\\"A booking automation for a five-person studio, needed in October.\\"},\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
+          : 'data: {"choices":[{"delta":{"content":"Connected systems, "}}]}\n\ndata: {"choices":[{"delta":{"content":"end to end."}}]}\n\ndata: [DONE]\n\n';
     const streamParts = deepSeekMode === 'long-content'
       ? [
           'data: {"choices":[{"delta":{"content":"'+('A'.repeat(120))+'"}}]}\n\n',
@@ -73,7 +75,7 @@ globalThis.fetch = async (url, opts = {}) => {
 
 const { default: handler } = await import('../api/chat-stream.js');
 
-const call = async (ip, message = 'what do you build?', page = '/') => {
+const call = async (ip, message = 'what do you build?', page = '/', hash = '') => {
   const headers = {};
   const chunks = [];
   let status = 200;
@@ -101,7 +103,7 @@ const call = async (ip, message = 'what do you build?', page = '/') => {
       'content-length': '60',
       'x-forwarded-for': ip
     },
-    body: { message, page, pageContext: { hash: '' } }
+    body: { message, page, pageContext: { hash } }
   }, res);
   return { status, json, headers, text: chunks.join(''), chunkCount: chunks.length };
 };
@@ -216,6 +218,28 @@ deepSeekMode = 'same-page';
 result = await call('6.6.6.6', 'Take me to the pricing page.', '/pricing');
 check('returns the model-authored already-there answer', result.text, 'You’re already on the pricing page. I can explain any option here.');
 check('does not emit a navigation action', result.text.includes('<!--abatchan-nav:'), false);
+
+console.log('\n=== an explicitly requested enquiry can be prepared for review ===');
+table.clear();
+deepSeekMode = 'form-prefill';
+result = await call('7.7.7.7', 'Prepare the form for Ada Studio, ada@example.com. We need booking automation for our five-person studio in October.');
+check('tool contract offers optional form preparation', Object.hasOwn(lastDeepSeekBody.tools[0].function.parameters.properties, 'form_prefill'), true);
+check('the prepared form uses the verified contact target', decodeURIComponent(result.text).includes('"href":"/contact#project-form"'), true);
+check('a supplied name survives validation', decodeURIComponent(result.text).includes('"name":"Ada Studio"'), true);
+check('a supplied email survives validation', decodeURIComponent(result.text).includes('"email":"ada@example.com"'), true);
+check('project context is carried for review', decodeURIComponent(result.text).includes('"type":"Booking automation"'), true);
+
+console.log('\n=== preparing still works when the form is already in view ===');
+table.clear();
+result = await call('7.7.7.9', 'Prepare the form for Ada Studio, ada@example.com. We need booking automation for our five-person studio in October.', '/contact', '#project-form');
+check('same-section preparation still emits a client action', result.text.includes('<!--abatchan-nav:'), true);
+check('same-section preparation keeps the review payload', decodeURIComponent(result.text).includes('"form_prefill"'), true);
+
+console.log('\n=== invented personal details are removed from prepared forms ===');
+table.clear();
+result = await call('7.7.7.8', 'Prepare the form for my booking automation.');
+check('an unsupplied name is stripped', decodeURIComponent(result.text).includes('"name":""'), true);
+check('an unsupplied email is stripped', decodeURIComponent(result.text).includes('"email":""'), true);
 
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);
