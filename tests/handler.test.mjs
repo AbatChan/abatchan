@@ -21,7 +21,9 @@ globalThis.fetch = async (url, opts = {}) => {
     lastDeepSeekBody = JSON.parse(opts.body);
     const sse = deepSeekMode === 'tool'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring up the animated logo for you.\\",\\"status\\":\\"Finding the symbol sequence…\\",\\"arrival\\":\\"You’re at the animated logo now. Want to explore how the symbol is constructed next?\\",\\"href\\":\\"/brand#symbol\\",\\"section_requested\\":true,\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
-      : deepSeekMode === 'same-page'
+      : deepSeekMode === 'about-name'
+        ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Let me bring the name explanation into view.\\",\\"status\\":\\"Finding the identity note.\\",\\"arrival\\":\\"Here it is. The highlighted paragraph explains how the names relate.\\",\\"href\\":\\"/about#name-explanation\\",\\"section_requested\\":true,\\"label\\":\\"name explanation\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
+        : deepSeekMode === 'same-page'
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Opening pricing.\\",\\"status\\":\\"Loading prices.\\",\\"arrival\\":\\"You’re already on the pricing page. I can explain any option here.\\",\\"href\\":\\"/pricing#client-reviews\\",\\"section_requested\\":false,\\"label\\":\\"pricing\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
         : 'data: {"choices":[{"delta":{"content":"Connected systems, "}}]}\n\ndata: {"choices":[{"delta":{"content":"end to end."}}]}\n\ndata: [DONE]\n\n';
     const streamParts = deepSeekMode === 'long-content'
@@ -161,6 +163,14 @@ check('action carries exact verified destination', decodeURIComponent(result.tex
 check('action records explicit section intent', decodeURIComponent(result.text).includes('"section_requested":true'), true);
 check('action carries one model-authored status', decodeURIComponent(result.text).includes('"status":"Finding the symbol sequence…"'), true);
 check('action carries model-authored arrival', decodeURIComponent(result.text).includes('"arrival":"You’re at the animated logo now.'), true);
+
+console.log('\n=== a precise About fact can be highlighted ===');
+table.clear();
+deepSeekMode = 'about-name';
+result = await call('5.5.5.6', 'Highlight the name explanation.', '/about');
+check('name explanation is a verified destination', lastDeepSeekBody.messages[0].content.includes('[name explanation](/about#name-explanation)'), true);
+check('exact name target is emitted', decodeURIComponent(result.text).includes('"href":"/about#name-explanation"'), true);
+check('exact request records section intent', decodeURIComponent(result.text).includes('"section_requested":true'), true);
 
 console.log('\n=== an already-open page is not navigated again ===');
 table.clear();

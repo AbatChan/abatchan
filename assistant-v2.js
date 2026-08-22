@@ -36,10 +36,13 @@
       'client-reviews':'Reviewed by the people who hired me.',
       'start-project':'If it plugs in, I build it.'
     },
-    '/about':{'principles':'Connected by default.','capabilities':'Design, code, connect.','start-project':'Modern systems. Clean execution.'},
+    '/about':{'name-explanation':'Name explanation','principles':'Connected by default.','capabilities':'Design, code, connect.','start-project':'Modern systems. Clean execution.'},
     '/pricing':{'website':'Website','platform':'Platform','system':'System','quote-process':'Quote the work, not the hype.','client-reviews':'What clients say after delivery.','pricing-faq':'Useful details before we start.','start-project':'Tell me what needs to work.'},
     '/reviews':{'start-project':'Tell me what needs to work.'},
     '/brand':{'name':'One word, always lowercase.','voice':'What the brand says.','symbol':'Mirrored, open geometry.','downloads':'The short version.','start-project':'Need something not listed here?'}
+  };
+  const PRECISE_TARGETS={
+    '/about':{'name-explanation':{selector:'.about-copy>p:nth-of-type(2)',label:'name explanation'}}
   };
   const PUBLIC_PATHS=new Set(['/','/work','/about','/pricing','/process','/brand','/contact','/reviews','/bookingkoala','/privacy','/terms']);
   const pagePath=()=>location.pathname.replace(/\/index(?:\.html)?$/,'/').replace(/\.html$/,'').replace(/\/+$/,'')||'/';
@@ -67,6 +70,12 @@
   syncNavigationState();
   addEventListener('pageshow',syncNavigationState);
   const installSectionAnchors=()=>{
+    Object.entries(PRECISE_TARGETS[pagePath()]||{}).forEach(([id,target])=>{
+      const node=document.querySelector(target.selector);
+      if(!node)return;
+      node.id=id;
+      node.dataset.assistTarget=target.label;
+    });
     const wanted=SECTION_TITLES[pagePath()]||{};
     const headings=[...document.querySelectorAll('main h1,main h2,main h3')];
     Object.entries(wanted).forEach(([id,title])=>{
@@ -155,9 +164,9 @@
     const main=document.querySelector('main');
     const text=(main?.innerText||'').replace(/\s+/g,' ').trim().slice(0,3500);
     const sections=[...document.querySelectorAll('main [id]')]
-      .filter(node=>node.matches('section,article,h1,h2,h3')||node.querySelector('h1,h2,h3'))
+      .filter(node=>node.matches('section,article,h1,h2,h3,[data-assist-target]')||node.querySelector('h1,h2,h3'))
       .slice(0,24)
-      .map(node=>({id:node.id,label:node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
+      .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
     const active=[...document.querySelectorAll('main section[id],main article[id],main h2[id]')]
       .map(node=>({node,distance:Math.abs(node.getBoundingClientRect().top-innerHeight*.32)}))
       .sort((a,b)=>a.distance-b.distance)[0]?.node;
@@ -472,6 +481,10 @@
       if(!url.hash)return document.querySelector('main h1,main');
       try{
         const raw=document.getElementById(decodeURIComponent(url.hash.slice(1)));
+        // Authored assistant targets are deliberately more precise than their
+        // containing section. Everything else keeps the safer section-level
+        // highlight used by the rest of the site.
+        if(raw?.matches('[data-assist-target]'))return raw;
         return raw?.closest('section,article')||raw;
       }catch{return null}
     };

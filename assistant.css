@@ -554,6 +554,7 @@ html[data-theme="light"] .assist-text-action:hover{color:#151519}
 @media(prefers-reduced-motion:reduce){.assist-journey-step.is-active i{animation:none;border-color:var(--signal)}.assist-journey-arrival.is-streaming::after{animation:none}}
 
 .assist-guided-target{position:relative;scroll-margin-block:120px;outline:2px solid rgba(129,132,255,.78);outline-offset:8px;border-radius:16px;animation:assistTargetPulse 1.15s var(--ease) 2}
+[data-assist-target].assist-guided-target{background:linear-gradient(90deg,rgba(99,102,241,.13),rgba(99,102,241,.035));box-shadow:0 0 0 8px rgba(99,102,241,.055)}
 .assist-guide-marker{position:absolute;z-index:12;top:10px;right:10px;max-width:min(240px,70%);padding:7px 10px;border-radius:999px;color:#fff;background:rgba(79,70,229,.94);box-shadow:0 10px 30px rgba(79,70,229,.34);font:650 11px/1.2 Geist,Inter,sans-serif;letter-spacing:.01em;pointer-events:none;animation:assistMarkerIn .35s var(--ease) both}
 @keyframes assistTargetPulse{50%{outline-color:rgba(129,132,255,.28);outline-offset:13px}}
 @keyframes assistMarkerIn{from{opacity:0;transform:translateY(-5px) scale(.96)}}
