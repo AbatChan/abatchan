@@ -900,7 +900,7 @@
 
     const clear=document.createElement('button');
     clear.type='button';clear.className='assist-clear';clear.setAttribute('aria-label','Delete chat history');
-    const trash='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 3h6l1 4H8l1-4ZM7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>';
+    const trash='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4.8C8 3.8 8.8 3 9.8 3h4.4c1 0 1.8.8 1.8 1.8V6M19 6l-.8 13.1c-.1 1.1-1 1.9-2.1 1.9H7.9c-1.1 0-2-.8-2.1-1.9L5 6M10 10.5v6M14 10.5v6"/></svg>';
     clear.innerHTML=trash;head.appendChild(clear);
     const resetClear=()=>{clear.classList.remove('is-confirming');clear.innerHTML=trash;clear.setAttribute('aria-label','Delete chat history');clearTimeout(confirmTimer)};
     clear.addEventListener('click',()=>{
