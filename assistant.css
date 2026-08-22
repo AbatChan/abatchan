@@ -399,44 +399,35 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
   opacity:.85;
 }
 
-/* Conversational navigation. Verified destinations stay as real text links,
-   not button-shaped controls. JavaScript only accepts same-origin targets,
-   then the locator below marks the exact section promised by the guide. */
-.assist-response-actions{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:8px 16px;
-  margin-top:13px;
-}
-.assist-response-actions a{
-  max-width:100%;
+/* Verified destinations remain exactly where the model wrote them: inline in
+   the sentence, as real text links with a small contextual icon. */
+.assist-msg.bot a.assist-action-link{
   display:inline-flex;
   align-items:center;
-  gap:6px;
-  padding:3px 0;
+  gap:4px;
+  max-width:100%;
+  padding:0;
   border:0;
   border-radius:0;
   background:transparent;
   color:var(--signal-ink);
   font:inherit;
-  font-size:12.5px;
   font-weight:650;
-  line-height:1.35;
+  line-height:inherit;
+  vertical-align:baseline;
   text-decoration:underline;
   text-decoration-color:color-mix(in srgb,currentColor 56%,transparent);
   text-decoration-thickness:1px;
-  text-underline-offset:4px;
+  text-underline-offset:3px;
   cursor:pointer;
   transition:color .2s,text-decoration-color .2s;
 }
-.assist-response-actions a span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.assist-response-actions a svg{width:14px;height:14px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.82;transition:opacity .2s}
-.assist-response-actions a:hover{color:var(--paper);text-decoration-color:currentColor}
-.assist-response-actions a:hover svg{opacity:1}
-.assist-response-actions a.is-primary{color:var(--signal-ink)}
-.assist-response-actions a:focus-visible{outline:2px solid rgba(129,132,255,.58);outline-offset:4px}
-html[data-theme="light"] .assist-response-actions a,html[data-theme="light"] .assist-response-actions a.is-primary{color:#4f46e5}
+.assist-msg.bot a.assist-action-link span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.assist-msg.bot a.assist-action-link svg{width:13px;height:13px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.82;transition:opacity .2s}
+.assist-msg.bot a.assist-action-link:hover{color:var(--paper);text-decoration-color:currentColor}
+.assist-msg.bot a.assist-action-link:hover svg{opacity:1}
+.assist-msg.bot a.assist-action-link:focus-visible{outline:2px solid rgba(129,132,255,.58);outline-offset:3px}
+html[data-theme="light"] .assist-msg.bot a.assist-action-link{color:#4f46e5}
 
 .assist-journey-steps{display:grid;gap:7px;margin:12px 0}
 .assist-journey-step{
@@ -466,5 +457,5 @@ html[data-theme="light"] .assist-response-actions a,html[data-theme="light"] .as
 .assist-guide-marker{position:absolute;z-index:12;top:10px;right:10px;max-width:min(240px,70%);padding:7px 10px;border-radius:999px;color:#fff;background:rgba(79,70,229,.94);box-shadow:0 10px 30px rgba(79,70,229,.34);font:650 11px/1.2 Geist,Inter,sans-serif;letter-spacing:.01em;pointer-events:none;animation:assistMarkerIn .35s var(--ease) both}
 @keyframes assistTargetPulse{50%{outline-color:rgba(129,132,255,.28);outline-offset:13px}}
 @keyframes assistMarkerIn{from{opacity:0;transform:translateY(-5px) scale(.96)}}
-@media(max-width:640px){.assist-response-actions{align-items:flex-start;flex-direction:column;gap:2px}.assist-response-actions a{min-height:40px;padding:8px 0}.assist-guide-marker{top:8px;right:8px}}
+@media(max-width:640px){.assist-guide-marker{top:8px;right:8px}}
 @media(prefers-reduced-motion:reduce){.assist-guided-target,.assist-guide-marker{animation:none}}

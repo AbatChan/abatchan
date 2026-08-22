@@ -223,7 +223,12 @@
       }
     });
     let transcript=readStored();
-    const history=transcript.slice(-8);
+    // Journey UI is stored separately from the conversational text so it can
+    // be rebuilt after reload without sending display metadata to the model.
+    const history=transcript.slice(-8).map(item=>item?.journey?.completed
+      ? {...item,content:[item.content,item.journey.arrival].filter(Boolean).join('\n\n'),journey:undefined}
+      : item
+    );
     let pending=false,audioCtx=null,peekTimer=0,confirmTimer=0;
 
     const rememberJourney=entry=>{
@@ -293,34 +298,45 @@
     };
 
     const enhanceActions=el=>{
-      if(!el||el.dataset.actionsReady)return [];
-      el.dataset.actionsReady='true';
-      const links=[...el.querySelectorAll('a[href]')];
+      if(!el)return [];
       const internal=[];
+      const links=[...el.querySelectorAll('a[href]:not(.assist-action-link)')];
       links.forEach(link=>{
         let url;
         try{url=new URL(link.getAttribute('href'),location.href)}catch{return}
         if(url.origin!==location.origin)return;
         const label=link.textContent.trim()||'Go there';
-        link.remove();
-        if(!isSafeDestination(url))return;
-        internal.push({href:publicPath(url)+url.hash,label});
-      });
-      const unique=internal.filter((item,index,list)=>index===list.findIndex(other=>other.href===item.href)).slice(0,3);
-      if(!unique.length)return [];
-      const actions=document.createElement('div');actions.className='assist-response-actions';
-      unique.forEach((item,index)=>{
-        const link=document.createElement('a');link.href=item.href;link.className='assist-action-link'+(index===0?' is-primary':'');
-        link.innerHTML=`${actionIcon(item.href)}<span>${escapeText(item.label)}</span>`;
+        if(!isSafeDestination(url)){link.remove();return}
+        const href=publicPath(url)+url.hash;
+        link.href=href;
+        link.classList.add('assist-action-link');
+        link.innerHTML=`${actionIcon(href)}<span>${escapeText(label)}</span>`;
         link.addEventListener('click',event=>{
           if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
-          event.preventDefault();navigateTo(item.href,item.label);
+          event.preventDefault();navigateTo(href,label);
         });
-        actions.append(link);
+        internal.push({href,label});
       });
-      el.append(actions);
-      scrollLatest();
+      const unique=internal.filter((item,index,list)=>index===list.findIndex(other=>other.href===item.href)).slice(0,3);
+      if(unique.length)scrollLatest();
       return unique;
+    };
+
+    const restoreJourney=(bubble,journey)=>{
+      if(!bubble||!journey?.completed||!journey.status||!journey.arrival)return;
+      const steps=document.createElement('div');
+      steps.className='assist-journey-steps';
+      const step=document.createElement('div');
+      step.className='assist-journey-step is-done';
+      step.innerHTML='<i aria-hidden="true"></i><span></span>';
+      step.querySelector('span').textContent=journey.status;
+      steps.appendChild(step);
+      const arrival=document.createElement('div');
+      arrival.className='assist-journey-arrival';
+      render(arrival,journey.arrival);
+      bubble.append(steps,arrival);
+      enhanceActions(arrival);
+      bubble.dataset.journeyComplete='true';
     };
 
     // Navigation intent comes from the model's tool decision, not a growing
@@ -338,15 +354,18 @@
       return {text:String(text).replace(match[0],'').trim(),action};
     };
 
-    const add=(text,who,persisted=false)=>{
+    const add=(text,who,persisted=false,metadata=null)=>{
       const el=document.createElement('div');el.className='assist-msg '+who;
       if(persisted)el.dataset.chatEntry='true';
-      if(who==='bot'){render(el,text);enhanceActions(el)}else el.textContent=text;
+      if(who==='bot'){
+        render(el,text);enhanceActions(el);
+        if(metadata?.journey)restoreJourney(el,metadata.journey);
+      }else el.textContent=text;
       log.appendChild(el);scrollLatest({force:who==='me'});return el;
     };
 
     if(transcript.length){
-      transcript.forEach(item=>add(item.content,item.role==='assistant'?'bot':'me',true));
+      transcript.forEach(item=>add(item.content,item.role==='assistant'?'bot':'me',true,item));
       chips&&(chips.hidden=true);
     }
     const pinIntro=()=>{
@@ -412,9 +431,10 @@
       arrival.className='assist-journey-arrival';
       render(arrival,journey.arrival);
       bubble.appendChild(arrival);
-      delete bubble.dataset.actionsReady;
       enhanceActions(bubble);
-      for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){transcript[i]={...transcript[i],content:completed};break}}
+      for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){
+        transcript[i]={...transcript[i],journey:{status:journey.status,arrival:journey.arrival,completed:true}};break
+      }}
       for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:completed};break}}
       writeStored(transcript);
       scrollLatest({force:true});
@@ -606,7 +626,7 @@
         if(answer)paint();
         else throw new Error('The guide returned an empty response.');
         bubble?.classList.remove('is-streaming');
-        if(bubble){delete bubble.dataset.actionsReady;enhanceActions(bubble)}
+        if(bubble)enhanceActions(bubble)
         history.push({role:'user',content:text},{role:'assistant',content:answer});
         if(history.length>8)history.splice(0,history.length-8);
         transcript.push({role:'assistant',content:answer});writeStored(transcript);
