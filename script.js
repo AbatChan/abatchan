@@ -718,7 +718,7 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 2.6 10.9 13.1"/><path d="M21.4 2.6 14.7 21.4l-3.8-8.3-8.3-3.8Z"/></svg>'+
       '</button>'+
     '</form>'+
-    '<p class="assist-note">I can explain the site and projects. I cannot access accounts, take payments, or make binding promises.</p>';
+    '<p class="assist-note">Site help only, no account access, payments, or promises.</p>';
 
   document.body.append(launch,panel);
 
