@@ -5,7 +5,7 @@
 - Structural reference: `/Users/macbookair2020/Documents/Screenshots/Screenshot 2026-08-22 at 2.07.27 AM.png`
 - Browser-rendered implementation: `audit/composer-desktop-local.jpg`
 - Focused comparison: `audit/composer-comparison.png`
-- Deployed mobile verification: `audit/composer-mobile-preview.png`
+- Deployed mobile verification: `audit/composer-mobile-preview.jpg`
 - State: dark theme, guide open, default `Ask first` approval mode, `Concise` answer depth.
 
 ## Visual findings
