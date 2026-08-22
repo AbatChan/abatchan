@@ -436,6 +436,34 @@
       scrollLatest({force:true});
     };
 
+    const typeArrival=(element,source)=>{
+      const finalText=String(source||'').trim();
+      const plainText=finalText
+        .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
+        .replace(/[*_`~#>]/g,'')
+        .replace(/\s+/g,' ')
+        .trim();
+      if(!plainText||matchMedia('(prefers-reduced-motion: reduce)').matches){
+        render(element,finalText);enhanceActions(element);return Promise.resolve();
+      }
+      element.classList.add('is-streaming');
+      const duration=Math.min(1800,Math.max(700,plainText.length*18));
+      return new Promise(resolve=>{
+        const started=performance.now();
+        const tick=now=>{
+          const progress=Math.min(1,(now-started)/duration);
+          const length=Math.max(1,Math.round(plainText.length*progress));
+          element.textContent=plainText.slice(0,length);
+          followLatest=true;log.scrollTop=bottomPosition();
+          if(progress<1){requestAnimationFrame(tick);return}
+          element.classList.remove('is-streaming');
+          render(element,finalText);enhanceActions(element);
+          scrollLatest({force:true});resolve();
+        };
+        requestAnimationFrame(tick);
+      });
+    };
+
     const completeJourney=(bubble,journey)=>{
       if(!bubble||!journey?.arrival||bubble.dataset.journeyComplete)return;
       bubble.dataset.journeyComplete='true';
@@ -443,16 +471,14 @@
       const completed=[journey.departure,journey.arrival].filter(Boolean).join('\n\n');
       const arrival=document.createElement('div');
       arrival.className='assist-journey-arrival';
-      render(arrival,journey.arrival);
       bubble.appendChild(arrival);
-      enhanceActions(bubble);
       for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){
         transcript[i]={...transcript[i],journey:{status:journey.status,arrival:journey.arrival,completed:true}};break
       }}
       for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:completed};break}}
       writeStored(transcript);
       scrollLatest({force:true});
-      notifyClosed(journey.arrival);
+      typeArrival(arrival,journey.arrival).then(()=>notifyClosed(journey.arrival));
     };
 
     const guideJourney=(journey,bubble)=>{
@@ -460,18 +486,22 @@
       try{url=new URL(journey.href,location.href)}catch{return}
       if(!isSafeDestination(url))return;
       journeyStep(bubble,journey.status);
-      if(publicPath(url)!==pagePath()){
-        navigateTo(journey.href,journey.label,journey);
-        return;
-      }
-      revealTarget(url,journey.label);
-      let finished=false;
-      const arrive=()=>{
-        if(finished)return;finished=true;
-        setTimeout(()=>completeJourney(bubble,journey),280);
-      };
-      addEventListener('scrollend',arrive,{once:true});
-      setTimeout(arrive,900);
+      // Give the loading state one clean paint before starting the action. The
+      // departure has already finished streaming at this point.
+      setTimeout(()=>{
+        if(publicPath(url)!==pagePath()){
+          navigateTo(journey.href,journey.label,journey);
+          return;
+        }
+        let finished=false;
+        const arrive=()=>{
+          if(finished)return;finished=true;
+          setTimeout(()=>completeJourney(bubble,journey),280);
+        };
+        addEventListener('scrollend',arrive,{once:true});
+        revealTarget(url,journey.label);
+        setTimeout(arrive,900);
+      },320);
     };
 
     // Complete a guide-initiated cross-page handoff only once. The assistant
