@@ -44,6 +44,30 @@
   const PRECISE_TARGETS={
     '/about':{'name-explanation':{selector:'.about-copy>p:nth-of-type(2)',label:'name explanation'}}
   };
+  const targetText=node=>{
+    const heading=node.matches('h1,h2,h3')?node:node.querySelector('h1,h2,h3');
+    const labelled=node.matches('label')?node:node.querySelector('label');
+    const summary=node.matches('summary')?node:node.querySelector('summary');
+    return (node.dataset.assistTarget||heading?.textContent||labelled?.textContent||summary?.textContent||node.getAttribute('aria-label')||(node.matches('p')?node.textContent:'')||'').replace(/\s+/g,' ').trim().slice(0,120);
+  };
+  const targetSlug=text=>text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,58)||'content';
+  const installAutomaticTargets=()=>{
+    const main=document.querySelector('main');
+    if(!main)return;
+    const used=new Set([...main.querySelectorAll('[id]')].map(node=>node.id));
+    const candidates=[...main.querySelectorAll('h1,h2,h3,article,details,form,.field,p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]')];
+    candidates.forEach(node=>{
+      if(node.closest('[hidden],[aria-hidden="true"]'))return;
+      const label=targetText(node);
+      if(!label||label.length<3)return;
+      if(!node.dataset.assistTarget)node.dataset.assistTarget=label;
+      if(node.id){used.add(node.id);return}
+      const base=`assist-${targetSlug(label)}`;
+      let id=base,index=2;
+      while(used.has(id))id=`${base}-${index++}`;
+      node.id=id;used.add(id);
+    });
+  };
   const PUBLIC_PATHS=new Set(['/','/work','/about','/pricing','/process','/brand','/contact','/reviews','/bookingkoala','/privacy','/terms']);
   const pagePath=()=>location.pathname.replace(/\/index(?:\.html)?$/,'/').replace(/\.html$/,'').replace(/\/+$/,'')||'/';
   const publicPath=url=>(url.pathname.replace(/\.html$/,'').replace(/\/+$/,'')||'/');
@@ -84,6 +108,7 @@
       const target=heading?.closest('section,article')||heading;
       if(target&&!target.id)target.id=id;
     });
+    installAutomaticTargets();
   };
   installSectionAnchors();
 
@@ -160,12 +185,14 @@
     }
   };
   const currentPageContext=()=>{
+    installAutomaticTargets();
     const description=document.querySelector('meta[name="description"]')?.content||'';
     const main=document.querySelector('main');
     const text=(main?.innerText||'').replace(/\s+/g,' ').trim().slice(0,3500);
     const sections=[...document.querySelectorAll('main [id]')]
       .filter(node=>node.matches('section,article,h1,h2,h3,[data-assist-target]')||node.querySelector('h1,h2,h3'))
-      .slice(0,24)
+      .sort((a,b)=>Number(a.matches('p'))-Number(b.matches('p')))
+      .slice(0,60)
       .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
     const active=[...document.querySelectorAll('main section[id],main article[id],main h2[id]')]
       .map(node=>({node,distance:Math.abs(node.getBoundingClientRect().top-innerHeight*.32)}))
@@ -477,8 +504,25 @@
       }catch{}
     };
 
-    const targetFor=url=>{
-      if(!url.hash)return document.querySelector('main h1,main');
+    const targetTokens=value=>new Set(String(value||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').match(/[a-z0-9]{2,}/g)||[]);
+    const targetScore=(query,candidate)=>{
+      const wanted=targetTokens(query),available=targetTokens(candidate);
+      if(!wanted.size||!available.size)return 0;
+      let matches=0;wanted.forEach(token=>{if(available.has(token))matches++});
+      const normalizedQuery=[...wanted].join(' '),normalizedCandidate=[...available].join(' ');
+      return matches/wanted.size+(normalizedCandidate.includes(normalizedQuery)?1:0);
+    };
+    const targetFor=(url,label,preferExact=false)=>{
+      installAutomaticTargets();
+      if(!url.hash){
+        if(preferExact&&label){
+          const ranked=[...document.querySelectorAll('main [data-assist-target]')]
+            .map(node=>({node,score:targetScore(label,node.dataset.assistTarget)}))
+            .sort((a,b)=>b.score-a.score)[0];
+          if(ranked?.score>=.6)return ranked.node;
+        }
+        return document.querySelector('main h1,main');
+      }
       try{
         const raw=document.getElementById(decodeURIComponent(url.hash.slice(1)));
         // Authored assistant targets are deliberately more precise than their
@@ -489,10 +533,10 @@
       }catch{return null}
     };
 
-    const revealTarget=(url,label)=>{
-      const target=targetFor(url);
+    const revealTarget=(url,label,preferExact=false)=>{
+      const target=targetFor(url,label,preferExact);
       if(!target)return false;
-      const pageTop=!url.hash;
+      const pageTop=!url.hash&&!preferExact;
       document.querySelectorAll('.assist-guided-target').forEach(node=>node.classList.remove('assist-guided-target'));
       target.classList.add('assist-guided-target');
       if(pageTop)scrollTo({top:0,left:0,behavior:'auto'});
@@ -514,7 +558,7 @@
       const current=pagePath();
       rememberJourney({from:current,to:destination+url.hash,label:label||'the section',at:Date.now()});
       if(destination===current){
-        revealTarget(url,label);
+        revealTarget(url,label,Boolean(handoff?.section_requested));
         return false;
       }
       try{
@@ -885,7 +929,7 @@
           setTimeout(()=>completeJourney(bubble,journey),280);
         };
         addEventListener('scrollend',arrive,{once:true});
-        revealTarget(url,journey.label);
+        revealTarget(url,journey.label,journey.section_requested===true);
         setTimeout(arrive,900);
       },320);
     };
@@ -902,7 +946,7 @@
           const url=new URL(handoff.href,location.href);
           const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
           journeyStep(bubble,handoff.status);
-          revealTarget(url,handoff.label);
+          revealTarget(url,handoff.label,handoff.section_requested===true);
           const transition=document.querySelector('.page-transition');
           const finish=()=>completeJourney(bubble,handoff);
           if(transition?.classList.contains('is-arriving'))transition.addEventListener('transitionend',finish,{once:true});

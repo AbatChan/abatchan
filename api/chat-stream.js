@@ -30,6 +30,8 @@ Voice and style:
 - Never claim that you are moving the visitor, that a destination is loading, or that they have arrived in an ordinary text answer. Those claims are truthful only inside a navigate_site journey. If you do not call the tool, answer the question and offer a relative link instead.
 - For a navigation tool call, write the complete journey in your own voice: a departure, one short contextual progress update, and an arrival. Make every part specific to this request and destination. Vary the language naturally instead of reusing a stock template.
 - Prefer a verified section link, such as [project form](/contact#project-form), only when that section matches the visitor's stated destination. A general page request must start at the top of that page.
+- The live page context includes automatically registered highlight targets for headings, cards, FAQs, projects, forms, fields and meaningful copy. When the visitor explicitly asks to highlight or reveal one of those targets on the current page, set section_requested to true and use its exact listed anchor.
+- For a specific target on another verified page that has no listed anchor, use the bare verified page route, set section_requested to true, and make label name the requested content precisely. The destination page resolves that label only against its safe target registry. Never invent a CSS selector.
 - Use the recent guide navigation in page context when a visitor says "take me back" or refers to a place the guide just showed them. Only return an exact same-site destination already present in that journey or the verified directory.
 
 Commercial guidance:
@@ -147,14 +149,14 @@ const NAV_TOOL={
   type:'function',
   function:{
     name:'navigate_site',
-    description:'Move the visitor to an exact verified page or section only when the latest message clearly grants permission to navigate now. Earlier turns never grant permission. Never use this when the visitor is already on the requested page or exact section, or for a current-location question such as "Where are we currently?" A page-only request must use the bare page route. Author the complete journey naturally and specifically for this visitor and destination.',
+    description:'Move the visitor to an exact verified page or safely registered content target only when the latest message clearly grants permission to navigate now. Earlier turns never grant permission. Never use this for a current-location question such as "Where are we currently?" A page-only request must use the bare page route. A specific highlight request may use a listed anchor or a precise label resolved by the destination safe-target registry. Author the complete journey naturally and specifically for this visitor and destination.',
     parameters:{
       type:'object',
       properties:{
         departure:{type:'string',description:'A brief, natural response confirming where you are taking the visitor.'},
         status:{type:'string',description:'One short, context-specific progress update for the journey. Write it naturally; do not recycle a generic status.'},
         arrival:{type:'string',description:'A brief, natural conclusion that confirms the visitor has arrived and offers relevant next help without repeating the departure.'},
-        href:{type:'string',description:'One exact relative destination from the verified page directory. Omit the anchor for a general page request.'},
+        href:{type:'string',description:'One verified relative page route, optionally with an exact anchor listed in live context or the verified directory. Omit the anchor for a general page request and when a safe exact target on another page is known only by label.'},
         section_requested:{type:'boolean',description:'True only when the visitor explicitly asked for this particular section or described that section as their destination. False when they named only the page or asked generally.'},
         label:{type:'string',description:'A concise human label for the destination.'}
       },
@@ -303,7 +305,7 @@ export default async function handler(req,res){
       label:String(body.pageContext.activeSection.label||'').slice(0,120)
     }:null,
     hash:/^#[a-z0-9_-]{1,100}$/i.test(String(body.pageContext.hash||''))?String(body.pageContext.hash):'',
-    sections:Array.isArray(body.pageContext.sections)?body.pageContext.sections.slice(0,24).map(section=>({id:String(section?.id||'').slice(0,100),label:String(section?.label||'').slice(0,120)})):[],
+    sections:Array.isArray(body.pageContext.sections)?body.pageContext.sections.slice(0,60).map(section=>({id:String(section?.id||'').slice(0,100),label:String(section?.label||'').slice(0,120)})):[],
     journey:Array.isArray(body.pageContext.journey)?body.pageContext.journey.slice(-4).map(item=>({from:String(item?.from||'').slice(0,120),to:String(item?.to||'').slice(0,160),label:String(item?.label||'').slice(0,100)})):[]
   }:null;
   const history=Array.isArray(body.history)?body.history.slice(-4).filter(item=>item&&['user','assistant'].includes(item.role)&&typeof item.content==='string').map(item=>({role:item.role,content:item.content.slice(0,600)})):[];
@@ -407,7 +409,7 @@ export default async function handler(req,res){
         const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item));
         const targetPath=href.split('#')[0]||'/';
         const targetHash=href.includes('#')?`#${href.split('#').slice(1).join('#')}`:'';
-        const alreadyThere=targetPath===page&&(!targetHash||targetHash===(pageContext?.hash||''));
+        const alreadyThere=targetPath===page&&((targetHash&&targetHash===(pageContext?.hash||''))||(!targetHash&&!sectionRequested));
         if(safeJourney&&alreadyThere&&!wrote){res.write(arrival);wrote=true;}
         else if(safeJourney&&!wrote){res.write(departure);wrote=true;}
         if(safeJourney&&!alreadyThere&&href.startsWith('/')&&label){

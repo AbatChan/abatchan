@@ -23,7 +23,9 @@ globalThis.fetch = async (url, opts = {}) => {
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring up the animated logo for you.\\",\\"status\\":\\"Finding the symbol sequence…\\",\\"arrival\\":\\"You’re at the animated logo now. Want to explore how the symbol is constructed next?\\",\\"href\\":\\"/brand#symbol\\",\\"section_requested\\":true,\\"label\\":\\"animated logo\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
       : deepSeekMode === 'about-name'
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Let me bring the name explanation into view.\\",\\"status\\":\\"Finding the identity note.\\",\\"arrival\\":\\"Here it is. The highlighted paragraph explains how the names relate.\\",\\"href\\":\\"/about#name-explanation\\",\\"section_requested\\":true,\\"label\\":\\"name explanation\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
-        : deepSeekMode === 'same-page'
+        : deepSeekMode === 'auto-target'
+          ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll bring that support option into view.\\",\\"status\\":\\"Locating the support details.\\",\\"arrival\\":\\"The monthly support option is highlighted now.\\",\\"href\\":\\"/pricing\\",\\"section_requested\\":true,\\"label\\":\\"Monthly support\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
+          : deepSeekMode === 'same-page'
         ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Opening pricing.\\",\\"status\\":\\"Loading prices.\\",\\"arrival\\":\\"You’re already on the pricing page. I can explain any option here.\\",\\"href\\":\\"/pricing#client-reviews\\",\\"section_requested\\":false,\\"label\\":\\"pricing\\"}"}}]}}]}\n\ndata: [DONE]\n\n'
         : 'data: {"choices":[{"delta":{"content":"Connected systems, "}}]}\n\ndata: {"choices":[{"delta":{"content":"end to end."}}]}\n\ndata: [DONE]\n\n';
     const streamParts = deepSeekMode === 'long-content'
@@ -171,6 +173,14 @@ result = await call('5.5.5.6', 'Highlight the name explanation.', '/about');
 check('name explanation is a verified destination', lastDeepSeekBody.messages[0].content.includes('[name explanation](/about#name-explanation)'), true);
 check('exact name target is emitted', decodeURIComponent(result.text).includes('"href":"/about#name-explanation"'), true);
 check('exact request records section intent', decodeURIComponent(result.text).includes('"section_requested":true'), true);
+
+console.log('\n=== a live registered target does not need a handwritten anchor ===');
+table.clear();
+deepSeekMode = 'auto-target';
+result = await call('5.5.5.7', 'Highlight monthly support.', '/pricing');
+check('same-page exact highlight still emits an action', result.text.includes('<!--abatchan-nav:'), true);
+check('safe resolver receives the semantic target label', decodeURIComponent(result.text).includes('"label":"Monthly support"'), true);
+check('bare verified page is retained for automatic resolution', decodeURIComponent(result.text).includes('"href":"/pricing"'), true);
 
 console.log('\n=== an already-open page is not navigated again ===');
 table.clear();
