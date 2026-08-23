@@ -569,10 +569,17 @@
       : item);
     // Journey UI is stored separately from the conversational text so it can
     // be rebuilt after reload without sending display metadata to the model.
-    const history=transcript.slice(-8).map(item=>item?.journey?.completed
-      ? {...item,content:item.content,journeyRoute:true,journey:undefined}
-      : item
-    );
+    // A visitor turn that never received an answer, because the request failed
+    // or was abandoned mid-flight, must not be replayed to the model on the
+    // next load. Rehydrating it puts two visitor turns in a row with no reply
+    // between them and silently re-asks the question that already failed.
+    const history=transcript
+      .filter(item=>item.role!=='user'||item.state==='answered')
+      .slice(-8)
+      .map(item=>item?.journey?.completed
+        ? {...item,content:item.content,journeyRoute:true,journey:undefined}
+        : item
+      );
     let pending=false,activeController=null,audioCtx=null,peekTimer=0,confirmTimer=0,formGuidanceTimer=0,guidanceTimer=0;
     const GUIDANCE_DURATION=4200;
 
