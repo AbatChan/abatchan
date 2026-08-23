@@ -43,7 +43,10 @@
   const TRANSITION_STORE='abatNavigationPending';
   const ACTION_MODE_STORE='abatchanGuideActionModeV1';
   const ANSWER_DEPTH_STORE='abatchanGuideAnswerDepthV1';
-  const MAX_STORED=24;
+  // How many turns are kept locally. This, not the model's window, is what
+  // decides how far back Nika can remember: the budget is far larger than any
+  // conversation this many turns can produce.
+  const MAX_STORED=80;
   const MAX_ATTACHMENTS=10;
   const WHATSAPP='https://wa.me/2347041857921';
   const uid=()=>crypto.randomUUID?.()||`m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
@@ -610,14 +613,15 @@
 
     const requestHistory=()=>{
       // Trim by size, not by a fixed count, and leave the authoritative bound
-      // to the server. Sending more than this only grows the request; the
-      // server discards the overflow anyway.
+      // to the server, which derives it from the configured model's context
+      // window. This mirrors the server's transport ceiling so a request is not
+      // built only for the far end to discard most of it.
       const budget=items=>{
         const kept=[];
         let chars=0;
         for(let i=items.length-1;i>=0;i--){
-          const content=String(items[i].content||'').slice(0,2000);
-          if(chars+content.length>24000)break;
+          const content=String(items[i].content||'').slice(0,4000);
+          if(chars+content.length>200*1024)break;
           chars+=content.length;
           kept.unshift({...items[i],content});
         }

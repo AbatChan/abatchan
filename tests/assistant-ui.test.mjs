@@ -59,9 +59,16 @@ check('clearing the chat clears them',assistant.includes('localStorage.removeIte
 check('only non-empty values are kept',assistant.includes('.filter(([,text])=>String(text||\'\').trim())'));
 
 console.log('\n=== history is budgeted, not capped at four messages ===');
-check('a size budget replaces the fixed slice',assistant.includes('if(chars+content.length>24000)break;'));
+check('a size budget replaces the fixed slice',assistant.includes('if(chars+content.length>200*1024)break;'));
 check('no four-message truncation remains',!assistant.includes('.slice(-4);'));
 check('the stored window feeds the budget',assistant.includes('history.slice(-MAX_STORED)')&&assistant.includes('if(history.length>MAX_STORED)'));
+
+console.log('\n=== model limits are recorded, not guessed ===');
+const server=readFileSync(new URL('../api/chat-stream.js',import.meta.url),'utf8');
+check('both configured models have a context entry',server.includes("'deepseek-v4-flash':{context:1048576")&&server.includes("'deepseek-v4-pro':{context:1048576"));
+check('every model model() accepts is in the table',['deepseek-v4-flash','deepseek-v4-pro'].every(name=>server.includes(`'${name}':{context:`)));
+check('the budget is derived from the window, not hardcoded',server.includes('contextTokens(name)*TOKEN_CHARS*HISTORY_SHARE'));
+check('the share is tunable',server.includes('ASSISTANT_HISTORY_SHARE'));
 
 if(failed)process.exit(1);
 console.log('\nall passed');

@@ -544,8 +544,35 @@ result = await call('9.9.9.5', 'and finally?', '/', '', longHistory);
 const sentHistory = lastDeepSeekBody.messages.filter(m => m.role==='user'||m.role==='assistant');
 check('far more than four turns now reach the model', sentHistory.length > 8, true);
 check('the oldest turns are the ones dropped', lastDeepSeekBody.messages.some(m=>m.content==='question number 29'), true);
-const historyChars = sentHistory.reduce((n,m)=>n+String(m.content||'').length, 0);
-check('the budget still bounds what is sent', historyChars <= 24000, true);
+check('a whole ordinary conversation now survives', sentHistory.some(m=>m.content==='question number 0'), true);
+
+console.log('\n=== the budget still bounds an abusive history ===');
+// Derived from the configured model's context window, so it is large; it must
+// still drop the oldest turns rather than forward an unbounded payload.
+table.clear();
+// 30 pairs of 4000 chars is 240KB: past the history ceiling, but still inside
+// the request guard, so the trim is what runs rather than the rejection.
+const hugeHistory = Array.from({length: 30}, (_, i) => ([
+  {role:'user',content:`u${i} `.padEnd(4000,'x')},
+  {role:'assistant',content:`a${i} `.padEnd(4000,'y')}
+])).flat();
+result = await call('9.9.9.8', 'and finally?', '/', '', hugeHistory);
+const hugeSent = lastDeepSeekBody.messages.filter(m => m.role==='user'||m.role==='assistant');
+const hugeChars = hugeSent.reduce((n,m)=>n+String(m.content||'').length, 0);
+check('an oversized history is trimmed', hugeSent.length < 60, true);
+check('the trim respects the transport ceiling', hugeChars <= 200*1024, true);
+check('the newest turn is always kept', hugeSent.some(m=>String(m.content||'').startsWith('a29')), true);
+check('the oldest turns are the ones dropped', hugeSent.some(m=>String(m.content||'').startsWith('u0 ')), false);
+
+console.log('\n=== a request past the transport guard is refused, not truncated ===');
+table.clear();
+const absurdHistory = Array.from({length: 120}, (_, i) => ([
+  {role:'user',content:`u${i} `.padEnd(4000,'x')},
+  {role:'assistant',content:`a${i} `.padEnd(4000,'y')}
+])).flat();
+result = await call('9.9.9.9', 'and finally?', '/', '', absurdHistory);
+check('an oversized body is rejected', result.status, 413);
+check('with a usable reason', result.json.error.code, 'invalid_request');
 
 console.log('\n=== values already applied to the form can be restored later ===');
 // The form empties when the visitor leaves Contact, and the supplying message

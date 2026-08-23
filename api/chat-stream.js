@@ -6,11 +6,29 @@ import { consume } from './quota.js';
 
 const API_URL='https://api.deepseek.com/chat/completions';
 const DEFAULT_MODEL='deepseek-v4-flash';
-// Characters of conversation history sent to the model, newest first. Roughly
-// four characters per token. Raising it costs input tokens on every request and
-// grows the payload, so it is capped rather than set to the model's context.
-const HISTORY_BUDGET=Math.max(2400,Math.min(120000,Number(process.env.ASSISTANT_HISTORY_BUDGET)||24000));
-const HISTORY_MESSAGE_MAX=2000;
+// Per-model limits, from DeepSeek's API docs (api-docs.deepseek.com pricing).
+// Both current models carry the same 1M context and 384K maximum output; they
+// differ in price, which is why the budget below is a share rather than the
+// whole window. Add a row here when a model is added to model().
+const MODEL_LIMITS={
+  'deepseek-v4-flash':{context:1048576,maxOutput:384000},
+  'deepseek-v4-pro':{context:1048576,maxOutput:384000}
+};
+const contextTokens=name=>MODEL_LIMITS[name]?.context||MODEL_LIMITS[DEFAULT_MODEL].context;
+// Roughly four characters per token: close enough to budget with, and it errs
+// toward sending less rather than overrunning the window.
+const TOKEN_CHARS=4;
+// Share of the window history may occupy before older turns are dropped.
+const HISTORY_SHARE=Math.max(.05,Math.min(.9,Number(process.env.ASSISTANT_HISTORY_SHARE)||.8));
+// The window is 1M tokens, but the request still has to travel and still costs
+// input tokens on every question. This ceiling, not the context, is what
+// actually binds in practice, and it is far above any real conversation here.
+const HISTORY_TRANSPORT_MAX=200*1024;
+const historyBudget=name=>Math.min(
+  Math.floor(contextTokens(name)*TOKEN_CHARS*HISTORY_SHARE),
+  Number(process.env.ASSISTANT_HISTORY_BUDGET)||HISTORY_TRANSPORT_MAX
+);
+const HISTORY_MESSAGE_MAX=4000;
 const SUPABASE_URL=process.env.SUPABASE_URL||'https://fdubcelrwfpzjjnqipku.supabase.co';
 const SUPABASE_KEY=process.env.SUPABASE_PUBLISHABLE_KEY||'sb_publishable_b_pSIsSTOHTrYj87LJrY1A_WDFm_dF6';
 
@@ -339,10 +357,10 @@ export default async function handler(req,res){
   if(req.method!=='POST')return sendError(res,405,'invalid_request','Send a short question about the work, pricing or process.');
   const contentType=String(req.headers['content-type']||'').toLowerCase();
   const contentLength=Number(req.headers['content-length']||0);
-  if(!contentType.includes('application/json')||contentLength>128*1024)return sendError(res,413,'invalid_request','Send a shorter question.');
+  if(!contentType.includes('application/json')||contentLength>320*1024)return sendError(res,413,'invalid_request','Send a shorter question.');
   let body={};
   try{body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});}catch{return sendError(res,400,'invalid_request','The question could not be read.');}
-  if(JSON.stringify(body).length>96*1024)return sendError(res,413,'invalid_request','Send a shorter question or fewer attachments.');
+  if(JSON.stringify(body).length>320*1024)return sendError(res,413,'invalid_request','Send a shorter question or fewer attachments.');
   if(!process.env.DEEPSEEK_API_KEY)return sendError(res,503,'not_configured','The live model is not connected right now.');
   const actionResult=body.actionResult&&typeof body.actionResult==='object'?body.actionResult:null;
   const receipt=actionResult?readReceipt(actionResult.receipt):null;
@@ -414,17 +432,23 @@ export default async function handler(req,res){
   // later. What bounds this is request size and per-request cost, not the
   // model's context window, so it is tunable without a code change.
   const rawHistory=Array.isArray(body.history)?body.history.filter(item=>item&&['user','assistant'].includes(item.role)&&typeof item.content==='string'):[];
-  const history=[];
-  let historyChars=0;
-  for(let i=rawHistory.length-1;i>=0;i--){
-    const content=rawHistory[i].content.slice(0,HISTORY_MESSAGE_MAX);
-    if(historyChars+content.length>HISTORY_BUDGET)break;
-    historyChars+=content.length;
-    history.unshift({role:rawHistory[i].role,content});
-  }
+  const trimHistory=budget=>{
+    const kept=[];
+    let chars=0;
+    for(let i=rawHistory.length-1;i>=0;i--){
+      const content=rawHistory[i].content.slice(0,HISTORY_MESSAGE_MAX);
+      if(chars+content.length>budget)break;
+      chars+=content.length;
+      kept.unshift({role:rawHistory[i].role,content});
+    }
+    return kept;
+  };
 
   try{
     const [settings,work,socials]=await Promise.all([privateSettings(),workContext(),socialContext()]);
+    // The window depends on which model is configured, so trim once it is known.
+    const chosenModel=model(settings['assistant.model']);
+    const history=trimHistory(historyBudget(chosenModel));
     const owner=typeof settings['assistant.system']==='string'?settings['assistant.system'].slice(0,5000):'';
     const email=typeof settings['copy.contact.email']==='string'&&settings['copy.contact.email'].trim()?settings['copy.contact.email'].trim():'abatchan4@gmail.com';
     const liveRoute=`Authoritative live browser state for this turn:\nCurrent route: ${page}${pageContext?.hash||''}. ${PAGE[page]||'The visitor is browsing the website.'}\nMost recent page change: ${pageContext?.navigation?.source||'unknown'}${pageContext?.navigation?.from?` from ${pageContext.navigation.from} to ${pageContext.navigation.to}`:''}.\nThis current route overrides every earlier route, arrival statement and journey in the conversation. A visitor page change is context, not permission for you to navigate again. If the requested page or exact section matches this route, answer that the visitor is already there and do not navigate.`;
@@ -479,7 +503,7 @@ export default async function handler(req,res){
           {role:'tool',tool_call_id:receipt.callId,content:JSON.stringify(verifiedResult)}
         ]
       : [{role:'system',content:system},...history,{role:'system',content:routeCheck},{role:'user',content:visitorMessage}];
-    const providerBody={model:model(settings['assistant.model']),thinking:{type:'disabled'},stream:true,max_tokens:receipt?260:(answerDepth==='detailed'?720:420),temperature:.35,messages:providerMessages};
+    const providerBody={model:chosenModel,thinking:{type:'disabled'},stream:true,max_tokens:receipt?260:(answerDepth==='detailed'?720:420),temperature:.35,messages:providerMessages};
     if(!receipt){providerBody.tools=[NAV_TOOL];providerBody.tool_choice='auto';}
     const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify(providerBody)});
     if(!upstream.ok){
