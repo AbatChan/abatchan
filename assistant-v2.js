@@ -1138,21 +1138,25 @@
       })});
       if(!response.ok||!response.body)throw new Error('The action result could not be confirmed.');
       const reader=response.body.getReader(),decoder=new TextDecoder();
-      let text='',frame=0,started=false,paintedFrames=0;
-      const paint=()=>{frame=0;paintedFrames++;render(arrival,text);enhanceActions(arrival);scrollLatest({force:true})};
+      let text='',frame=0,firstTokenAt=0;
+      const paint=()=>{frame=0;render(arrival,text);enhanceActions(arrival);scrollLatest({force:true})};
       while(true){
         const {done,value}=await reader.read();if(done)break;
         text+=decoder.decode(value,{stream:true});
-        if(!started&&text){started=true;onFirstToken?.()}
+        if(!firstTokenAt&&text){firstTokenAt=performance.now();onFirstToken?.()}
         if(!frame)frame=requestAnimationFrame(paint);
       }
       text+=decoder.decode();if(frame)cancelAnimationFrame(frame);
       if(!text.trim())throw new Error('The action result was empty.');
-      // A conclusion is short enough to sit entirely inside the server's rolling
-      // safety tail, so it usually arrives as one final chunk and would appear
-      // fully formed. Reveal a buffered conclusion locally, exactly as ordinary
-      // short answers already do, instead of flashing it in at once.
-      if(paintedFrames<2){
+      // A conclusion is capped short, so the model almost always delivers it as
+      // one sub-second burst: measured live, the first chunk lands, then the
+      // rest arrives inside ~110ms. Painting each chunk as it appears finishes
+      // faster than the eye registers, which reads as a flash after a wait
+      // rather than a reply being written. Counting chunks does not detect
+      // this, because the burst is many chunks. Time it instead, and when the
+      // whole answer arrived that quickly, replay it at a readable pace.
+      const burstMs=firstTokenAt?performance.now()-firstTokenAt:0;
+      if(burstMs<400){
         arrival.replaceChildren();
         await typeBufferedMessage(arrival,text.trim());
       }else paint();
