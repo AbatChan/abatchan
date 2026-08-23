@@ -15,6 +15,30 @@
   const STORE='abatchanGuideHistoryV1';
   const NAV_STORE='abatchanGuideNavigationV1';
   const JOURNEY_STORE='abatchanGuideJourneyV1';
+  // The contact form empties as soon as the visitor leaves the page, so what
+  // Nika applied is remembered here instead. It outlives navigation and the
+  // history budget, and is cleared with the conversation it belongs to.
+  const PREPARED_STORE='abatchanGuidePreparedFormV1';
+  const readPrepared=()=>{
+    try{
+      const value=JSON.parse(localStorage.getItem(PREPARED_STORE)||'null');
+      if(!value||typeof value!=='object')return null;
+      const kept=['name','email','type','message'].reduce((all,key)=>{
+        const text=String(value[key]||'').trim().slice(0,key==='message'?1800:180);
+        if(text)all[key]=text;
+        return all;
+      },{});
+      return Object.keys(kept).length?kept:null;
+    }catch{return null}
+  };
+  const writePrepared=values=>{
+    try{
+      const merged={...(readPrepared()||{}),...values};
+      const kept=Object.fromEntries(Object.entries(merged).filter(([,text])=>String(text||'').trim()));
+      if(Object.keys(kept).length)localStorage.setItem(PREPARED_STORE,JSON.stringify(kept));
+      else localStorage.removeItem(PREPARED_STORE);
+    }catch{}
+  };
   const PAGE_STORE='abatchanGuideCurrentPageV1';
   const TRANSITION_STORE='abatNavigationPending';
   const ACTION_MODE_STORE='abatchanGuideActionModeV1';
@@ -225,7 +249,8 @@
       hash:location.hash.slice(0,101),
       sections,
       journey:Array.isArray(journey)?journey.slice(-4):[],
-      formState
+      formState,
+      preparedForm:readPrepared()
     };
   };
 
@@ -575,7 +600,7 @@
     // between them and silently re-asks the question that already failed.
     const history=transcript
       .filter(item=>item.role!=='user'||item.state==='answered')
-      .slice(-8)
+      .slice(-MAX_STORED)
       .map(item=>item?.journey?.completed
         ? {...item,content:item.content,journeyRoute:true,journey:undefined}
         : item
@@ -584,8 +609,22 @@
     const GUIDANCE_DURATION=4200;
 
     const requestHistory=()=>{
-      const recent=history.slice(-8);
-      if(navigationState.source!=='visitor')return recent.slice(-4);
+      // Trim by size, not by a fixed count, and leave the authoritative bound
+      // to the server. Sending more than this only grows the request; the
+      // server discards the overflow anyway.
+      const budget=items=>{
+        const kept=[];
+        let chars=0;
+        for(let i=items.length-1;i>=0;i--){
+          const content=String(items[i].content||'').slice(0,2000);
+          if(chars+content.length>24000)break;
+          chars+=content.length;
+          kept.unshift({...items[i],content});
+        }
+        return kept;
+      };
+      const recent=history.slice(-MAX_STORED);
+      if(navigationState.source!=='visitor')return budget(recent);
       // A visitor can leave a page after Nika takes them there. Do not resend
       // that completed journey's old route claim beside the new live context,
       // or the model may treat “you are on Pricing” as newer than the browser.
@@ -600,10 +639,10 @@
       // Work even once the visitor has walked to another page.
       // So keep the turn, keep their message, and replace the reply with a
       // stand-in that carries no destination and defers to the live route.
-      return recent.map(item=>item.journeyRoute
+      return budget(recent.map(item=>item.journeyRoute
         ? {...item,content:'Done, at the time it was asked. This turn says nothing about which page the visitor is on now; the live route check is the only authority on that.',journeyRoute:false}
         : item
-      ).slice(-4);
+      ));
     };
 
     const rememberJourney=entry=>{
@@ -709,6 +748,9 @@
         (hasValue?updated:prepared).push(field.labels?.[0]?.textContent?.trim()||name);
       });
       if(!prepared.length&&!updated.length)return {updated:false,appliedFields:[]};
+      // Remember what was actually applied, so it can be restored later even
+      // after the page emptied the form and the turn left the history budget.
+      writePrepared(Object.fromEntries(appliedFields.map(name=>[name,String(values[name]||'').trim()])));
       let note=form.querySelector('.assist-form-review');
       if(!note){
         note=document.createElement('div');
@@ -1329,7 +1371,7 @@
         clear.classList.add('is-confirming');clear.textContent='delete chat?';clear.setAttribute('aria-label','Confirm delete chat history');
         confirmTimer=setTimeout(resetClear,4000);return;
       }
-      transcript=[];history.length=0;localStorage.removeItem(STORE);
+      transcript=[];history.length=0;localStorage.removeItem(STORE);try{localStorage.removeItem(PREPARED_STORE)}catch{}
       log.querySelectorAll('[data-chat-entry="true"]').forEach(el=>el.remove());
       chips&&(chips.hidden=false);clearUnread();resetClear();
       announceStatus('Chat history cleared.',{tone:'success'});
@@ -1502,7 +1544,7 @@
         if(needsApproval)assistantEntry.journey={...navigation.action,pending:true};
         if(bubble)addMessageTools(bubble,assistantEntry);
         history.push({role:'user',content:text},{role:'assistant',content:answer});
-        if(history.length>8)history.splice(0,history.length-8);
+        if(history.length>MAX_STORED)history.splice(0,history.length-MAX_STORED);
         transcript.push(assistantEntry);writeStored(transcript);refreshLatestAssistant();
         notifyClosed(answer);
         if(navigation.action){

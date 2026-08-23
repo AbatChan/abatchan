@@ -531,5 +531,47 @@ result = await call('9.9.9.4', '', '/pricing', '#monthly-support', [], {}, {
 check('failed continuation still suppresses the frame', PROTOCOL_EVIDENCE.some(marker => result.text.includes(marker)), false);
 check('failed continuation keeps its usable text', result.text.trim().length > 0, true);
 
+console.log('\n=== history is trimmed by size, not by a fixed count ===');
+// A fixed four-message window dropped details the visitor supplied only a
+// couple of questions earlier. The bound is request size and cost.
+table.clear();
+deepSeekMode = 'content';
+const longHistory = Array.from({length: 30}, (_, i) => ([
+  {role:'user',content:`question number ${i}`},
+  {role:'assistant',content:`answer number ${i}`}
+])).flat();
+result = await call('9.9.9.5', 'and finally?', '/', '', longHistory);
+const sentHistory = lastDeepSeekBody.messages.filter(m => m.role==='user'||m.role==='assistant');
+check('far more than four turns now reach the model', sentHistory.length > 8, true);
+check('the oldest turns are the ones dropped', lastDeepSeekBody.messages.some(m=>m.content==='question number 29'), true);
+const historyChars = sentHistory.reduce((n,m)=>n+String(m.content||'').length, 0);
+check('the budget still bounds what is sent', historyChars <= 24000, true);
+
+console.log('\n=== values already applied to the form can be restored later ===');
+// The form empties when the visitor leaves Contact, and the supplying message
+// eventually falls outside the budget. A value this browser already applied was
+// verified once, so restoring it is not a new claim.
+table.clear();
+deepSeekMode = 'form-prefill';
+result = await call('9.9.9.6', 'put those details back please', '/contact', '#project-form', [], {
+  formState: {name:'',email:'',type:'',message:''},
+  preparedForm: {name:'Ada Studio',email:'ada@example.com',type:'Booking automation',message:'A booking automation.'}
+});
+const restored = decodeURIComponent(result.text);
+check('a previously applied name is accepted', restored.includes('"name":"Ada Studio"'), true);
+check('a previously applied email is accepted', restored.includes('"email":"ada@example.com"'), true);
+check('prepared values reach the model as context', lastDeepSeekBody.messages.some(m=>m.role==='system'&&m.content.includes('Details you already prepared')), true);
+
+console.log('\n=== a value never prepared is still not inventable ===');
+table.clear();
+deepSeekMode = 'form-prefill';
+result = await call('9.9.9.7', 'put those details back please', '/contact', '#project-form', [], {
+  formState: {name:'',email:'',type:'',message:''},
+  preparedForm: {name:'Other Co',email:'someone@else.test',type:'X',message:'Y'}
+});
+const mismatched = decodeURIComponent(result.text);
+check('an unrelated prepared name does not bless the proposal', mismatched.includes('"name":""'), true);
+check('an unrelated prepared email does not bless the proposal', mismatched.includes('"email":""'), true);
+
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);

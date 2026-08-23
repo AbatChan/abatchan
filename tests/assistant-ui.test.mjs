@@ -52,5 +52,16 @@ check('the visitor message is no longer removed with it',!assistant.includes('jo
 // model then re-proposed the same action on every following turn.
 check('the reply is not dropped outright',!assistant.includes('recent.filter(item=>!item.journeyRoute)'));
 
+console.log('\n=== prepared form values survive leaving the page ===');
+check('applied values are stored',assistant.includes('writePrepared(Object.fromEntries(appliedFields.map'));
+check('they travel with page context',assistant.includes('preparedForm:readPrepared()'));
+check('clearing the chat clears them',assistant.includes('localStorage.removeItem(PREPARED_STORE)'));
+check('only non-empty values are kept',assistant.includes('.filter(([,text])=>String(text||\'\').trim())'));
+
+console.log('\n=== history is budgeted, not capped at four messages ===');
+check('a size budget replaces the fixed slice',assistant.includes('if(chars+content.length>24000)break;'));
+check('no four-message truncation remains',!assistant.includes('.slice(-4);'));
+check('the stored window feeds the budget',assistant.includes('history.slice(-MAX_STORED)')&&assistant.includes('if(history.length>MAX_STORED)'));
+
 if(failed)process.exit(1);
 console.log('\nall passed');
