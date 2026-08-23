@@ -1098,22 +1098,37 @@
         .replace(/[*_`~#>]/g,'')
         .replace(/\s+/g,' ')
         .trim();
-      if(!plainText||matchMedia('(prefers-reduced-motion: reduce)').matches){
+      // A hidden tab suspends requestAnimationFrame. Since this reveal only
+      // finishes inside a rAF tick, a visitor who sends a message and switches
+      // tab or app would come back to a blank reply and a composer disabled
+      // until reload. Nobody is watching an animation they cannot see, so
+      // commit the text immediately instead.
+      if(!plainText||document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches){
         render(element,finalText);enhanceActions(element);return Promise.resolve();
       }
       element.classList.add('is-streaming');
       const duration=Math.min(1800,Math.max(700,plainText.length*18));
       return new Promise(resolve=>{
         const started=performance.now();
+        let settled=false;
+        const finish=()=>{
+          if(settled)return;settled=true;
+          document.removeEventListener('visibilitychange',onHidden);
+          element.classList.remove('is-streaming');
+          render(element,finalText);enhanceActions(element);
+          scrollLatest({force:true});resolve();
+        };
+        // Leaving mid-reveal stops the frames, so commit what is left at once.
+        const onHidden=()=>{if(document.hidden)finish()};
+        document.addEventListener('visibilitychange',onHidden);
         const tick=now=>{
+          if(settled)return;
           const progress=Math.min(1,(now-started)/duration);
           const length=Math.max(1,Math.round(plainText.length*progress));
           element.textContent=plainText.slice(0,length);
           followLatest=true;log.scrollTop=bottomPosition();
           if(progress<1){requestAnimationFrame(tick);return}
-          element.classList.remove('is-streaming');
-          render(element,finalText);enhanceActions(element);
-          scrollLatest({force:true});resolve();
+          finish();
         };
         requestAnimationFrame(tick);
       });
@@ -1203,7 +1218,17 @@
     // wait. scrollend covers the browsers that fire it; the frame watcher covers
     // the rest, and the common case where the target was already in view and so
     // nothing scrolls and no event ever arrives.
+    // requestAnimationFrame is suspended while the tab is hidden, so anything a
+    // journey depends on has to fall back to a timer rather than wait on a
+    // paint that will never arrive. Without this a handoff completed in a
+    // background tab would never finish.
+    const afterPaint=run=>{
+      if(document.hidden){setTimeout(run,0);return}
+      requestAnimationFrame(()=>requestAnimationFrame(run));
+    };
+
     const whenScrollSettled=run=>{
+      if(document.hidden)return void run();
       let done=false,frames=0,still=0,last=scrollY;
       const finish=()=>{if(done)return;done=true;removeEventListener('scrollend',finish);run()};
       addEventListener('scrollend',finish,{once:true});
@@ -1228,7 +1253,7 @@
       // One paint so the progress row is visible, then start immediately. The
       // departure has already finished streaming, so anything longer than a
       // frame is delay the visitor feels for nothing.
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      afterPaint(()=>{
         if(publicPath(url)!==pagePath()){
           navigateTo(journey.href,journey.label,journey);
           return;
@@ -1245,7 +1270,7 @@
         whenScrollSettled(arrive);
         // Hard ceiling only, for a scroll that never settles.
         ceiling=setTimeout(arrive,900);
-      }));
+      });
     };
 
     // Complete a guide-initiated cross-page handoff only once. On desktop the
@@ -1257,7 +1282,7 @@
       const handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null');
       if(handoff&&Date.now()-Number(handoff.at||0)<30000&&typeof handoff.status==='string'&&typeof handoff.arrival==='string'){
         sessionStorage.removeItem(NAV_STORE);
-        requestAnimationFrame(()=>{
+        afterPaint(()=>{
           const keepPageVisible=matchMedia('(max-width:640px)').matches;
           if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);

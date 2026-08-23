@@ -27,5 +27,17 @@ check('one timer clears the complete guidance state',assistant.includes('guidanc
 console.log('\n=== mobile cross-page arrival keeps the target visible ===');
 check('phone handoff stays minimized',assistant.includes("const keepPageVisible=matchMedia('(max-width:640px)').matches")&&assistant.includes("if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click()"));
 
+console.log('\n=== a hidden tab never strands a reply or a journey ===');
+// requestAnimationFrame is suspended while the tab is hidden. Anything that
+// resolves a promise or starts an action from inside a rAF tick would stall
+// there forever, leaving a blank reply and a permanently disabled composer.
+check('buffered reveal commits immediately when hidden',assistant.includes("if(!plainText||document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches)"));
+check('leaving mid-reveal still settles the reveal',assistant.includes("const onHidden=()=>{if(document.hidden)finish()}")&&assistant.includes("document.addEventListener('visibilitychange',onHidden)"));
+check('the reveal promise cannot resolve twice',assistant.includes('let settled=false;')&&assistant.includes('if(settled)return;settled=true;'));
+check('journey starts fall back to a timer when hidden',assistant.includes('const afterPaint=run=>{')&&assistant.includes('if(document.hidden){setTimeout(run,0);return}'));
+check('same-page journeys use that fallback',assistant.includes('afterPaint(()=>{\n        if(publicPath(url)!==pagePath()){'));
+check('cross-page handoffs use that fallback',assistant.includes('afterPaint(()=>{\n          const keepPageVisible='));
+check('scroll settling does not wait on frames when hidden',assistant.includes('if(document.hidden)return void run();'));
+
 if(failed)process.exit(1);
 console.log('\nall passed');
