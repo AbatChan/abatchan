@@ -1131,18 +1131,19 @@
       };
     };
 
-    const streamActionConclusion=async(journey,result,arrival)=>{
+    const streamActionConclusion=async(journey,result,arrival,onFirstToken)=>{
       if(!journey?.receipt)throw new Error('This action has no verification receipt.');
       const response=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         actionResult:result,page:pagePath(),pageContext:currentPageContext(),answerDepth
       })});
       if(!response.ok||!response.body)throw new Error('The action result could not be confirmed.');
       const reader=response.body.getReader(),decoder=new TextDecoder();
-      let text='',frame=0;
+      let text='',frame=0,started=false;
       const paint=()=>{frame=0;render(arrival,text);enhanceActions(arrival);scrollLatest({force:true})};
       while(true){
         const {done,value}=await reader.read();if(done)break;
         text+=decoder.decode(value,{stream:true});
+        if(!started&&text){started=true;onFirstToken?.()}
         if(!frame)frame=requestAnimationFrame(paint);
       }
       text+=decoder.decode();if(frame)cancelAnimationFrame(frame);
@@ -1154,14 +1155,18 @@
     const completeJourney=async(bubble,journey,result)=>{
       if(!bubble||!journey?.arrival||bubble.dataset.journeyComplete)return;
       bubble.dataset.journeyComplete='true';
-      bubble.querySelector('.assist-journey-step.is-active')?.classList.replace('is-active','is-done');
+      // The progress row stays active across the verified continuation request
+      // so the visitor sees work in progress until the conclusion starts, not a
+      // finished-looking row waiting on the model's first token.
+      const settleStep=()=>bubble.querySelector('.assist-journey-step.is-active')?.classList.replace('is-active','is-done');
       const arrival=document.createElement('div');
       arrival.className='assist-journey-arrival';
       bubble.appendChild(arrival);
       scrollLatest({force:true});
       let conclusion='';
-      try{conclusion=await streamActionConclusion(journey,result,arrival)}
+      try{conclusion=await streamActionConclusion(journey,result,arrival,settleStep)}
       catch{
+        settleStep();
         await typeBufferedMessage(arrival,journey.arrival);
         conclusion=journey.arrival;
       }
@@ -1176,29 +1181,53 @@
       notifyClosed(conclusion);
     };
 
+    // Run once the page has actually stopped moving rather than after a fixed
+    // wait. scrollend covers the browsers that fire it; the frame watcher covers
+    // the rest, and the common case where the target was already in view and so
+    // nothing scrolls and no event ever arrives.
+    const whenScrollSettled=run=>{
+      let done=false,frames=0,still=0,last=scrollY;
+      const finish=()=>{if(done)return;done=true;removeEventListener('scrollend',finish);run()};
+      addEventListener('scrollend',finish,{once:true});
+      const watch=()=>{
+        if(done)return;
+        frames++;
+        if(scrollY===last)still++;
+        else{still=0;last=scrollY}
+        // A few frames of grace so a smooth scroll that has not begun painting
+        // yet is not mistaken for a page that never moved.
+        if(frames>4&&still>=3)return finish();
+        requestAnimationFrame(watch);
+      };
+      requestAnimationFrame(watch);
+    };
+
     const guideJourney=(journey,bubble)=>{
       let url;
       try{url=new URL(journey.href,location.href)}catch{return}
       if(!isSafeDestination(url))return;
       journeyStep(bubble,journey.status);
-      // Give the loading state one clean paint before starting the action. The
-      // departure has already finished streaming at this point.
-      setTimeout(()=>{
+      // One paint so the progress row is visible, then start immediately. The
+      // departure has already finished streaming, so anything longer than a
+      // frame is delay the visitor feels for nothing.
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
         if(publicPath(url)!==pagePath()){
           navigateTo(journey.href,journey.label,journey);
           return;
         }
-        let finished=false;
+        let finished=false,ceiling=0;
         let revealResult={found:false,highlighted:false},formResult={updated:false,appliedFields:[]};
         const arrive=()=>{
           if(finished)return;finished=true;
-          setTimeout(()=>completeJourney(bubble,journey,actionResultFor(journey,revealResult,formResult)),280);
+          clearTimeout(ceiling);
+          completeJourney(bubble,journey,actionResultFor(journey,revealResult,formResult));
         };
-        addEventListener('scrollend',arrive,{once:true});
         revealResult=revealTarget(url,journey.label,journey.section_requested===true);
         formResult=prepareProjectForm(journey);
-        setTimeout(arrive,900);
-      },320);
+        whenScrollSettled(arrive);
+        // Hard ceiling only, for a scroll that never settles.
+        ceiling=setTimeout(arrive,900);
+      }));
     };
 
     // Complete a guide-initiated cross-page handoff only once. On desktop the
@@ -1210,7 +1239,7 @@
       const handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null');
       if(handoff&&Date.now()-Number(handoff.at||0)<30000&&typeof handoff.status==='string'&&typeof handoff.arrival==='string'){
         sessionStorage.removeItem(NAV_STORE);
-        setTimeout(()=>{
+        requestAnimationFrame(()=>{
           const keepPageVisible=matchMedia('(max-width:640px)').matches;
           if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);
@@ -1219,10 +1248,18 @@
           const revealResult=revealTarget(url,handoff.label,handoff.section_requested===true);
           const formResult=prepareProjectForm(handoff);
           const transition=document.querySelector('.page-transition');
-          const finish=()=>completeJourney(bubble,handoff,actionResultFor(handoff,revealResult,formResult));
-          if(transition?.classList.contains('is-arriving'))transition.addEventListener('transitionend',finish,{once:true});
-          setTimeout(finish,720);
-        },120);
+          let settled=false,ceiling=0;
+          const finish=()=>{
+            if(settled)return;settled=true;
+            clearTimeout(ceiling);
+            completeJourney(bubble,handoff,actionResultFor(handoff,revealResult,formResult));
+          };
+          // Wait on the arrival animation only while one is actually running.
+          const arriving=transition?.classList.contains('is-arriving');
+          if(arriving)transition.addEventListener('transitionend',finish,{once:true});
+          else whenScrollSettled(finish);
+          ceiling=setTimeout(finish,arriving?720:600);
+        });
       }
     }catch{sessionStorage.removeItem(NAV_STORE)}
 

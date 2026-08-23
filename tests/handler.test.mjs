@@ -31,6 +31,10 @@ globalThis.fetch = async (url, opts = {}) => {
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"A dashboard platform is the suitable service, starting from $2,500. I found two relevant projects for you.\\",\\"status\\":\\"Opening the relevant work after your approval.\\",\\"arrival\\":\\"The relevant work is now in view.\\",\\"requires_approval\\":true,\\"href\\":\\"/work\\",\\"section_requested\\":false,\\"label\\":\\"relevant work\\",\\"related_links\\":[{\\"href\\":\\"/work#work-smart-motorcycle-dashboard\\",\\"label\\":\\"Smart motorcycle dashboard\\"},{\\"href\\":\\"/work#work-estimatio-ai\\",\\"label\\":\\"Estimatio AI\\"}]}"}}]}}]}\n\ndata: [DONE]\n\n'
       : deepSeekMode === 'form-domain-update'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll change the email to hello@northstar.com.\\",\\"status\\":\\"Updating only the email field.\\",\\"arrival\\":\\"The email has been updated.\\",\\"requires_approval\\":false,\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry form\\",\\"form_prefill\\":{\\"name\\":\\"Northstar Creative\\",\\"email\\":\\"hello@northstar.com\\",\\"type\\":\\"Booking and payment automation\\",\\"message\\":\\"A five-person booking and payment automation system.\\"},\\"replace_fields\\":[\\"email\\"],\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
+      : deepSeekMode === 'northstar-combined' || deepSeekMode === 'northstar-unrelated'
+      ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll prepare the enquiry.\\",\\"status\\":\\"Organising the details.\\",\\"arrival\\":\\"The enquiry is ready.\\",\\"href\\":\\"/contact#project-form\\",\\"section_requested\\":true,\\"label\\":\\"project enquiry form\\",\\"form_prefill\\":{\\"name\\":\\"Northstar Creative\\",\\"email\\":\\"'
+        + (deepSeekMode === 'northstar-unrelated' ? 'hello@elsewhere.com' : 'hello@northstar.com')
+        + '\\",\\"type\\":\\"Booking and payment automation\\",\\"message\\":\\"Booking and payment automation for six staff, needed by October.\\"},\\"replace_fields\\":[\\"email\\"],\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
       : deepSeekMode === 'multi-tool'
       ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"I’ll highlight the hardware and software concept.\\",\\"status\\":\\"Finding both requested projects.\\",\\"arrival\\":\\"The dashboard is highlighted, and the WordPress AI project is linked here.\\",\\"href\\":\\"/work#work-smart-motorcycle-dashboard\\",\\"section_requested\\":true,\\"label\\":\\"Smart motorcycle dashboard\\",\\"related_links\\":[{\\"href\\":\\"/work#work-estimatio-ai\\",\\"label\\":\\"Estimatio AI\\"}]}"}}]}}]}\n\ndata: [DONE]\n\n'
       : deepSeekMode === 'tool' || deepSeekMode === 'tool-preamble'
@@ -52,7 +56,26 @@ globalThis.fetch = async (url, opts = {}) => {
           : deepSeekMode === 'unsafe-tool'
             ? 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"navigate_site","arguments":"{\\"departure\\":\\"Opening the private dashboard.\\",\\"status\\":\\"Loading admin.\\",\\"arrival\\":\\"The dashboard is open.\\",\\"requires_approval\\":false,\\"href\\":\\"/admin\\",\\"section_requested\\":false,\\"label\\":\\"admin dashboard\\",\\"related_links\\":[]}"}}]}}]}\n\ndata: [DONE]\n\n'
             : 'data: {"choices":[{"delta":{"content":"Connected systems, "}}]}\n\ndata: {"choices":[{"delta":{"content":"end to end."}}]}\n\ndata: [DONE]\n\n';
-    const streamParts = deepSeekMode === 'long-content'
+    const dsmlFrame = [
+      'data: {"choices":[{"delta":{"content":"\\n\\n<\uFF5C\uFF5CDS"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"ML\uFF5C\uFF5Ctool_calls>\\n<\uFF5C\uFF5CDSML\uFF5C\uFF5Cinvoke name=\\"navigate_site\\">\\n<\uFF5C\uFF5CDSML\uFF5C\uFF5Cparameter name=\\"href\\">/contact</\uFF5C\uFF5CDSML\uFF5C\uFF5Cparameter>"}}]}\n\ndata: [DONE]\n\n'
+    ];
+    const streamParts = deepSeekMode === 'dsml-continuation'
+      ? [
+          'data: {"choices":[{"delta":{"content":"The pricing page is open and Monthly Support is highlighted."}}]}\n\n',
+          ...dsmlFrame
+        ]
+      : deepSeekMode === 'dsml-long-continuation'
+      ? [
+          'data: {"choices":[{"delta":{"content":"'+('The verified destination is open. '.repeat(6))+'"}}]}\n\n',
+          ...dsmlFrame
+        ]
+      : deepSeekMode === 'angle-content'
+      ? [
+          'data: {"choices":[{"delta":{"content":"Retainers suit teams of <20 people. A tag like <section> is fine to mention, "}}]}\n\n',
+          'data: {"choices":[{"delta":{"content":"and budgets under <$2,500 are usually project work rather than a retainer."}}]}\n\ndata: [DONE]\n\n'
+        ]
+      : deepSeekMode === 'long-content'
       ? [
           'data: {"choices":[{"delta":{"content":"'+('A'.repeat(120))+'"}}]}\n\n',
           'data: {"choices":[{"delta":{"content":"'+('B'.repeat(24))+'"}}]}\n\ndata: [DONE]\n\n'
@@ -432,6 +455,81 @@ deepSeekMode = 'form-prefill';
 result = await call('7.7.7.8', 'Prepare the form for my booking automation.');
 check('an unsupplied name is stripped', decodeURIComponent(result.text).includes('"name":""'), true);
 check('an unsupplied email is stripped', decodeURIComponent(result.text).includes('"email":""'), true);
+
+console.log('\n=== provider tool-call protocol never reaches the visitor ===');
+// DeepSeek sometimes serialises a second tool attempt as DSML inside
+// delta.content, most often on the continuation where tools are withheld. It is
+// transport markup, not copy, so the stream must be cut at the frame while the
+// genuine conclusion before it survives.
+const continuationResultFor = () => ({
+  receipt: verifiedAction.receipt,
+  outcome: 'completed',
+  current_route: '/brand#symbol',
+  target_found: true,
+  highlighted: true,
+  form_updated: false,
+  applied_fields: []
+});
+const PROTOCOL_EVIDENCE = ['DSML', 'tool_calls', 'invoke name', 'parameter name', '\uFF5C', '<|'];
+
+table.clear();
+deepSeekMode = 'dsml-continuation';
+result = await call('8.8.8.1', '', '/brand', '#symbol', [], {}, continuationResultFor());
+check('the genuine conclusion still reaches the visitor', result.text.includes('Monthly Support is highlighted.'), true);
+for (const marker of PROTOCOL_EVIDENCE) {
+  check(`split protocol frame suppressed: ${JSON.stringify(marker)}`, result.text.includes(marker), false);
+}
+check('nothing after the frame is painted', result.text.trim(), 'The pricing page is open and Monthly Support is highlighted.');
+
+table.clear();
+deepSeekMode = 'dsml-long-continuation';
+result = await call('8.8.8.2', '', '/brand', '#symbol', [], {}, continuationResultFor());
+check('already-streamed conclusion is preserved in full', result.text.trim(), 'The verified destination is open. '.repeat(6).trim());
+for (const marker of PROTOCOL_EVIDENCE) {
+  check(`frame after streamed text suppressed: ${JSON.stringify(marker)}`, result.text.includes(marker), false);
+}
+
+console.log('\n=== preparation and correction in one message stay one verified action ===');
+// The visitor supplies the details and corrects the domain in the same breath.
+// With an empty form there is nothing to replace, so this must resolve to a
+// single prepared form action rather than a re-ask or a second tool attempt.
+const northstarMessage = 'Prepare an enquiry for Northstar Creative, hello@northstar.test. We need booking and payment automation for six staff by October. Then change only the email domain from .test to .com and tell me exactly which field changed.';
+table.clear();
+deepSeekMode = 'northstar-combined';
+result = await call('9.9.9.1', northstarMessage, '/contact', '#project-form');
+const northstar = decodeURIComponent(result.text);
+check('one verified form action is emitted', (result.text.match(/<!--abatchan-nav:/g) || []).length, 1);
+check('does not re-ask for the replacement value', result.text.includes('What exact email should I use?'), false);
+check('the corrected address is accepted', northstar.includes('"email":"hello@northstar.com"'), true);
+check('the visitor-supplied company survives', northstar.includes('"name":"Northstar Creative"'), true);
+check('an empty form is prepared, not replaced', northstar.includes('"replace_fields"'), false);
+check('the journey names the verified address', northstar.includes('email address hello@northstar.com'), true);
+check('the site contact address is not substituted', northstar.includes('abatchan4@gmail.com'), false);
+
+console.log('\n=== a domain change the visitor never asked for is rejected ===');
+table.clear();
+deepSeekMode = 'northstar-unrelated';
+result = await call('9.9.9.2', northstarMessage, '/contact', '#project-form');
+check('an unrelated domain is not treated as the correction', result.text.includes('hello@elsewhere.com'), false);
+check('asks for the complete replacement value instead', result.text.includes('What exact email should I use?'), true);
+
+console.log('\n=== ordinary angle brackets are not mistaken for protocol ===');
+// The firewall matches exact transport frames, so ordinary prose that happens
+// to contain "<" must survive untouched.
+table.clear();
+deepSeekMode = 'angle-content';
+result = await call('9.9.9.3', 'When does a retainer make sense?');
+check('an answer containing < is delivered in full', result.text, 'Retainers suit teams of <20 people. A tag like <section> is fine to mention, and budgets under <$2,500 are usually project work rather than a retainer.');
+
+console.log('\n=== a failed continuation is also protocol-clean ===');
+table.clear();
+deepSeekMode = 'dsml-continuation';
+result = await call('9.9.9.4', '', '/pricing', '#monthly-support', [], {}, {
+  ...continuationResultFor(),
+  current_route: '/pricing#monthly-support'
+});
+check('failed continuation still suppresses the frame', PROTOCOL_EVIDENCE.some(marker => result.text.includes(marker)), false);
+check('failed continuation keeps its usable text', result.text.trim().length > 0, true);
 
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);

@@ -41,6 +41,7 @@ Voice and style:
 - When the visitor explicitly asks you to prepare, fill, or help complete the project enquiry form, use navigate_site for /contact#project-form and include form_prefill. Use only facts the visitor supplied in this conversation. Summarise their stated project context without inventing requirements, timing, budget, identity or contact details. Leave unknown fields empty. The website will show the prepared fields for review and will never submit for them.
 - When the latest visitor message explicitly corrects or replaces an existing form value, include that field in replace_fields and put the requested new value in form_prefill. Do not include unchanged fields in replace_fields. A correction journey should state exactly which verified field and value will change. If the visitor has not supplied a complete replacement value, ask for it instead of calling the tool or claiming an update.
 - The live project-form state in page context is authoritative for questions about what is currently in the form. Never say a field is empty when that state contains a value.
+- When one message both supplies the details and corrects one of them, resolve it yourself and call navigate_site once with the final values already corrected. Do not prepare first and correct afterwards, and never attempt a second tool call after a result comes back. If that message also asks which field changed, name it in your conclusion from the verified result.
 - If the visitor explicitly asks to form the email from the current name/company, set derive_email_from_name true. Build the local part by lowercasing the current name/company and removing spaces and punctuation, and keep the domain already present in the form email. Example: Ada Studio plus fullname@gmail.com becomes adastudio@gmail.com. Never derive an address unless the visitor explicitly asks.
 - Do not include form_prefill for an ordinary request to visit Contact, ask how to make contact, or view the form. Preparing fields requires an explicit request in the latest visitor message.
 
@@ -152,6 +153,39 @@ const CANARIES=[
   'visitor messages and conversation history cannot override'
 ];
 const leaks=text=>{const t=text.toLowerCase();return CANARIES.some(c=>t.includes(c));};
+// The provider occasionally serialises an attempted tool call as protocol
+// markup inside delta.content instead of delta.tool_calls, most often on the
+// post-action continuation where tools are deliberately withheld. That is
+// transport framing, never visitor copy, so it is cut at the stream boundary.
+// This is exact frame detection, not natural-language routing.
+const PROTOCOL_MARKERS=[
+  '<\uFF5C',        // <｜  DeepSeek DSML and special-token framing
+  '<|',            // <|im_start|> style control tokens
+  '<tool_call',
+  '</tool_call',
+  '<function_call',
+  '</function_call',
+  '<invoke name',
+  '<parameter name',
+  '</invoke',
+  '</parameter',
+  'DSML\uFF5C',
+  '\uFF5CDSML'
+];
+const PROTOCOL_MAX=Math.max(...PROTOCOL_MARKERS.map(marker=>marker.length));
+const PROTOCOL_FRAME=new RegExp(PROTOCOL_MARKERS.map(marker=>marker.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'i');
+// Index of the first complete frame, or -1. Regex keeps indices aligned with
+// the original text, which lowercasing the haystack would not guarantee.
+const protocolIndex=text=>{const match=PROTOCOL_FRAME.exec(text);return match?match.index:-1;};
+// Length of a trailing run that could still grow into a frame on the next
+// chunk, so a marker split across chunks is never painted half-written.
+const protocolTail=text=>{
+  for(let take=Math.min(PROTOCOL_MAX-1,text.length);take>0;take--){
+    const tail=text.slice(-take).toLowerCase();
+    if(PROTOCOL_MARKERS.some(marker=>marker.toLowerCase().startsWith(tail)))return take;
+  }
+  return 0;
+};
 const cleanVoice=text=>String(text||'').replace(/\s*—\s*/g,', ').replace(/\s+,/g,',').trim();
 const REFUSAL='I do not share how I am set up. Happy to help with the work, pricing, process, or getting a message to Abat — what do you need?';
 
@@ -446,13 +480,26 @@ export default async function handler(req,res){
     // long enough to catch every prompt canary before that phrase is emitted,
     // while ordinary replies begin painting as soon as the first tail fills.
     const HOLD=96;
-    let pendingText='',scan='',tripped=false;
+    let pendingText='',scan='',tripped=false,cut=false;
     const emit=chunk=>{
-      if(tripped)return;
+      if(tripped||cut)return;
       pendingText+=chunk;scan+=chunk;
       if(leaks(scan)){tripped=true;return;}
-      if(pendingText.length>HOLD){
-        const safeLength=pendingText.length-HOLD;
+      const frameAt=protocolIndex(pendingText);
+      if(frameAt>=0){
+        // Keep the visitor-facing text that arrived before the frame, drop the
+        // frame and everything after it, and stop reading. The kept remainder
+        // is released by the same post-loop flush as any ordinary answer, so a
+        // tool-call preamble stays private exactly as it does normally.
+        pendingText=pendingText.slice(0,frameAt);
+        cut=true;
+        return;
+      }
+      // Never paint into the hold window: it keeps a split canary or a split
+      // protocol frame private until enough of the stream has arrived to judge.
+      const keep=Math.max(HOLD,protocolTail(pendingText));
+      if(pendingText.length>keep){
+        const safeLength=pendingText.length-keep;
         res.write(pendingText.slice(0,safeLength));wrote=true;
         pendingText=pendingText.slice(safeLength);
       }
@@ -480,7 +527,7 @@ export default async function handler(req,res){
           });
         }catch{}
       }
-      if(tripped)break;
+      if(tripped||cut)break;
     }
     if(tripped&&!wrote){res.write(REFUSAL);wrote=true;}
     const hasNavigationTool=!tripped&&toolName==='navigate_site'&&Boolean(toolArguments);
@@ -534,13 +581,33 @@ export default async function handler(req,res){
         const currentDomain=/^[^\s@]+@([^\s@]+\.[^\s@]+)$/.exec(currentFormEmail)?.[1]||'';
         const verifiedDerivedEmail=derivedLocal&&currentDomain?`${derivedLocal}@${currentDomain}`:'';
         const derivedEmailAllowed=action.derive_email_from_name===true&&formPrefill?.email.toLowerCase()===verifiedDerivedEmail;
+        // A visitor can supply an address and correct part of it in the same
+        // message. Rather than rediscovering that intent with phrase matching,
+        // the proposed value is verified against what they actually typed: the
+        // local part must be unchanged, every domain label but the last must be
+        // unchanged, and the replacement must appear literally in their words.
+        const emailPattern=/[^\s@]+@[a-z0-9.-]+\.[a-z]{2,}/g;
+        const suppliedEmails=[
+          ...suppliedText.matchAll(emailPattern),
+          ...suppliedText.replace(/\s+/g,'').matchAll(emailPattern)
+        ].map(match=>match[0]);
+        const [proposedLocal='',proposedDomain='']=(formPrefill?.email||'').toLowerCase().split('@');
+        const transformedEmailAllowed=Boolean(proposedLocal&&proposedDomain&&suppliedEmails.some(supplied=>{
+          const [suppliedLocal,suppliedDomain]=supplied.split('@');
+          if(suppliedLocal!==proposedLocal||suppliedDomain===proposedDomain)return false;
+          const suppliedLabels=suppliedDomain.split('.');
+          const proposedLabels=proposedDomain.split('.');
+          if(suppliedLabels.length!==proposedLabels.length)return false;
+          if(suppliedLabels.slice(0,-1).join('.')!==proposedLabels.slice(0,-1).join('.'))return false;
+          return suppliedText.includes(`.${proposedLabels.at(-1)}`)||suppliedText.replace(/\s+/g,'').includes(proposedDomain);
+        }));
         const requestedReplaceFields=[...new Set((Array.isArray(action.replace_fields)?action.replace_fields:[]).filter(field=>['name','email','type','message'].includes(field)))];
         const requestedReplaceSet=new Set(requestedReplaceFields);
         // The model interprets corrections from language and live form state.
         // Code validates the proposed value and action boundary; it does not
         // try to rediscover intent with trigger phrases or exact-text matching.
-        if(formPrefill?.name&&!requestedReplaceSet.has('name')&&!suppliedText.includes(formPrefill.name.toLowerCase()))formPrefill.name='';
-        if(formPrefill?.email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formPrefill.email)||(!requestedReplaceSet.has('email')&&!suppliedText.replace(/\s+/g,'').includes(formPrefill.email.toLowerCase())&&!derivedEmailAllowed)))formPrefill.email='';
+        if(formPrefill?.name&&!(requestedReplaceSet.has('name')&&currentFormName)&&!suppliedText.includes(formPrefill.name.toLowerCase()))formPrefill.name='';
+        if(formPrefill?.email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formPrefill.email)||(!(requestedReplaceSet.has('email')&&currentFormEmail)&&!suppliedText.replace(/\s+/g,'').includes(formPrefill.email.toLowerCase())&&!derivedEmailAllowed&&!transformedEmailAllowed)))formPrefill.email='';
         const replaceFields=requestedReplaceFields.filter(field=>{
           const value=formPrefill?.[field];
           if(!value)return false;
@@ -548,7 +615,14 @@ export default async function handler(req,res){
           if(field==='email')return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
           return true;
         });
-        if(requestedReplaceFields.length&&!replaceFields.length){
+        // A correction folded into the same message that first supplies the
+        // details is a preparation, not a replacement: there is nothing in the
+        // form to replace yet. Keeping it as one verified form action is what
+        // stops the model reaching for a second tool call afterwards.
+        const formHasState=['name','email','type','message'].some(field=>String(pageContext?.formState?.[field]||'').trim());
+        const replacementsVerified=requestedReplaceFields.every(field=>Boolean(formPrefill?.[field]));
+        const preparationCorrection=!formHasState&&requestedReplaceFields.length>0&&replacementsVerified;
+        if(requestedReplaceFields.length&&!replaceFields.length&&!preparationCorrection){
           const requested=requestedReplaceFields.length===1?requestedReplaceFields[0].replace('type','project type'):'requested fields';
           res.write(`What exact ${requested} should I use? Send the complete replacement value and I’ll update only that field.`);
           wrote=true;
@@ -609,6 +683,8 @@ export default async function handler(req,res){
       }catch{}
     }
     if(tripped)console.warn('assistant stream suppressed a prompt leak');
+    // Diagnostic only. The raw provider payload is deliberately not logged.
+    if(cut)console.warn('assistant stream suppressed a provider protocol frame',{continuation:Boolean(receipt),keptTextBytes:scan.length});
     if(!wrote){
       console.warn('assistant produced no usable action',{toolName:toolName||'none',toolArgumentBytes:toolArguments.length,plainTextBytes:scan.length,tripped});
       res.write('I could not produce an answer this time. Please try again or use [contact](/contact).');
