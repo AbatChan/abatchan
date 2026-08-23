@@ -668,5 +668,41 @@ deepSeekMode = 'tool';
 result = await call('9.9.10.6', 'take me to the brand page', '/', '', [], {}, null, [], { 'x-site-key': 'site_northwind_demo' });
 check('a route the bakery does not publish emits no action', result.text.includes('<!--abatchan-nav:'), false);
 
+console.log('\n=== a browser preflight is answered before the real request ===');
+// A cross-origin POST with a custom header is preflighted. Without these
+// headers the browser refuses to send the question at all.
+const preflight = async (origin, host = 'guide.example') => {
+  const headers = {};
+  let status = 0;
+  const res = {
+    setHeader: (k, v) => { headers[k.toLowerCase()] = String(v); },
+    end: () => {},
+    set statusCode(code) { status = code; },
+    get statusCode() { return status; },
+    status(code) { status = code; return this; },
+    json() { return this; }
+  };
+  await handler({ method: 'OPTIONS', headers: { origin, host }, body: {} }, res);
+  return { status, headers };
+};
+
+let pre = await preflight('https://northwindbakery.co.uk');
+check('an authorised origin is accepted', pre.status, 204);
+check('with the calling origin echoed', pre.headers['access-control-allow-origin'], 'https://northwindbakery.co.uk');
+check('and the site key header permitted', pre.headers['access-control-allow-headers'].includes('X-Site-Key'), true);
+check('POST is permitted', pre.headers['access-control-allow-methods'].includes('POST'), true);
+check('the answer varies by origin', pre.headers['vary'], 'Origin');
+check('it is cacheable so every question does not preflight', Number(pre.headers['access-control-max-age']) > 0, true);
+
+pre = await preflight('https://copycat.example');
+check('an unknown origin is refused', pre.status, 403);
+check('and gets no CORS grant', pre.headers['access-control-allow-origin'], 'undefined');
+
+console.log('\n=== credentials are never granted to an embed ===');
+// The guide holds no session, and allowing credentials would let a buyer's page
+// ride a visitor's cookies for this domain.
+pre = await preflight('https://northwindbakery.co.uk');
+check('no credentials header is sent', pre.headers['access-control-allow-credentials'], 'undefined');
+
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);

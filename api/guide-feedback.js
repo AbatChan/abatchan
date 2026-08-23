@@ -2,6 +2,8 @@
 // Records an explicit helpful/not-helpful choice without adding analytics or
 // exposing the private Supabase key to the browser.
 
+import { handlePreflight, applyCors, isCrossOrigin } from '../lib/http/cors.js';
+
 const SUPABASE_URL=process.env.SUPABASE_URL||'https://fdubcelrwfpzjjnqipku.supabase.co';
 const hits=new Map();
 const WINDOW=10*60*1000;
@@ -18,6 +20,8 @@ const clean=(value,max)=>String(value||'').replace(/\0/g,'').trim().slice(0,max)
 
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
+  if(await handlePreflight(req,res))return;
+  applyCors(req,res,isCrossOrigin(req)?String(req.headers.origin||''):'');
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
   const ip=String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0].trim();
   if(!allowed(ip))return res.status(429).json({error:'Too many feedback requests'});

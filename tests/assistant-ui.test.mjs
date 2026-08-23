@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 
 const script=readFileSync(new URL('../script.js',import.meta.url),'utf8');
 const assistant=readFileSync(new URL('../assistant-v2.js',import.meta.url),'utf8');
+// The shell moved out of script.js so the embed and this site share one copy.
+const shell=readFileSync(new URL('../guide-shell.js',import.meta.url),'utf8');
+const embed=readFileSync(new URL('../embed.js',import.meta.url),'utf8');
 
 let failed=false;
 const check=(label,value)=>{
@@ -11,8 +14,8 @@ const check=(label,value)=>{
 };
 
 console.log('=== assistant shell starts independently of slow settings ===');
-check('settings wait has a short upper bound',script.includes('Promise.race([')&&script.includes('setTimeout(()=>resolve(null),240)'));
-check('authoritative disabled state still removes the shell',script.includes("fresh?.['assistant.enabled']===false")&&script.includes('launch.remove();panel.remove()'));
+check('settings wait has a short upper bound',shell.includes('Promise.race([')&&shell.includes('setTimeout(()=>resolve(null),240)'));
+check('authoritative disabled state still removes the shell',shell.includes("fresh?.['assistant.enabled']===false")&&shell.includes('launch.remove();panel.remove()'));
 
 console.log('\n=== greeting receives the shared message utility row ===');
 check('intro is normalized into the shared content structure',assistant.includes("content.className='assist-message-content'")&&assistant.includes('intro.replaceChildren(content)'));
@@ -69,6 +72,27 @@ check('both configured models have a context entry',server.includes("'deepseek-v
 check('every model model() accepts is in the table',['deepseek-v4-flash','deepseek-v4-pro'].every(name=>server.includes(`'${name}':{context:`)));
 check('the budget is derived from the window, not hardcoded',server.includes('contextTokens(name)*TOKEN_CHARS*HISTORY_SHARE'));
 check('the share is tunable',server.includes('ASSISTANT_HISTORY_SHARE'));
+
+console.log('\n=== the shell has one implementation, shared with the embed ===');
+check('script.js no longer builds it',!script.includes("panel.className='assist-panel'"));
+check('the shell module does',shell.includes("panel.className='assist-panel'"));
+check('the site still mounts it',script.includes('mountGuideShell('));
+check('and so does the embed',embed.includes('mountGuideShell('));
+check('identity is parameterised, not hardcoded',!shell.includes('<b>Nika</b>')&&shell.includes('${cfg.name}'));
+check('assets resolve against the guide origin',shell.includes('${cfg.assetBase}/assets/icons/'));
+
+console.log('\n=== the widget can be served from another origin ===');
+check('api calls go through a base',assistant.includes("apiUrl('/api/chat-stream')")&&assistant.includes("apiUrl('/api/guide-feedback')"));
+check('no same-origin api calls remain',!assistant.includes("fetch('/api/"));
+check('the site key travels with every call',assistant.includes("'X-Site-Key':SITE_KEY"));
+check('vendor scripts resolve against the same base',assistant.includes('${API_BASE}/assets/vendor/'));
+check('the primary site stays relative',assistant.includes("String(EMBED.apiBase||'')"));
+
+console.log('\n=== the embed asks for nothing the buyer must configure twice ===');
+check('the origin is derived from the script src',embed.includes('new URL(script.src, location.href).origin'));
+check('a missing key fails loudly rather than silently',embed.includes('no data-site on the embed script'));
+check('config is fetched before painting',embed.includes('/api/guide-config?site='));
+check('a disabled or unauthorised site paints nothing',embed.includes('config.enabled === false'));
 
 if(failed)process.exit(1);
 console.log('\nall passed');

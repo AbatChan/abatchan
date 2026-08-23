@@ -2,6 +2,7 @@
 // Streams plain UTF-8 text while keeping provider and Supabase secrets private.
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { resolveTenant, originAllowed, quotaScope, PRIMARY_SITE_KEY } from '../lib/tenants/registry.js';
+import { handlePreflight, applyCors, isCrossOrigin } from '../lib/http/cors.js';
 import { consume } from './quota.js';
 
 const API_URL='https://api.deepseek.com/chat/completions';
@@ -198,6 +199,7 @@ async function workContext(){
 function model(value){return value==='deepseek-v4-pro'||value==='deepseek-v4-flash'?value:DEFAULT_MODEL;}
 
 export default async function handler(req,res){
+  if(await handlePreflight(req,res))return;
   if(req.method!=='POST')return sendError(res,405,'invalid_request','Send a short question about the work, pricing or process.');
   const contentType=String(req.headers['content-type']||'').toLowerCase();
   const contentLength=Number(req.headers['content-length']||0);
@@ -218,7 +220,7 @@ export default async function handler(req,res){
   // alternative hands one tenant's instructions and budget to anyone who asks.
   if(!tenant)return sendError(res,400,'unknown_site','This site is not configured for the guide.');
   if(!originAllowed(tenant,{origin,host}))return sendError(res,403,'origin_not_allowed','The guide is not enabled for this domain.');
-  if(origin&&host&&!origin.endsWith(host))res.setHeader('Access-Control-Allow-Origin',origin);
+  applyCors(req,res,isCrossOrigin(req)?origin:'');
   const PAGE=tenant.pages;
   const actionResult=body.actionResult&&typeof body.actionResult==='object'?body.actionResult:null;
   const receipt=actionResult?readReceipt(actionResult.receipt,PAGE):null;

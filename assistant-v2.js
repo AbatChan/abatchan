@@ -8,9 +8,19 @@
   // here — on a library that renders model output. These are the exact bytes
   // that URL served, pinned. Same-origin also means they cache with the site
   // and cost no extra connection on first paint.
+  // On the primary site everything is same-origin and these stay relative. In an
+  // embed the guide is served from another domain, so embed.js publishes where
+  // it came from and which site is asking, and both travel with every call.
+  const EMBED=(typeof window!=='undefined'&&window.__guideEmbed)||{};
+  const API_BASE=String(EMBED.apiBase||'').replace(/\/$/,'');
+  const SITE_KEY=String(EMBED.siteKey||'');
+  const apiUrl=path=>`${API_BASE}${path}`;
+  // Cross-origin calls carry no cookies, so the site key is the only thing
+  // identifying which tenant is asking.
+  const apiHeaders=(extra={})=>SITE_KEY?{...extra,'X-Site-Key':SITE_KEY}:extra;
   const CDN={
-    marked:'/assets/vendor/marked-15.0.12.min.js',
-    purify:'/assets/vendor/purify-3.4.7.min.js'
+    marked:`${API_BASE}/assets/vendor/marked-15.0.12.min.js`,
+    purify:`${API_BASE}/assets/vendor/purify-3.4.7.min.js`
   };
   const STORE='abatchanGuideHistoryV1';
   const NAV_STORE='abatchanGuideNavigationV1';
@@ -970,7 +980,7 @@
       button.disabled=true;
       try{
         const user=transcript.find(item=>item.id===entry.replyTo);
-        const response=await fetch('/api/guide-feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        const response=await fetch(apiUrl('/api/guide-feedback'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({
           id:entry.id,reaction,response:entry.content,question:user?.content||'',page:pagePath(),createdAt:entry.createdAt||null
         })});
         if(!response.ok)throw new Error('feedback failed');
@@ -1214,7 +1224,7 @@
 
     const streamActionConclusion=async(journey,result,arrival,onFirstToken)=>{
       if(!journey?.receipt)throw new Error('This action has no verification receipt.');
-      const response=await fetch('/api/chat-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      const response=await fetch(apiUrl('/api/chat-stream'),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({
         actionResult:result,page:pagePath(),pageContext:currentPageContext(),answerDepth
       })});
       if(!response.ok||!response.body)throw new Error('The action result could not be confirmed.');
@@ -1479,7 +1489,7 @@
       };
       const paint=()=>{frame=0;if(!answer)return;render(messageContent(ensureBubble()),answer);paintedFrames+=1;scrollLatest()};
       try{
-        const res=await fetch('/api/chat-stream',{method:'POST',signal:activeController.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        const res=await fetch(apiUrl('/api/chat-stream'),{method:'POST',signal:activeController.signal,headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({
           message:text,history:requestHistory(),page:pagePath(),pageContext:currentPageContext(),answerDepth,actionMode,
           attachments:attachments.slice(0,MAX_ATTACHMENTS).map(item=>({kind:item.kind,name:item.name,type:item.type,size:item.size,text:item.kind==='text'?item.text:''}))
         })});
