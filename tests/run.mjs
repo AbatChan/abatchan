@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 const suites = [
   'quota.test.mjs',
   'graduated.test.mjs',
-  'handler.test.mjs'
+  'handler.test.mjs',
+  'assistant-ui.test.mjs'
 ];
 
 let failed = false;

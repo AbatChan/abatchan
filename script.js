@@ -685,7 +685,15 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
 (async function assistant(){
   if(q('.assist-launch'))return;
   const styles=loadAssistantStyles();
-  const settings=await loadPublicSettings();
+  const settingsRequest=loadPublicSettings();
+  // Do not make the launcher wait on a remote settings request. On a cold
+  // mobile connection that left the page looking as though Nika did not
+  // exist. Give a cached/fast response a short chance, then render the safe
+  // authored default while the same request continues in the background.
+  const settings=await Promise.race([
+    settingsRequest,
+    new Promise(resolve=>setTimeout(()=>resolve(null),240))
+  ]);
   if(settings?.['assistant.enabled']===false)return;
   await styles;
   const storedGreeting=settings?.['assistant.greeting'];
@@ -767,6 +775,25 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
     if(log.firstElementChild!==el)log.prepend(el);
     return el;
   };
+
+  // A slower settings response can still update the already-rendered shell.
+  // If the owner disabled Nika, remove it as soon as that authoritative value
+  // arrives instead of leaving the optimistic launcher on screen.
+  settingsRequest.then(fresh=>{
+    if(fresh?.['assistant.enabled']===false){
+      launch.remove();panel.remove();q('.assist-backdrop')?.remove();
+      document.body.classList.remove('assist-sheet-open');return
+    }
+    const freshGreeting=fresh?.['assistant.greeting'];
+    if(typeof freshGreeting==='string'&&!retiredGreetings.includes(freshGreeting)){
+      ASSISTANT.greeting=freshGreeting;
+      const intro=q('[data-guide-intro="true"]',log);
+      if(intro){
+        const content=q('.assist-message-content',intro);
+        if(content)content.textContent=freshGreeting;else intro.textContent=freshGreeting;
+      }
+    }
+  });
   const addError=(issue,question)=>{
     const safe=issue&&typeof issue==='object'?issue:ASSISTANT_FALLBACK_ERROR;
     const el=document.createElement('div');

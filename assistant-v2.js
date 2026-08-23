@@ -573,7 +573,7 @@
       ? {...item,content:item.content,journeyRoute:true,journey:undefined}
       : item
     );
-    let pending=false,activeController=null,audioCtx=null,peekTimer=0,confirmTimer=0,formGuidanceTimer=0;
+    let pending=false,activeController=null,audioCtx=null,peekTimer=0,confirmTimer=0,formGuidanceTimer=0,guidanceTimer=0;
     const GUIDANCE_DURATION=4200;
 
     const requestHistory=()=>{
@@ -632,11 +632,20 @@
       }catch{return null}
     };
 
+    const clearGuidance=()=>{
+      clearTimeout(guidanceTimer);
+      document.querySelectorAll('.assist-guided-target').forEach(node=>node.classList.remove('assist-guided-target'));
+      document.querySelectorAll('.assist-guide-marker').forEach(marker=>marker.remove());
+    };
+
     const revealTarget=(url,label,preferExact=false)=>{
       const target=targetFor(url,label,preferExact);
       if(!target)return {found:false,highlighted:false,label:String(label||'')};
       const pageTop=!url.hash&&!preferExact;
-      document.querySelectorAll('.assist-guided-target').forEach(node=>node.classList.remove('assist-guided-target'));
+      // The border and title pill are one guide state. Clearing an older
+      // target must remove both immediately; previously a second reveal could
+      // remove the old border while its independently timed pill lingered.
+      clearGuidance();
       target.classList.add('assist-guided-target');
       if(pageTop)scrollTo({top:0,left:0,behavior:'auto'});
       else target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
@@ -645,7 +654,7 @@
       marker.textContent=label||'Here';
       marker.setAttribute('aria-hidden','true');
       target.appendChild(marker);
-      setTimeout(()=>{target.classList.remove('assist-guided-target');marker.remove()},GUIDANCE_DURATION);
+      guidanceTimer=setTimeout(clearGuidance,GUIDANCE_DURATION);
       return {found:true,highlighted:true,label:String(label||targetText(target)).slice(0,120),id:String(target.id||'').slice(0,100)};
     };
 
@@ -917,14 +926,14 @@
         const button=document.createElement('button');button.type='button';button.className='assist-message-tool';
         button.dataset.tip=tip;button.setAttribute('aria-label',tip);button.innerHTML=icon;return button;
       };
-      const copy=action('copy','Copy message',ICONS.copy);copy.addEventListener('click',()=>copyText(entry.content));actions.append(copy);
+      const copy=action('copy','Copy message',ICONS.copy);copy.addEventListener('click',()=>copyText(element.querySelector('.assist-message-content')?.textContent||entry.content));actions.append(copy);
       if(entry.role==='user'&&entry.state!=='answered'){
         const retry=action('retry','Retry message',ICONS.retry);
         retry.classList.add('assist-retry-message');
         retry.addEventListener('click',()=>{retry.disabled=true;entry.state='pending';writeStored(transcript);reply(entry.content,entry.id,entry.attachments||[])});
         actions.append(retry);
       }
-      if(entry.role==='assistant'){
+      if(entry.role==='assistant'&&!entry.isIntro){
         ['helpful','not-helpful'].forEach(reaction=>{
           const helpful=reaction==='helpful';
           const button=action(reaction,helpful?'Helpful response':'Report a problem',helpful?ICONS.like:ICONS.dislike);
@@ -947,7 +956,9 @@
     };
     const refreshLatestAssistant=()=>{
       log.querySelectorAll('.assist-msg.bot.is-latest').forEach(node=>node.classList.remove('is-latest'));
-      [...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1)?.classList.add('is-latest');
+      const latest=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1)
+        ||log.querySelector('[data-guide-intro="true"]');
+      latest?.classList.add('is-latest');
     };
     const refreshUserTools=entry=>{
       const element=log.querySelector(`.assist-msg.me[data-message-id="${CSS.escape(entry.id)}"]`);
@@ -999,7 +1010,23 @@
     }
     const pinIntro=()=>{
       const intro=log.querySelector('[data-guide-intro="true"]');
-      if(intro&&log.firstElementChild!==intro)log.prepend(intro);
+      if(!intro)return;
+      if(log.firstElementChild!==intro)log.prepend(intro);
+      if(!intro.querySelector('.assist-message-content')){
+        const content=document.createElement('div');
+        content.className='assist-message-content';
+        content.textContent=intro.textContent.trim();
+        intro.replaceChildren(content);
+      }
+      // The greeting is a real guide message too. Give it the same compact
+      // utility row as the conversation, without asking visitors to rate a
+      // fixed introduction.
+      if(!intro.querySelector('.assist-message-meta')){
+        const greetingAt=Number(sessionStorage.getItem('abatchanGuideGreetingAtV1'))||Date.now();
+        try{sessionStorage.setItem('abatchanGuideGreetingAtV1',String(greetingAt))}catch{}
+        addMessageTools(intro,{id:'guide-intro',role:'assistant',content:intro.querySelector('.assist-message-content').textContent.trim(),createdAt:greetingAt,isIntro:true});
+      }
+      refreshLatestAssistant();
     };
     const greetingObserver=new MutationObserver(pinIntro);
     greetingObserver.observe(log,{childList:true});
@@ -1174,15 +1201,18 @@
       },320);
     };
 
-    // Complete a guide-initiated cross-page handoff only once. The assistant
-    // reopens after the new page is ready, keeps the conversation above, and
-    // points at the promised destination instead of starting over.
+    // Complete a guide-initiated cross-page handoff only once. On desktop the
+    // conversation can reopen beside the page. On a phone the full-height
+    // sheet would cover the exact content Nika just revealed, so keep it
+    // minimized, show the page target, and surface the completed reply through
+    // the existing unread preview. The visitor can reopen Nika when ready.
     try{
       const handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null');
       if(handoff&&Date.now()-Number(handoff.at||0)<30000&&typeof handoff.status==='string'&&typeof handoff.arrival==='string'){
         sessionStorage.removeItem(NAV_STORE);
         setTimeout(()=>{
-          if(!panel.classList.contains('is-open'))launch.click();
+          const keepPageVisible=matchMedia('(max-width:640px)').matches;
+          if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);
           const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
           journeyStep(bubble,handoff.status);
