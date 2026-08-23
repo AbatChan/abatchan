@@ -589,11 +589,17 @@
       // A visitor can leave a page after Nika takes them there. Do not resend
       // that completed journey's old route claim beside the new live context,
       // or the model may treat “you are on Pricing” as newer than the browser.
-      // Drop only that claim. The visitor's own message stays, because it can
-      // carry details they supplied once and still expect to be known, and the
-      // server verifies any proposed form value against exactly these messages,
-      // so removing it silently made those details unrecoverable.
-      return recent.filter(item=>!item.journeyRoute).slice(-4);
+      // Keep the turn on both sides. Dropping the visitor's message loses
+      // details they supplied once and still expect to be known, and the server
+      // verifies proposed form values against exactly those messages. Dropping
+      // only the reply is worse still: it leaves their question unanswered, so
+      // the model proposes the same action again on every later turn.
+      // Keep the departure, which says what was done, and drop the arrival,
+      // which is the part that claims where they are now.
+      return recent.map(item=>item.journeyRoute
+        ? {...item,content:String(item.content||'').split('\n')[0],journeyRoute:false}
+        : item
+      ).slice(-4);
     };
 
     const rememberJourney=entry=>{

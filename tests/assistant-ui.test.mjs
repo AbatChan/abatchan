@@ -43,8 +43,11 @@ console.log('\n=== manual navigation keeps what the visitor supplied ===');
 // Dropping the whole journey turn also deleted the message carrying the
 // visitor's own details, so a later "put those back" had nothing to work from
 // and the server could not verify the values either.
-check('only the stale route claim is dropped',assistant.includes("return recent.filter(item=>!item.journeyRoute).slice(-4);"));
+check('the journey turn is kept, not deleted',assistant.includes("? {...item,content:String(item.content||'').split('\\n')[0],journeyRoute:false}"));
 check('the visitor message is no longer removed with it',!assistant.includes('journeyQuestions'));
+// Dropping the reply while keeping the question left it unanswered, and the
+// model then re-proposed the same action on every following turn.
+check('the reply is not dropped outright',!assistant.includes('recent.filter(item=>!item.journeyRoute)'));
 
 if(failed)process.exit(1);
 console.log('\nall passed');
