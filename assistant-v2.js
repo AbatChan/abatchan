@@ -1138,8 +1138,8 @@
       })});
       if(!response.ok||!response.body)throw new Error('The action result could not be confirmed.');
       const reader=response.body.getReader(),decoder=new TextDecoder();
-      let text='',frame=0,started=false;
-      const paint=()=>{frame=0;render(arrival,text);enhanceActions(arrival);scrollLatest({force:true})};
+      let text='',frame=0,started=false,paintedFrames=0;
+      const paint=()=>{frame=0;paintedFrames++;render(arrival,text);enhanceActions(arrival);scrollLatest({force:true})};
       while(true){
         const {done,value}=await reader.read();if(done)break;
         text+=decoder.decode(value,{stream:true});
@@ -1148,7 +1148,14 @@
       }
       text+=decoder.decode();if(frame)cancelAnimationFrame(frame);
       if(!text.trim())throw new Error('The action result was empty.');
-      paint();
+      // A conclusion is short enough to sit entirely inside the server's rolling
+      // safety tail, so it usually arrives as one final chunk and would appear
+      // fully formed. Reveal a buffered conclusion locally, exactly as ordinary
+      // short answers already do, instead of flashing it in at once.
+      if(paintedFrames<2){
+        arrival.replaceChildren();
+        await typeBufferedMessage(arrival,text.trim());
+      }else paint();
       return text.trim();
     };
 
