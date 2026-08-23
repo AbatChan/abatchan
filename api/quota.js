@@ -31,6 +31,10 @@ const IP_DAILY_MAX = Number(process.env.ASSISTANT_IP_DAILY_MAX || 30);
 const ENV = process.env.VERCEL_ENV || 'development';
 const SUFFIX = ENV === 'production' ? '' : `.${ENV}`;
 const USAGE_KEY = `assistant.usage${SUFFIX}`;
+// Each tenant counts against its own rows, so a busy site cannot spend another
+// site's allowance. The primary site uses an empty scope and therefore keeps
+// the keys it already has, rather than resetting its counters on deploy.
+const usageKeyFor = scope => `${USAGE_KEY}${scope || ''}`;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -42,9 +46,10 @@ function serviceHeaders() {
   return headers;
 }
 
-function ipKey(ip, day) {
+function ipKey(ip, day, scope) {
   const salt = process.env.ASSISTANT_IP_SALT || process.env.SUPABASE_SECRET_KEY || 'abatchan';
-  return `assistant.ip${SUFFIX}.` + createHash('sha256').update(`${salt}:${day}:${ip}`).digest('hex').slice(0, 16);
+  const seed = scope ? `${salt}:${day}:${scope}:${ip}` : `${salt}:${day}:${ip}`;
+  return `assistant.ip${SUFFIX}${scope || ''}.` + createHash('sha256').update(seed).digest('hex').slice(0, 16);
 }
 
 const open = () => ({ allowed: true, reason: null, remaining: DAILY_MAX, personal: IP_DAILY_MAX });
@@ -105,12 +110,12 @@ function sweep(headers, day) {
 
 // One statement, one round trip, no lost updates. Present only once schema.sql
 // has been applied; until then the REST path below stands in.
-async function viaRpc(headers, day, key) {
+async function viaRpc(headers, day, key, usageKey = USAGE_KEY) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/assistant_consume`, {
     method: 'POST',
     headers: { ...headers, Accept: 'application/json' },
     cache: 'no-store',
-    body: JSON.stringify({ p_usage_key: USAGE_KEY, p_ip_key: key, p_day: day, p_global_max: DAILY_MAX, p_ip_max: IP_DAILY_MAX })
+    body: JSON.stringify({ p_usage_key: usageKey, p_ip_key: key, p_day: day, p_global_max: DAILY_MAX, p_ip_max: IP_DAILY_MAX })
   });
   if (!res.ok) return null;
   const data = await res.json();
@@ -122,9 +127,9 @@ async function viaRpc(headers, day, key) {
 // Read-then-write. Two instances can read the same number and each write n+1,
 // so this undercounts under load. It is the fallback precisely because the RPC
 // above does not have that flaw.
-async function viaRest(headers, day, key) {
+async function viaRest(headers, day, key, usageKey = USAGE_KEY) {
   const read = await fetch(
-    `${SUPABASE_URL}/rest/v1/settings?key=in.("${USAGE_KEY}","${key}")&select=key,value`,
+    `${SUPABASE_URL}/rest/v1/settings?key=in.("${usageKey}","${key}")&select=key,value`,
     { headers, cache: 'no-store' }
   );
   const rows = read.ok ? await read.json() : [];
@@ -132,7 +137,7 @@ async function viaRest(headers, day, key) {
     const stored = (rows || []).find(row => row.key === name)?.value;
     return stored && stored.day === day ? Number(stored.count) || 0 : 0;
   };
-  const used = at(USAGE_KEY);
+  const used = at(usageKey);
   const mine = at(key);
   const cap = capFor(used);
 
@@ -144,7 +149,7 @@ async function viaRest(headers, day, key) {
     method: 'POST',
     headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify([
-      { key: USAGE_KEY, value: { day, count: used + 1 }, is_public: false },
+      { key: usageKey, value: { day, count: used + 1 }, is_public: false },
       { key, value: { day, count: mine + 1 }, is_public: false }
     ])
   });
@@ -155,14 +160,15 @@ async function viaRest(headers, day, key) {
 // Returns {allowed, reason, remaining, personal}. A counter that cannot be read
 // is not a reason to refuse a visitor, so every failure here opens rather than
 // closes — the same call the original counter made.
-export async function consume(ip) {
+export async function consume(ip, scope = '') {
   const headers = serviceHeaders();
   if (!headers) return open();
   if (ENV_EXEMPT.includes(ip) || (await exemptIps(headers)).has(ip)) return open();
   const day = today();
-  const key = ipKey(ip, day);
+  const key = ipKey(ip, day, scope);
+  const usageKey = usageKeyFor(scope);
   try {
-    return (await viaRpc(headers, day, key)) || (await viaRest(headers, day, key));
+    return (await viaRpc(headers, day, key, usageKey)) || (await viaRest(headers, day, key, usageKey));
   } catch {
     return open();
   }

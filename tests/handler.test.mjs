@@ -120,7 +120,7 @@ const { default: handler } = await import('../api/chat-stream.js');
 const { readFileSync } = await import('node:fs');
 const goldenPrompt = JSON.parse(readFileSync(new URL('./fixtures/abatchan-prompt.golden.json', import.meta.url), 'utf8'));
 
-const call = async (ip, message = 'what do you build?', page = '/', hash = '', history = [], pageState = {}, actionResult = null, attachments = []) => {
+const call = async (ip, message = 'what do you build?', page = '/', hash = '', history = [], pageState = {}, actionResult = null, attachments = [], extraHeaders = {}) => {
   const headers = {};
   const chunks = [];
   let status = 200;
@@ -146,7 +146,8 @@ const call = async (ip, message = 'what do you build?', page = '/', hash = '', h
     headers: {
       'content-type': 'application/json',
       'content-length': '60',
-      'x-forwarded-for': ip
+      'x-forwarded-for': ip,
+      ...extraHeaders
     },
     body: { message, page, history, pageContext: { hash, ...pageState }, attachments, ...(actionResult?{actionResult}:{}) }
   }, res);
@@ -614,6 +615,58 @@ check('the role is sent verbatim', systemSent.startsWith(goldenPrompt.ROLE), tru
 check('the published facts are sent verbatim', systemSent.includes(goldenPrompt.GUIDE), true);
 check('the commercial sheet is sent verbatim', systemSent.includes(goldenPrompt.COMMERCIAL_GUIDE), true);
 check('the live route block still follows', systemSent.includes('Authoritative live browser state for this turn'), true);
+
+console.log('\n=== a site key selects which tenant answers ===');
+// A same-origin request may leave the key out; this deployment serves one site
+// and is talking to itself.
+table.clear();
+deepSeekMode = 'content';
+result = await call('9.9.10.1', 'what do you build?');
+let sys = lastDeepSeekBody.messages.find(m => m.role === 'system').content;
+check('no key means the primary site', sys.includes('abatchan.com'), true);
+
+result = await call('9.9.10.2', 'what do you sell?', '/', '', [], {}, null, [], { 'x-site-key': 'site_northwind_demo' });
+sys = lastDeepSeekBody.messages.find(m => m.role === 'system').content;
+check('a second key swaps the whole prompt', sys.includes('northwindbakery.co.uk'), true);
+check('and carries none of the first tenant', sys.includes('abatchan'), false);
+check('its own assistant name is used', sys.includes('Poppy'), true);
+check('its own prices are used', sys.includes('£4.80'), true);
+
+console.log('\n=== an unknown key is refused, never served the primary site ===');
+table.clear();
+result = await call('9.9.10.3', 'hello', '/', '', [], {}, null, [], { 'x-site-key': 'site_does_not_exist' });
+check('status', result.status, 400);
+check('code', result.json.error.code, 'unknown_site');
+check('nothing reached the model', lastDeepSeekBody.messages.some(m => String(m.content||'').includes('site_does_not_exist')), false);
+
+console.log('\n=== a key lifted onto another origin is refused ===');
+// The key ships in the page source, so this is the control that matters.
+table.clear();
+result = await call('9.9.10.4', 'hello', '/', '', [], {}, null, [], {
+  'x-site-key': 'site_abatchan_live',
+  origin: 'https://copycat.example',
+  host: 'abatchan.com'
+});
+check('status', result.status, 403);
+check('code', result.json.error.code, 'origin_not_allowed');
+
+console.log('\n=== an allowed origin is served with CORS ===');
+table.clear();
+result = await call('9.9.10.5', 'what do you sell?', '/', '', [], {}, null, [], {
+  'x-site-key': 'site_northwind_demo',
+  origin: 'https://northwindbakery.co.uk',
+  host: 'guide.example'
+});
+check('status', result.status, 200);
+check('the calling origin is echoed back', result.headers['access-control-allow-origin'], 'https://northwindbakery.co.uk');
+
+console.log('\n=== navigation is bounded by the tenant own pages ===');
+// abatchan's routes must not resolve while serving the bakery, or one tenant
+// could be walked onto another's destinations.
+table.clear();
+deepSeekMode = 'tool';
+result = await call('9.9.10.6', 'take me to the brand page', '/', '', [], {}, null, [], { 'x-site-key': 'site_northwind_demo' });
+check('a route the bakery does not publish emits no action', result.text.includes('<!--abatchan-nav:'), false);
 
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);

@@ -86,5 +86,29 @@ check(
 );
 check('stale rows swept once on first request of day', sweeps > 0, true);
 
+console.log('\n=== tenants count against separate allowances ===');
+// Without this one busy site spends another site's budget. The primary keeps an
+// empty scope so its live counters carry over rather than resetting on deploy.
+const scopeRows = new Set();
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (url, opts = {}) => {
+  const u = String(url);
+  if (u.includes('/rpc/assistant_consume')) {
+    const sent = JSON.parse(opts.body);
+    scopeRows.add(`${sent.p_usage_key}|${sent.p_ip_key}`);
+  }
+  return originalFetch(url, opts);
+};
+await consume('5.1.1.1', '');
+await consume('5.1.1.1', '.northwind');
+const keys = [...scopeRows];
+check('two scopes produced two usage rows', new Set(keys.map(k => k.split('|')[0])).size, 2);
+check('and two separate per-connection rows', new Set(keys.map(k => k.split('|')[1])).size, 2);
+const usageKeys = keys.map(k => k.split('|')[0]).sort();
+const scoped = usageKeys.filter(k => k.endsWith('.northwind'));
+check('exactly one row is scoped to the second tenant', scoped.length, 1);
+check('the scoped row extends the primary row name', scoped[0], `${usageKeys.find(k => !k.endsWith('.northwind'))}.northwind`);
+globalThis.fetch = originalFetch;
+
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);
