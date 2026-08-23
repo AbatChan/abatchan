@@ -43,7 +43,10 @@ console.log('\n=== manual navigation keeps what the visitor supplied ===');
 // Dropping the whole journey turn also deleted the message carrying the
 // visitor's own details, so a later "put those back" had nothing to work from
 // and the server could not verify the values either.
-check('the journey turn is kept, not deleted',assistant.includes("? {...item,content:String(item.content||'').split('\\n')[0],journeyRoute:false}"));
+check('the journey turn is kept, not deleted',assistant.includes("journeyRoute:false}")&&assistant.includes('Done, at the time it was asked.'));
+// Keeping the reply's own wording, departure included, reads as a location
+// claim and made "where am I" answer with the old destination.
+check('no wording from the journey reply survives',!assistant.includes("String(item.content||'').split('\\n')[0]"));
 check('the visitor message is no longer removed with it',!assistant.includes('journeyQuestions'));
 // Dropping the reply while keeping the question left it unanswered, and the
 // model then re-proposed the same action on every following turn.

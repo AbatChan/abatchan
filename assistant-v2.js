@@ -589,15 +589,19 @@
       // A visitor can leave a page after Nika takes them there. Do not resend
       // that completed journey's old route claim beside the new live context,
       // or the model may treat “you are on Pricing” as newer than the browser.
-      // Keep the turn on both sides. Dropping the visitor's message loses
-      // details they supplied once and still expect to be known, and the server
-      // verifies proposed form values against exactly those messages. Dropping
-      // only the reply is worse still: it leaves their question unanswered, so
-      // the model proposes the same action again on every later turn.
-      // Keep the departure, which says what was done, and drop the arrival,
-      // which is the part that claims where they are now.
+      // Three things have to hold at once here, and each of the obvious fixes
+      // breaks one of them. Dropping the visitor's message loses details they
+      // supplied once and still expect to be known, and the server verifies
+      // proposed form values against exactly those messages. Dropping only the
+      // reply leaves their question unanswered, so the model proposes the same
+      // action again on every later turn. Keeping any of the reply's own
+      // wording, the departure included, reads as a location claim: after
+      // "I'll take you to the work page" the model answers "where am I" with
+      // Work even once the visitor has walked to another page.
+      // So keep the turn, keep their message, and replace the reply with a
+      // stand-in that carries no destination and defers to the live route.
       return recent.map(item=>item.journeyRoute
-        ? {...item,content:String(item.content||'').split('\n')[0],journeyRoute:false}
+        ? {...item,content:'Done, at the time it was asked. This turn says nothing about which page the visitor is on now; the live route check is the only authority on that.',journeyRoute:false}
         : item
       ).slice(-4);
     };
