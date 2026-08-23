@@ -589,8 +589,11 @@
       // A visitor can leave a page after Nika takes them there. Do not resend
       // that completed journey's old route claim beside the new live context,
       // or the model may treat “you are on Pricing” as newer than the browser.
-      const journeyQuestions=new Set(recent.filter(item=>item.journeyRoute&&item.replyTo).map(item=>item.replyTo));
-      return recent.filter(item=>!item.journeyRoute&&!journeyQuestions.has(item.id)).slice(-4);
+      // Drop only that claim. The visitor's own message stays, because it can
+      // carry details they supplied once and still expect to be known, and the
+      // server verifies any proposed form value against exactly these messages,
+      // so removing it silently made those details unrecoverable.
+      return recent.filter(item=>!item.journeyRoute).slice(-4);
     };
 
     const rememberJourney=entry=>{

@@ -39,5 +39,12 @@ check('same-page journeys use that fallback',assistant.includes('afterPaint(()=>
 check('cross-page handoffs use that fallback',assistant.includes('afterPaint(()=>{\n          const keepPageVisible='));
 check('scroll settling does not wait on frames when hidden',assistant.includes('if(document.hidden)return void run();'));
 
+console.log('\n=== manual navigation keeps what the visitor supplied ===');
+// Dropping the whole journey turn also deleted the message carrying the
+// visitor's own details, so a later "put those back" had nothing to work from
+// and the server could not verify the values either.
+check('only the stale route claim is dropped',assistant.includes("return recent.filter(item=>!item.journeyRoute).slice(-4);"));
+check('the visitor message is no longer removed with it',!assistant.includes('journeyQuestions'));
+
 if(failed)process.exit(1);
 console.log('\nall passed');
