@@ -650,7 +650,7 @@ const ASSISTANT={
   // This path only runs if that never happens and reports a real connection
   // state instead of impersonating the model with keyword-matched replies.
   endpoint:null,
-  greeting:"Hey, I'm Nika. I know the work, pricing, process, and how to reach Abat. What are you trying to build?",
+  greeting:"Hey, I'm Nika. What are you looking to build?",
   chips:['What do you build?','How much does it cost?','How long does it take?','What can you help with?']
 };
 const LEGACY_ASSISTANT_GREETING="Hi. Ask me anything about the work, pricing, or how a project runs.";
@@ -691,7 +691,8 @@ const loadAssistantStyles=()=>new Promise(resolve=>{
   const storedGreeting=settings?.['assistant.greeting'];
   const retiredGreetings=[
     LEGACY_ASSISTANT_GREETING,
-    "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?"
+    "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?",
+    "Hey, I’m the Nika. What are you looking to build?"
   ];
   if(typeof storedGreeting==='string'&&!retiredGreetings.includes(storedGreeting)){
     ASSISTANT.greeting=storedGreeting;

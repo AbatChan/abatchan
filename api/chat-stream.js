@@ -194,6 +194,7 @@ const readReceipt=value=>{
     if(!body||!signature||extra||!receiptSecret())return null;
     const expected=createHmac('sha256',receiptSecret()).update(body).digest();
     const supplied=Buffer.from(signature,'base64url');
+    if(supplied.toString('base64url')!==signature)return null;
     if(expected.length!==supplied.length||!timingSafeEqual(expected,supplied))return null;
     const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));
     if(payload?.v!==1||!Number.isFinite(payload?.issuedAt)||Date.now()-payload.issuedAt>RECEIPT_TTL)return null;
@@ -379,13 +380,29 @@ export default async function handler(req,res){
     const visitorMessage=attachmentContext?`${message}\n\nAttachments supplied with this turn:\n${attachmentContext}`:message;
 
     const routeCheck=`Final live-route check immediately before the visitor's newest message: the browser is on ${page}${pageContext?.hash||''}. This value is newer than every route mentioned in conversation history. If the visitor asks to go elsewhere, do not say they are already there.`;
+    const resultRoute=String(actionResult?.current_route||'').slice(0,180);
+    const resultPath=resultRoute.split('#')[0]||'/';
+    const expectedPath=String(receipt?.action?.href||'').split('#')[0]||'/';
+    const routeVerified=Boolean(receipt&&Object.hasOwn(PAGE,resultPath)&&resultPath===expectedPath);
+    const targetVerified=routeVerified&&(receipt.action.section_requested!==true||actionResult.target_found===true);
+    const expectedFormFields=Object.entries(receipt?.action?.form_prefill||{}).filter(([,value])=>Boolean(value)).map(([field])=>field);
+    const appliedFields=Array.isArray(actionResult?.applied_fields)
+      ? actionResult.applied_fields.filter(field=>expectedFormFields.includes(field)).slice(0,4)
+      : [];
+    const formVerified=!expectedFormFields.length||(actionResult.form_updated===true&&expectedFormFields.every(field=>appliedFields.includes(field)));
+    const reportedOutcome=['completed','partial','cancelled','failed'].includes(actionResult?.outcome)?actionResult.outcome:'failed';
+    const verifiedOutcome=reportedOutcome==='cancelled'
+      ? 'cancelled'
+      : routeVerified&&targetVerified&&formVerified&&reportedOutcome==='completed'
+        ? 'completed'
+        : routeVerified?'partial':'failed';
     const verifiedResult=receipt?{
-      outcome:['completed','partial','cancelled','failed'].includes(actionResult.outcome)?actionResult.outcome:'failed',
-      current_route:Object.hasOwn(PAGE,String(actionResult.current_route||'').split('#')[0]||'/')?String(actionResult.current_route).slice(0,180):`${page}${pageContext?.hash||''}`,
-      target_found:actionResult.target_found===true,
-      highlighted:actionResult.highlighted===true,
-      form_updated:actionResult.form_updated===true,
-      applied_fields:Array.isArray(actionResult.applied_fields)?actionResult.applied_fields.filter(field=>['name','email','type','message'].includes(field)).slice(0,4):[],
+      outcome:verifiedOutcome,
+      current_route:routeVerified?resultRoute:`${page}${pageContext?.hash||''}`,
+      target_found:targetVerified,
+      highlighted:targetVerified&&actionResult.highlighted===true,
+      form_updated:formVerified&&expectedFormFields.length>0,
+      applied_fields:appliedFields,
       form_state:pageContext?.formState||null,
       note:String(actionResult.note||'').replace(/[\r\n\0]/g,' ').trim().slice(0,240)
     }:null;
@@ -495,6 +512,7 @@ export default async function handler(req,res){
         const relatedMarkup=relatedLinks.map(item=>`[${item.label}](${item.href})`).join(' · ');
         const targetPath=href.split('#')[0]||'/';
         const targetHash=href.includes('#')?`#${href.split('#').slice(1).join('#')}`:'';
+        const validPrimaryHref=/^\/[a-z0-9/_-]*(?:#[a-z0-9_-]+)?$/i.test(href)&&Object.hasOwn(PAGE,targetPath);
         const formPrefill=targetPath==='/contact'&&action.form_prefill&&typeof action.form_prefill==='object'
           ? {
               name:String(action.form_prefill.name||'').trim().slice(0,120),
@@ -578,10 +596,10 @@ export default async function handler(req,res){
         // A prepare-form request still has useful work to do when the visitor
         // is already sitting at the form, so it must reach the client action
         // handler instead of being collapsed into an ordinary arrival reply.
-        const alreadyThere=!hasPrefill&&!sectionRequested&&targetPath===page&&((targetHash&&targetHash===(pageContext?.hash||''))||!targetHash);
+        const alreadyThere=validPrimaryHref&&!hasPrefill&&!sectionRequested&&targetPath===page&&((targetHash&&targetHash===(pageContext?.hash||''))||!targetHash);
         if(safeJourney&&alreadyThere&&!wrote){res.write(arrival);wrote=true;}
-        else if(safeJourney&&!wrote){res.write(safeDeparture);wrote=true;}
-        if(safeJourney&&!alreadyThere&&href.startsWith('/')&&label){
+        else if(safeJourney&&validPrimaryHref&&!wrote){res.write(safeDeparture);wrote=true;}
+        if(safeJourney&&!alreadyThere&&validPrimaryHref&&label){
           const verifiedAction={href,label,departure:safeDeparture,status:safeStatus,arrival,requires_approval:requiresApproval,section_requested:sectionRequested,related_links:relatedLinks,...(hasPrefill?{form_prefill:formPrefill}:{}),...(replaceFields.length?{replace_fields:replaceFields}:{})};
           const callId=`call_${randomUUID().replace(/-/g,'')}`;
           const actionReceipt=signReceipt({v:1,issuedAt:Date.now(),callId,message,answerDepth,action:verifiedAction});
