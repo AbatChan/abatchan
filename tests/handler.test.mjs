@@ -117,6 +117,8 @@ globalThis.fetch = async (url, opts = {}) => {
 };
 
 const { default: handler } = await import('../api/chat-stream.js');
+const { readFileSync } = await import('node:fs');
+const goldenPrompt = JSON.parse(readFileSync(new URL('./fixtures/abatchan-prompt.golden.json', import.meta.url), 'utf8'));
 
 const call = async (ip, message = 'what do you build?', page = '/', hash = '', history = [], pageState = {}, actionResult = null, attachments = []) => {
   const headers = {};
@@ -599,6 +601,19 @@ result = await call('9.9.9.7', 'put those details back please', '/contact', '#pr
 const mismatched = decodeURIComponent(result.text);
 check('an unrelated prepared name does not bless the proposal', mismatched.includes('"name":""'), true);
 check('an unrelated prepared email does not bless the proposal', mismatched.includes('"email":""'), true);
+
+console.log('\n=== the composed prompt reaches the model unchanged ===');
+// The instructions now come from a tenant record rather than literals in this
+// file. What the model receives must be exactly what it received before, or the
+// split changed behaviour while looking like a refactor.
+table.clear();
+deepSeekMode = 'content';
+result = await call('9.9.9.10', 'what do you build?');
+const systemSent = lastDeepSeekBody.messages.find(m => m.role === 'system').content;
+check('the role is sent verbatim', systemSent.startsWith(goldenPrompt.ROLE), true);
+check('the published facts are sent verbatim', systemSent.includes(goldenPrompt.GUIDE), true);
+check('the commercial sheet is sent verbatim', systemSent.includes(goldenPrompt.COMMERCIAL_GUIDE), true);
+check('the live route block still follows', systemSent.includes('Authoritative live browser state for this turn'), true);
 
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);
