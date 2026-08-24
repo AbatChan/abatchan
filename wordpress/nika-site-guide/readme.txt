@@ -1,52 +1,75 @@
 === Nika Site Guide ===
 Contributors: abatchan
-Tags: ai assistant, site guide, navigation, customer support
+Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect a WordPress site to Nika, a context-aware guide that can answer, navigate, scroll, and highlight useful page content.
+A self-hosted, context-aware website guide using your AI key and WordPress database.
 
 == Description ==
 
-Nika Site Guide is the lightweight WordPress connector for the hosted Nika service.
+Nika answers from configured instructions, published WordPress content, and limited visible context from the visitor's current page. When explicitly asked, it can navigate to a published page, scroll to a section, and highlight the destination.
 
-After you save your Nika site key, the plugin loads the guide on public pages. Nika can use configured website context, guide a visitor to approved pages and sections, and highlight the destination. The AI service, tenant configuration, limits, and account management remain hosted by abatchan.
+This edition is bring-your-own-key software:
 
-This plugin requires a Nika service account. A free service level may be available; paid plans provide additional usage and features.
+* Settings and website content remain in your WordPress database.
+* Conversation history remains in the visitor's browser session.
+* AI requests are sent directly from WordPress to your selected provider.
+* The provider key is used only by server-side PHP and is never returned to visitors.
+* No Abatchan account or hosted Nika database is required.
 
-= External service =
+Supported providers are OpenAI, DeepSeek, and OpenAI-compatible chat-completions endpoints.
 
-The plugin connects to https://abatchan.com to load the guide and generate responses. It may send the visitor's question, current page URL, recent guide conversation, and limited visible page context required to answer or guide the visitor. It does not send WordPress authentication cookies or administrator credentials.
+== Third-party services ==
 
-The service is provided by ABATCHAN LTD. Terms: https://abatchan.com/terms and privacy policy: https://abatchan.com/privacy.
+Nika contacts only the AI provider selected and configured by the site owner. A request may contain the visitor's question, recent Nika conversation, owner instructions, the current page URL, and limited visible/published website content required to answer.
+
+Provider terms and privacy policies:
+
+* OpenAI: https://openai.com/policies/terms-of-use/ and https://openai.com/policies/privacy-policy/
+* DeepSeek: https://cdn.deepseek.com/policies/en-US/deepseek-terms-of-use.html and https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html
+* A custom compatible provider is governed by the URL and terms chosen by the site owner.
+
+Site owners should update their own privacy notice before enabling Nika.
 
 == Installation ==
 
-1. Upload the plugin ZIP in Plugins > Add New > Upload Plugin.
+1. Upload the ZIP in Plugins > Add New > Upload Plugin.
 2. Activate Nika Site Guide.
 3. Open Settings > Nika Site Guide.
-4. Paste the site key from your Nika account and save.
-5. Run the connection test. If the domain is not approved, add it to the site in Nika.
-6. Enable "Show Nika to visitors" and save.
+4. Select a provider and model, then add your API key.
+5. Add website-specific instructions and review the hourly limit.
+6. Enable Nika and test it while logged out.
+
+For stronger key protection, define `NIKA_AI_API_KEY` in `wp-config.php` instead of storing it through WordPress Admin.
 
 == Frequently Asked Questions ==
 
-= Is the site key a password? =
+= Where is my data stored? =
 
-No. The site key appears in the public page source. Nika protects it by checking the approved domain on every configuration and chat request.
+Configuration is stored in the WordPress options table. Published content is read from WordPress when needed. Short conversation history is stored in the visitor's session storage and is cleared with that browser session.
 
-= Will it work with my theme or page builder? =
+= Does Abatchan receive my API key or conversations? =
 
-The connector is theme-independent and does not require Elementor, Gutenberg, or a specific theme. A restrictive Content Security Policy may need to allow scripts, styles, images, and connections from https://abatchan.com.
+No. This self-hosted package does not call an Abatchan Nika service. WordPress sends AI requests directly to the provider selected by the site owner.
 
-= Does the plugin include the AI service? =
+= Can Nika navigate anywhere? =
 
-The GPL plugin is the connector. AI processing, account settings, usage limits, and tenant context are provided by the hosted Nika service.
+No. The server and browser both restrict navigation to published paths returned by this WordPress installation. Cross-origin and unpublished destinations are rejected.
+
+= Does Nika submit forms? =
+
+No. Version 0.2.0 is read-only and does not submit forms, access user accounts, or complete payments.
 
 == Changelog ==
 
+= 0.2.0 =
+* Converted the connector into a self-hosted BYOK product.
+* Added local WordPress settings, published-content context, provider proxy, hashed rate limits, and validated navigation.
+* Added an isolated responsive widget with optional browser dictation.
+
 = 0.1.0 =
-* Initial connector with site-key settings, domain connection test, enable control, and external-service disclosure.
+* Initial hosted-service connector beta.

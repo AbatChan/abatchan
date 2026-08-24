@@ -8,7 +8,9 @@ const suites = [
   'assistant-ui.test.mjs',
   'prompt.test.mjs',
   'tenant-store.test.mjs',
-  'wordpress-plugin.test.mjs'
+  'wordpress-plugin.test.mjs',
+  'nika-core.test.mjs',
+  'nika-universal.test.mjs'
 ];
 
 let failed = false;

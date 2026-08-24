@@ -1,0 +1,14 @@
+services:
+  nika:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8787:8787"
+    volumes:
+      - nika-data:/app/data
+      - ./nika.config.json:/app/nika.config.json:ro
+      - ./content.json:/app/content.json:ro
+
+volumes:
+  nika-data:

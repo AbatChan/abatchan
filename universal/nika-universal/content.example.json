@@ -1,0 +1,14 @@
+{
+  "pages": [
+    {
+      "path": "/",
+      "title": "Home",
+      "text": "A short, factual summary of the home page and the business."
+    },
+    {
+      "path": "/pricing",
+      "title": "Pricing",
+      "text": "Describe the published plans and prices here."
+    }
+  ]
+}

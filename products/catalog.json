@@ -1,0 +1,58 @@
+{
+  "currency": "USD",
+  "purchaseModel": "one_time",
+  "includedUpdatesMonths": 12,
+  "includedSupportMonths": 12,
+  "renewal": "optional",
+  "dataModel": "customer_hosted",
+  "aiBilling": "customer_api_key",
+  "platforms": [
+    {
+      "id": "wordpress",
+      "name": "WordPress",
+      "status": "available",
+      "artifact": "/downloads/nika-site-guide-0.2.0.zip",
+      "runtime": "WordPress 6.2+ and PHP 7.4+"
+    },
+    {
+      "id": "universal",
+      "name": "Universal website",
+      "status": "available",
+      "artifact": "/downloads/nika-universal-0.2.0.zip",
+      "runtime": "Node.js 22.5+ or Docker"
+    },
+    {
+      "id": "shopify",
+      "name": "Shopify",
+      "status": "planned",
+      "artifact": null,
+      "runtime": "Shopify app"
+    }
+  ],
+  "packages": [
+    {
+      "id": "personal",
+      "name": "Personal",
+      "price": 99,
+      "sites": 1,
+      "platformSelection": "one_available_platform",
+      "features": ["context-aware answers", "approved navigation and highlights", "customer-owned data", "bring your own AI key"]
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "price": 199,
+      "sites": 5,
+      "platformSelection": "all_available_platforms",
+      "features": ["everything in Personal", "WordPress and Universal installers", "remove Nika branding", "priority email support"]
+    },
+    {
+      "id": "agency",
+      "name": "Agency",
+      "price": 399,
+      "sites": 25,
+      "platformSelection": "all_available_and_future_platforms_during_update_term",
+      "features": ["everything in Business", "client installations", "white-label controls", "agency onboarding"]
+    }
+  ]
+}
