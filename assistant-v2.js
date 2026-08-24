@@ -111,7 +111,7 @@
   // falls back to its own, which is what shipped before tenants existed.
   const PUBLIC_PATHS=new Set(Array.isArray(EMBED.paths)&&EMBED.paths.length
     ? EMBED.paths
-    : ['/','/work','/about','/pricing','/process','/brand','/contact','/reviews','/bookingkoala','/privacy','/terms']);
+    : ['/','/work','/about','/pricing','/process','/brand','/nika','/contact','/reviews','/bookingkoala','/privacy','/terms']);
   const pagePath=()=>location.pathname.replace(/\/index(?:\.html)?$/,'/').replace(/\.html$/,'').replace(/\/+$/,'')||'/';
   const publicPath=url=>(url.pathname.replace(/\.html$/,'').replace(/\/+$/,'')||'/');
   const isSafeDestination=url=>url.origin===location.origin&&PUBLIC_PATHS.has(publicPath(url));
@@ -498,6 +498,7 @@
       '/':['Show me relevant work','How does a project start?','What can you build?'],
       '/work':['Which project fits my idea?','Show me the AI work','How do I start a project?'],
       '/pricing':['Compare the options','What will my project cost?','How do payments work?'],
+      '/nika':['What makes Nika different?','How does WordPress setup work?','Show me the beta plans'],
       '/process':['Which stage comes first?','How long does delivery take?','Take me to the contact form'],
       '/contact':['What should I include?','Which service fits my idea?','Show me pricing first'],
       '/bookingkoala':['What can you fix?','Show me the proof','Take me to the enquiry form']

@@ -10,6 +10,13 @@ Nothing else is hosted by the site owner. The styles, the panel and the widget
 are all fetched from the same place the script came from, so there is no second
 URL to configure and no build step.
 
+## WordPress
+
+Use the installable connector in `wordpress/dist/` rather than editing theme
+files. In WordPress, open Plugins > Add New > Upload Plugin, activate Nika Site
+Guide, then open Settings > Nika Site Guide. Paste the tenant site key, test the
+domain connection, and enable the guide. The connector is theme-independent.
+
 ## Before it will answer
 
 Two things have to be true, and both are set on our side when the site is

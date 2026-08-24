@@ -375,6 +375,7 @@ const FOOTER_WORK=[
   ['/bookingkoala','BookingKoala']
 ];
 const FOOTER_NAV=[
+  ['/nika','Nika'],
   ['/brand','brand'],
   ['/process','process'],
   ['/reviews','reviews'],

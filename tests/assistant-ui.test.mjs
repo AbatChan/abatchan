@@ -5,6 +5,7 @@ const assistant=readFileSync(new URL('../assistant-v2.js',import.meta.url),'utf8
 // The shell moved out of script.js so the embed and this site share one copy.
 const shell=readFileSync(new URL('../guide-shell.js',import.meta.url),'utf8');
 const embed=readFileSync(new URL('../embed.js',import.meta.url),'utf8');
+const vercel=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
 
 let failed=false;
 const check=(label,value)=>{
@@ -94,6 +95,12 @@ check('the origin is derived from the script src',embed.includes('new URL(script
 check('a missing key fails loudly rather than silently',embed.includes('no data-site on the embed script'));
 check('config is fetched before painting',embed.includes('/api/guide-config?site='));
 check('a disabled or unauthorised site paints nothing',embed.includes('config.enabled === false'));
+
+console.log('\n=== dictation is allowed without widening other device access ===');
+const siteHeaders=vercel.headers.find(rule=>rule.source==='/(.*)')?.headers||[];
+const permissions=siteHeaders.find(header=>header.key==='Permissions-Policy')?.value||'';
+check('the microphone is allowed only for the site itself',permissions.includes('microphone=(self)'));
+check('camera and location remain disabled',permissions.includes('camera=()')&&permissions.includes('geolocation=()'));
 
 console.log('\n=== navigation is allowed against the tenant own routes ===');
 // The widget shipped with abatchan's routes hardcoded. On a buyer's site none

@@ -7,7 +7,8 @@ const suites = [
   'handler.test.mjs',
   'assistant-ui.test.mjs',
   'prompt.test.mjs',
-  'tenant-store.test.mjs'
+  'tenant-store.test.mjs',
+  'wordpress-plugin.test.mjs'
 ];
 
 let failed = false;

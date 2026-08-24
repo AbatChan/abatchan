@@ -15,6 +15,7 @@ node --check api/chat-stream.js
 node --check script.js
 node --check admin.js
 node tests/run.mjs
+node tests/wordpress-plugin.test.mjs
 ```
 
 ## Live refusal probes
