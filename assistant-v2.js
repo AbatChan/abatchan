@@ -643,10 +643,10 @@
         return kept;
       };
       const recent=history.slice(-MAX_STORED);
-      if(navigationState.source!=='visitor')return budget(recent);
-      // A visitor can leave a page after Nika takes them there. Do not resend
-      // that completed journey's old route claim beside the new live context,
-      // or the model may treat “you are on Pricing” as newer than the browser.
+      // Every completed journey is historical by the next question, including
+      // after a fresh tab or reload where navigationState is "initial". Do not
+      // resend its old route claim beside the new live context, or the model may
+      // treat “you are on Pricing” as newer than the browser.
       // Three things have to hold at once here, and each of the obvious fixes
       // breaks one of them. Dropping the visitor's message loses details they
       // supplied once and still expect to be known, and the server verifies

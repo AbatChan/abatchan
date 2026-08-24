@@ -86,7 +86,7 @@
       loadSettings: async () => null   // the config call above already answered this
     });
 
-    await load(asset('/assistant-v2.js?v=43'));
+    await load(asset('/assistant-v2.js?v=44'));
   };
 
   if (document.readyState === 'loading') {
