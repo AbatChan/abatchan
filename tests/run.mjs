@@ -6,7 +6,8 @@ const suites = [
   'graduated.test.mjs',
   'handler.test.mjs',
   'assistant-ui.test.mjs',
-  'prompt.test.mjs'
+  'prompt.test.mjs',
+  'tenant-store.test.mjs'
 ];
 
 let failed = false;

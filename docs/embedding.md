@@ -25,6 +25,10 @@ origin list: a key lifted onto another domain is refused. Every domain the guide
 should appear on has to be listed, including `www` if the site serves both, and
 any staging domain.
 
+The private record and onboarding procedure are documented in
+[`tenant-store.md`](./tenant-store.md). Updating that stored record does not
+require a site deployment; warm functions refresh it within one minute.
+
 ## Content Security Policy
 
 A site with a CSP will block the guide until our origin is allowed. The three

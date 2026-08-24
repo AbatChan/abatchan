@@ -117,6 +117,14 @@ globalThis.fetch = async (url, opts = {}) => {
 };
 
 const { default: handler } = await import('../api/chat-stream.js');
+const { setTenantStoreForTests } = await import('../lib/tenants/registry.js');
+const { abatchan } = await import('../lib/tenants/abatchan.js');
+const { northwind } = await import('../lib/tenants/northwind.js');
+const tenantRecords = new Map([abatchan, northwind].map(record => [record.siteKey, record]));
+setTenantStoreForTests({
+  get: async siteKey => tenantRecords.get(siteKey) || null,
+  all: async () => [...tenantRecords.values()]
+});
 const { readFileSync } = await import('node:fs');
 const goldenPrompt = JSON.parse(readFileSync(new URL('./fixtures/abatchan-prompt.golden.json', import.meta.url), 'utf8'));
 
