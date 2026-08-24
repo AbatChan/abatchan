@@ -7,11 +7,15 @@
     placeholder: 'Ask about this website...',
     endpoint: '/wp-json/nika/v1',
     autoNavigate: true,
+    dictation: true,
+    accent: '#6366f1',
+    position: 'right',
     contextCharacters: 12000,
     historyTurns: 10
   });
 
   const clean = value => String(value == null ? '' : value).trim();
+  const escapeHtml = value => clean(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const normalizePath = value => {
     try {
       const url = new URL(value, location.href);
@@ -63,11 +67,11 @@
     }) || null;
   }
 
-  function highlightTarget(target, label) {
+  function highlightTarget(target, label, accent) {
     if (!target) return false;
     target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     const old = { outline: target.style.outline, outlineOffset: target.style.outlineOffset, borderRadius: target.style.borderRadius };
-    target.style.outline = '3px solid #6366f1';
+    target.style.outline = `3px solid ${/^#[0-9a-f]{6}$/i.test(accent || '') ? accent : DEFAULTS.accent}`;
     target.style.outlineOffset = '8px';
     target.style.borderRadius = target.style.borderRadius || '6px';
     target.setAttribute('data-nika-highlight', clean(label) || 'Nika destination');
@@ -80,13 +84,13 @@
     return true;
   }
 
-  function navigate(action, pages) {
+  function navigate(action, pages, accent) {
     const target = allowedDestination(action && action.href, pages);
     if (!target) return { ok: false, reason: 'destination_not_allowed' };
     const current = `${location.pathname.replace(/\/+$/, '') || '/'}`;
     const next = `${target.pathname.replace(/\/+$/, '') || '/'}`;
-    if (current === next) return { ok: highlightTarget(findTarget(target, action.label), action.label), samePage: true };
-    sessionStorage.setItem('nika.pending', JSON.stringify({ href: `${target.pathname}${target.hash}`, label: clean(action.label).slice(0, 180) }));
+    if (current === next) return { ok: highlightTarget(findTarget(target, action.label), action.label, accent), samePage: true };
+    sessionStorage.setItem('nika.pending', JSON.stringify({ href: `${target.pathname}${target.hash}`, label: clean(action.label).slice(0, 180), accent }));
     location.assign(`${target.pathname}${target.search}${target.hash}`);
     return { ok: true, samePage: false };
   }
@@ -98,10 +102,13 @@
     sessionStorage.removeItem('nika.pending');
     const url = allowedDestination(pending.href, [pending.href]);
     if (!url || url.pathname !== location.pathname) return;
-    setTimeout(() => highlightTarget(findTarget(url, pending.label), pending.label), 450);
+    setTimeout(() => highlightTarget(findTarget(url, pending.label), pending.label, pending.accent), 450);
   }
 
   function template(name, greeting, placeholder) {
+    name = escapeHtml(name);
+    greeting = escapeHtml(greeting);
+    placeholder = escapeHtml(placeholder);
     return `<div class="nika-root">
       <button class="nika-launch" type="button" aria-label="Open ${name}"><span aria-hidden="true">✦</span><b>${name}</b></button>
       <section class="nika-panel" aria-label="${name} website guide" hidden>
@@ -148,6 +155,9 @@
     const mic = q('.nika-mic');
     const log = q('.nika-log');
     const status = q('.nika-status');
+    const accent = /^#[0-9a-f]{6}$/i.test(clean(settings.accent)) ? clean(settings.accent) : DEFAULTS.accent;
+    q('.nika-root').style.setProperty('--nika', accent);
+    if (settings.position === 'left') q('.nika-root').classList.add('nika-left');
     const historyKey = `nika.history:${clean(settings.siteId) || location.host}`;
     let history = [];
     try { history = JSON.parse(sessionStorage.getItem(historyKey) || '[]'); } catch {}
@@ -198,7 +208,7 @@
         remember('assistant', answer);
         if (result.action && settings.autoNavigate !== false) {
           status.textContent = clean(result.action.departure) || `Opening ${clean(result.action.label) || 'that section'}...`;
-          setTimeout(() => navigate(result.action, pages), 550);
+          setTimeout(() => navigate(result.action, pages, accent), 550);
         } else status.textContent = '';
       } catch (error) {
         message('assistant error', error.message || 'Nika could not answer. Please try again.');
@@ -210,12 +220,12 @@
     });
 
     const SpeechRecognition = global.SpeechRecognition || global.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    if (settings.dictation === false || !SpeechRecognition) {
       mic.disabled = true;
-      mic.title = 'Dictation is not supported in this browser';
+      mic.title = settings.dictation === false ? 'Dictation is disabled by this site' : 'Dictation is not supported in this browser';
     } else {
       const recognition = new SpeechRecognition();
-      recognition.lang = document.documentElement.lang || navigator.language || 'en-US';
+      recognition.lang = clean(settings.dictationLanguage) || document.documentElement.lang || navigator.language || 'en-US';
       recognition.interimResults = true;
       let start = '';
       recognition.onstart = () => { start = input.value; mic.classList.add('listening'); status.textContent = 'Listening...'; };

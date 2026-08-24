@@ -31,6 +31,26 @@ Add this before the closing `</body>` tag:
 
 The API key must stay in `.env`; never place it in HTML or `NikaConfig`.
 
+For a static HTML site, generate the initial content file with:
+
+```sh
+node index-static-site.mjs /path/to/site content.json --exclude=404.html,account/,private.html
+```
+
+Review the generated file before publishing it. Re-run the indexer after site
+content changes, or replace it with your own CMS/export workflow.
+
+## Customer controls
+
+`nika.config.json` controls identity, greeting, owner instructions, excluded
+paths, navigation/highlighting, microphone dictation and language, accent,
+left/right position, context size, session-history length, visitor hourly budget,
+whole-site daily budget, response temperature, and response-token budget.
+
+Request/body ceilings, server-only keys, exact-origin checks, published-route
+validation, prompt-injection rules, and the read-only/no-form boundary are fixed
+safeguards and cannot be disabled through customer configuration.
+
 ## Providers and privacy
 
 Supported providers are OpenAI, DeepSeek, and HTTPS OpenAI-compatible chat
@@ -40,6 +60,7 @@ Review that provider's privacy terms and disclose this processing in the
 website's privacy notice. Nika does not submit forms, make purchases, or access
 visitor accounts.
 
-`data/nika.db` stores only hourly counts keyed by an HMAC hash of the connecting
-address. Raw IP addresses are not stored by Nika. Web-server or proxy logs are
-controlled separately by the customer.
+`data/nika.db` stores hourly counts keyed by an HMAC hash of the connecting
+address plus an aggregate whole-site daily count. Raw IP addresses are not
+stored by Nika. Web-server or proxy logs are controlled separately by the
+customer.

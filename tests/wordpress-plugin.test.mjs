@@ -14,6 +14,9 @@ check('supports BYOK providers',php.includes("'openai', 'deepseek', 'compatible'
 check('API key stays in server PHP',php.includes("defined( 'NIKA_AI_API_KEY' )")&&php.includes("'Authorization' => 'Bearer ' . $key"));
 check('API key is not returned by config',!php.match(/nika_config_response[\s\S]{0,800}api_key/));
 check('visitor IP is hashed before storage',php.includes("hash_hmac( 'sha256', $ip")&&php.includes('set_transient( $key'));
+check('customer controls visitor and site budgets',php.includes("'hourly_limit'")&&php.includes("'daily_limit'")&&php.includes("'site_daily'"));
+check('customer controls features and appearance',php.includes("'navigation'")&&php.includes("'dictation'")&&php.includes("'accent'")&&php.includes("'position'"));
+check('customer can exclude content and destinations',php.includes('function nika_excluded_paths')&&php.includes("'excluded_paths'"));
 check('foreign browser origins are rejected',php.includes('function nika_origin_allowed')&&php.includes("'nika_origin'")&&php.includes("'status' => 403"));
 check('published WordPress content is locally indexed',php.includes('function nika_site_index()')&&php.includes('$post->post_content'));
 check('content index is bounded and cached',php.includes('> 24000')&&php.includes("set_transient( 'nika_site_index_v1'"));
@@ -24,6 +27,7 @@ check('widget is loaded from the plugin, not Abatchan',php.includes("plugin_dir_
 check('packaged widget matches shared core',widget===canonical);
 check('external AI services are disclosed',readme.includes('== Third-party services ==')&&readme.includes('OpenAI:')&&readme.includes('DeepSeek:'));
 check('readme promises no form submission',readme.includes('does not submit forms'));
+check('readme distinguishes controls from safeguards',readme.includes('Which limits can I control?')&&readme.includes('cannot be disabled'));
 
 if(failed)process.exit(1);
 console.log('\nall passed');

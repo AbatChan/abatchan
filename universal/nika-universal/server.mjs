@@ -7,7 +7,8 @@ import { DatabaseSync } from 'node:sqlite';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = numberBetween(process.env.NIKA_PORT, 1, 65535, 8787);
-const LIMIT = numberBetween(process.env.NIKA_HOURLY_LIMIT, 1, 100, 20);
+const HOURLY_LIMIT = numberBetween(process.env.NIKA_HOURLY_LIMIT, 1, 1000, 20);
+const DAILY_LIMIT = numberBetween(process.env.NIKA_DAILY_LIMIT, 1, 100000, 500);
 const ORIGIN = cleanOrigin(process.env.NIKA_PUBLIC_ORIGIN || 'http://localhost:8787');
 const SECRET = process.env.NIKA_HASH_SECRET || '';
 const PROVIDER = process.env.NIKA_AI_PROVIDER || 'openai';
@@ -21,6 +22,7 @@ const DATA_DIR = process.env.NIKA_DATA_DIR || join(ROOT, 'data');
 mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, 'nika.db'));
 db.exec('CREATE TABLE IF NOT EXISTS rate_usage (visitor_hash TEXT NOT NULL, hour TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(visitor_hash, hour))');
+db.exec('CREATE TABLE IF NOT EXISTS site_usage (day TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0)');
 
 function numberBetween(value, min, max, fallback) {
   const parsed = Number.parseInt(value || '', 10);
@@ -38,7 +40,8 @@ function providerEndpoint(provider, custom) {
   if (provider === 'deepseek') return 'https://api.deepseek.com/chat/completions';
   if (provider === 'compatible' && custom) {
     const url = new URL(custom);
-    if (url.protocol !== 'https:') throw new Error('NIKA_AI_ENDPOINT must use HTTPS.');
+    const localTest = process.env.NIKA_ALLOW_INSECURE_LOCAL_PROVIDER === '1' && url.protocol === 'http:' && ['127.0.0.1', 'localhost', '::1'].includes(url.hostname);
+    if (url.protocol !== 'https:' && !localTest) throw new Error('NIKA_AI_ENDPOINT must use HTTPS.');
     return url.href;
   }
   if (provider === 'compatible') return '';
@@ -52,27 +55,52 @@ function readJson(path, fallback) {
 function siteData() {
   const config = readJson(CONFIG_PATH, {});
   const content = readJson(CONTENT_PATH, { pages: [] });
+  const excluded = new Set((Array.isArray(config.excludedPaths) ? config.excludedPaths : []).map(path => normalizePath(path)).filter(Boolean));
   const seen = new Set();
   const pages = (Array.isArray(content.pages) ? content.pages : []).flatMap((page) => {
     if (!page || typeof page.path !== 'string' || !page.path.startsWith('/')) return [];
     const url = new URL(page.path, ORIGIN);
     if (url.origin !== ORIGIN) return [];
     const path = url.pathname.replace(/\/$/, '') || '/';
-    if (seen.has(path)) return [];
+    if (seen.has(path) || excluded.has(path) || page.enabled === false) return [];
     seen.add(path);
     return [{ path, title: text(page.title, 160) || path, text: text(page.text, 4000) }];
   }).slice(0, 250);
-  if (!seen.has('/')) pages.unshift({ path: '/', title: 'Home', text: '' });
+  if (!seen.has('/') && !excluded.has('/')) pages.unshift({ path: '/', title: 'Home', text: '' });
   return {
     config: {
       enabled: config.enabled !== false,
       name: text(config.name, 80) || 'Nika',
       greeting: text(config.greeting, 240) || 'Hi. What can I help you find?',
       placeholder: text(config.placeholder, 120) || 'Ask about this website...',
-      instructions: text(config.instructions, 4000) || 'Help visitors understand this website and find published information.'
+      instructions: text(config.instructions, 4000) || 'Help visitors understand this website and find published information.',
+      navigation: config.navigation !== false,
+      dictation: config.dictation !== false,
+      dictationLanguage: text(config.dictationLanguage, 20),
+      accent: /^#[0-9a-f]{6}$/i.test(config.accent || '') ? config.accent : '#6366f1',
+      position: config.position === 'left' ? 'left' : 'right',
+      contextCharacters: numberBetween(config.contextCharacters, 1000, 20000, 12000),
+      historyTurns: numberBetween(config.historyTurns, 1, 20, 10),
+      hourlyLimit: numberBetween(config.hourlyLimit, 1, 1000, HOURLY_LIMIT),
+      dailyLimit: numberBetween(config.dailyLimit, 1, 100000, DAILY_LIMIT),
+      temperature: decimalBetween(config.temperature, 0, 1, 0.2),
+      maxTokens: numberBetween(config.maxTokens, 100, 4000, 700)
     },
     pages
   };
+}
+
+function normalizePath(value) {
+  if (typeof value !== 'string' || !value.startsWith('/')) return '';
+  try {
+    const url = new URL(value, ORIGIN);
+    return url.origin === ORIGIN ? (url.pathname.replace(/\/$/, '') || '/') : '';
+  } catch { return ''; }
+}
+
+function decimalBetween(value, min, max, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
 }
 
 function text(value, limit) {
@@ -95,13 +123,18 @@ function clientHash(req) {
   return createHmac('sha256', SECRET).update(raw).digest('hex');
 }
 
-function rateAllowed(req) {
+function rateAllowed(req, config) {
   const visitor = clientHash(req);
   const hour = new Date().toISOString().slice(0, 13);
+  const day = hour.slice(0, 10);
   db.prepare('INSERT INTO rate_usage(visitor_hash, hour, count) VALUES (?, ?, 1) ON CONFLICT(visitor_hash, hour) DO UPDATE SET count = count + 1').run(visitor, hour);
   const row = db.prepare('SELECT count FROM rate_usage WHERE visitor_hash = ? AND hour = ?').get(visitor, hour);
+  db.prepare('INSERT INTO site_usage(day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count = count + 1').run(day);
+  const site = db.prepare('SELECT count FROM site_usage WHERE day = ?').get(day);
   if (Math.random() < 0.01) db.prepare("DELETE FROM rate_usage WHERE hour < strftime('%Y-%m-%dT%H', 'now', '-2 days')").run();
-  return row.count <= LIMIT;
+  if (site.count > config.dailyLimit) return 'site_daily';
+  if (row.count > config.hourlyLimit) return 'visitor_hourly';
+  return '';
 }
 
 async function bodyJson(req) {
@@ -134,12 +167,13 @@ function validateAction(action, pages) {
 
 async function chat(req, res) {
   if (!API_KEY || !ENDPOINT || !SECRET) return send(res, 503, { error: 'Nika is not configured by the site owner.' });
-  if (!rateAllowed(req)) return send(res, 429, { error: 'Hourly Nika limit reached. Please try later.' });
   const body = await bodyJson(req);
   const message = text(body.message, 2000);
   if (!message) return send(res, 400, { error: 'Enter a shorter question.' });
   const { config, pages } = siteData();
   if (!config.enabled) return send(res, 503, { error: 'Nika is disabled.' });
+  const limited = rateAllowed(req, config);
+  if (limited) return send(res, 429, { error: limited === 'site_daily' ? 'This site has reached its daily Nika budget.' : 'Hourly Nika limit reached. Please try later.' });
   const messages = [{ role: 'system', content: systemPrompt(config, pages, body.page) }];
   for (const turn of (Array.isArray(body.history) ? body.history.slice(-12) : [])) {
     const content = text(turn?.content, 4000);
@@ -151,7 +185,7 @@ async function chat(req, res) {
     upstream = await fetch(ENDPOINT, {
       method: 'POST', signal: AbortSignal.timeout(45_000),
       headers: { authorization: `Bearer ${API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, messages, temperature: 0.2, max_tokens: 700, ...(PROVIDER === 'compatible' ? {} : { response_format: { type: 'json_object' } }) })
+      body: JSON.stringify({ model: MODEL, messages, temperature: config.temperature, max_tokens: config.maxTokens, ...(PROVIDER === 'compatible' ? {} : { response_format: { type: 'json_object' } }) })
     });
   } catch { return send(res, 502, { error: 'Nika could not reach the configured AI provider.' }); }
   if (!upstream.ok) return send(res, 502, { error: 'The configured AI provider rejected the request.' });
@@ -160,7 +194,7 @@ async function chat(req, res) {
   const raw = text(data?.choices?.[0]?.message?.content, 10_000).replace(/^```(?:json)?\s*|\s*```$/gi, '');
   let result;
   try { result = JSON.parse(raw); } catch { result = { message: raw, action: null }; }
-  send(res, 200, { message: text(result?.message, 4000) || 'I could not produce a useful answer for that.', action: validateAction(result?.action, pages) });
+  send(res, 200, { message: text(result?.message, 4000) || 'I could not produce a useful answer for that.', action: config.navigation ? validateAction(result?.action, pages) : null });
 }
 
 function asset(res, filename, type) {
@@ -179,7 +213,7 @@ const server = createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/nika/config') {
     const { config, pages } = siteData();
     const directory = pages.map(({ path, title }) => ({ path, title }));
-    return send(res, 200, { enabled: config.enabled, name: config.name, greeting: config.greeting, placeholder: config.placeholder, siteId: ORIGIN, pages: directory });
+    return send(res, 200, { enabled: config.enabled, name: config.name, greeting: config.greeting, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
   }
   if (req.method === 'POST' && url.pathname === '/nika/chat') {
     try { return await chat(req, res); } catch (error) { return send(res, error.status || 500, { error: error.status ? 'Invalid request.' : 'Nika encountered a server error.' }); }
@@ -190,4 +224,4 @@ const server = createServer(async (req, res) => {
   send(res, 404, { error: 'Not found.' });
 });
 
-server.listen(PORT, () => console.log(`Nika Universal listening on ${ORIGIN} (local port ${PORT})`));
+server.listen(PORT, () => console.log(`Nika Universal listening on ${ORIGIN} (local port ${server.address().port})`));

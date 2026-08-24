@@ -42,7 +42,8 @@ Site owners should update their own privacy notice before enabling Nika.
 3. Open Settings > Nika Site Guide.
 4. Select a provider and model, then add your API key.
 5. Add website-specific instructions and review the hourly limit.
-6. Enable Nika and test it while logged out.
+6. Choose navigation, microphone, appearance, context/history, daily budget, and any excluded paths.
+7. Enable Nika and test it while logged out.
 
 For stronger key protection, define `NIKA_AI_API_KEY` in `wp-config.php` instead of storing it through WordPress Admin.
 
@@ -64,11 +65,16 @@ No. The server and browser both restrict navigation to published paths returned 
 
 No. Version 0.2.0 is read-only and does not submit forms, access user accounts, or complete payments.
 
+= Which limits can I control? =
+
+The site owner controls per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
+
 == Changelog ==
 
 = 0.2.0 =
 * Converted the connector into a self-hosted BYOK product.
 * Added local WordPress settings, published-content context, provider proxy, hashed rate limits, and validated navigation.
+* Added customer-owned feature, appearance, context, route-exclusion, and site-budget controls.
 * Added an isolated responsive widget with optional browser dictation.
 
 = 0.1.0 =

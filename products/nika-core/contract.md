@@ -12,6 +12,13 @@ on the customer's server.
   "name": "Nika",
   "greeting": "Hi. What can I help you find?",
   "placeholder": "Ask about this website...",
+  "autoNavigate": true,
+  "dictation": true,
+  "dictationLanguage": "en-US",
+  "accent": "#6366f1",
+  "position": "right",
+  "contextCharacters": 12000,
+  "historyTurns": 10,
   "pages": [{ "path": "/", "title": "Home" }]
 }
 ```
@@ -55,3 +62,7 @@ Response with navigation:
 
 The adapter must validate every action against its own published page list.
 The widget repeats that check and refuses cross-origin destinations.
+
+Adapters may expose customer preferences in public config, but never provider
+keys, owner instructions, curated page text, raw visitor identifiers, internal
+budgets, or provider error details.

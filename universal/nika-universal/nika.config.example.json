@@ -3,5 +3,17 @@
   "name": "Nika",
   "greeting": "Hi. What can I help you find?",
   "placeholder": "Ask about this website...",
-  "instructions": "Explain our services clearly and guide visitors only to published pages."
+  "instructions": "Explain our services clearly and guide visitors only to published pages.",
+  "navigation": true,
+  "dictation": true,
+  "dictationLanguage": "en-US",
+  "accent": "#6366f1",
+  "position": "right",
+  "contextCharacters": 12000,
+  "historyTurns": 10,
+  "hourlyLimit": 20,
+  "dailyLimit": 500,
+  "temperature": 0.2,
+  "maxTokens": 700,
+  "excludedPaths": ["/privacy", "/account"]
 }
