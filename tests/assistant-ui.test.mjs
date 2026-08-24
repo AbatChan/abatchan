@@ -54,6 +54,7 @@ check('the visitor message is no longer removed with it',!assistant.includes('jo
 // Dropping the reply while keeping the question left it unanswered, and the
 // model then re-proposed the same action on every following turn.
 check('the reply is not dropped outright',!assistant.includes('recent.filter(item=>!item.journeyRoute)'));
+check('a fresh tab also neutralizes old journey claims',!assistant.includes("if(navigationState.source!=='visitor')return budget(recent)"));
 
 console.log('\n=== prepared form values survive leaving the page ===');
 check('applied values are stored',assistant.includes('writePrepared(Object.fromEntries(appliedFields.map'));
