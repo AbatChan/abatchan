@@ -94,5 +94,13 @@ check('a missing key fails loudly rather than silently',embed.includes('no data-
 check('config is fetched before painting',embed.includes('/api/guide-config?site='));
 check('a disabled or unauthorised site paints nothing',embed.includes('config.enabled === false'));
 
+console.log('\n=== navigation is allowed against the tenant own routes ===');
+// The widget shipped with abatchan's routes hardcoded. On a buyer's site none
+// of their pages are in that set, so every destination was refused and
+// navigation silently did nothing.
+check('the allowlist comes from the embed when present',assistant.includes('Array.isArray(EMBED.paths)&&EMBED.paths.length'));
+check('the primary site keeps its own list as the fallback',assistant.includes("'/bookingkoala','/privacy','/terms']"));
+check('the service publishes the routes',embed.includes('window.__guideEmbed.paths = Array.isArray(config.paths)'));
+
 if(failed)process.exit(1);
 console.log('\nall passed');

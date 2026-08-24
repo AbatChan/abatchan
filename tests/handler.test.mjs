@@ -704,5 +704,28 @@ console.log('\n=== credentials are never granted to an embed ===');
 pre = await preflight('https://northwindbakery.co.uk');
 check('no credentials header is sent', pre.headers['access-control-allow-credentials'], 'undefined');
 
+console.log('\n=== the public config carries the tenant routes and nothing more ===');
+const configHandler = (await import('../api/guide-config.js')).default;
+const readConfig = async (site, origin = '') => {
+  let payload = null, status = 0;
+  const res = {
+    setHeader: () => {}, end: () => {},
+    status(code) { status = code; return this; },
+    json(body) { payload = body; return body; }
+  };
+  await configHandler({ method: 'GET', headers: { origin, host: 'abatchan.com' }, query: { site } }, res);
+  return { status, payload };
+};
+let cfg = await readConfig('site_abatchan_live');
+check('the routes are published', Array.isArray(cfg.payload.paths) && cfg.payload.paths.includes('/pricing'), true);
+check('a route the site does not publish is absent', cfg.payload.paths.includes('/admin'), false);
+check('page descriptions are not exposed', JSON.stringify(cfg.payload).includes('The visitor is'), false);
+check('instructions are not exposed', JSON.stringify(cfg.payload).includes('Voice and style'), false);
+check('the origin list is not exposed', JSON.stringify(cfg.payload).includes('origins'), false);
+
+cfg = await readConfig('site_northwind_demo');
+check('a second tenant publishes its own routes', cfg.payload.paths.includes('/menu'), true);
+check('and not the first tenant routes', cfg.payload.paths.includes('/pricing'), false);
+
 console.log(`\n${failures ? `${failures} FAILED` : 'all passed'}`);
 process.exit(failures ? 1 : 0);

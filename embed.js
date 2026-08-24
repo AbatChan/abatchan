@@ -35,7 +35,7 @@
 
   // Published before anything else loads, because assistant-v2.js reads it as
   // it initialises.
-  window.__guideEmbed = { siteKey, apiBase: sameOrigin ? '' : apiBase };
+  window.__guideEmbed = { siteKey, apiBase: sameOrigin ? '' : apiBase, paths: null };
 
   const asset = path => `${sameOrigin ? '' : apiBase}${path}`;
 
@@ -67,6 +67,8 @@
       return;
     }
     if (!config || config.enabled === false) return;
+    // Published before the widget loads, because it reads this as it starts.
+    window.__guideEmbed.paths = Array.isArray(config.paths) ? config.paths : [];
 
     const { mountGuideShell } = await import(`${asset('/guide-shell.js')}?v=1`);
     await mountGuideShell({
@@ -84,7 +86,7 @@
       loadSettings: async () => null   // the config call above already answered this
     });
 
-    await load(asset('/assistant-v2.js?v=42'));
+    await load(asset('/assistant-v2.js?v=43'));
   };
 
   if (document.readyState === 'loading') {

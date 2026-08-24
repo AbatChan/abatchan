@@ -106,7 +106,12 @@
       node.id=id;used.add(id);
     });
   };
-  const PUBLIC_PATHS=new Set(['/','/work','/about','/pricing','/process','/brand','/contact','/reviews','/bookingkoala','/privacy','/terms']);
+  // Where the guide is allowed to send a visitor. An embed is told this by the
+  // service, because the buyer's routes are not knowable here; the primary site
+  // falls back to its own, which is what shipped before tenants existed.
+  const PUBLIC_PATHS=new Set(Array.isArray(EMBED.paths)&&EMBED.paths.length
+    ? EMBED.paths
+    : ['/','/work','/about','/pricing','/process','/brand','/contact','/reviews','/bookingkoala','/privacy','/terms']);
   const pagePath=()=>location.pathname.replace(/\/index(?:\.html)?$/,'/').replace(/\.html$/,'').replace(/\/+$/,'')||'/';
   const publicPath=url=>(url.pathname.replace(/\.html$/,'').replace(/\/+$/,'')||'/');
   const isSafeDestination=url=>url.origin===location.origin&&PUBLIC_PATHS.has(publicPath(url));

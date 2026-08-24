@@ -35,6 +35,11 @@ export default async function handler(req, res) {
     disclaimer: record.disclaimer || 'Site help only, no account access, payments, or promises.',
     chips: (record.chips || []).slice(0, 6),
     avatar: record.avatar || null,
+    // The routes the widget may navigate to. Without these an embed refuses
+    // every destination, because its only other option is a list of somebody
+    // else's pages. Paths only: the descriptions are for the model, not the
+    // browser, and are not the buyer's to publish here.
+    paths: (record.pages || []).map(page => page.path),
     enabled: record.enabled !== false
   });
 }
