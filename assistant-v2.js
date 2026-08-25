@@ -510,7 +510,7 @@
       '/':['Show me relevant work','How does a project start?','What can you build?'],
       '/work':['Which project fits my idea?','Show me the AI work','How do I start a project?'],
       '/pricing':['Compare the options','What will my project cost?','How do payments work?'],
-      '/nika':['What makes Nika different?','How does WordPress setup work?','Show me the beta plans'],
+      '/nika':['What makes Nika different?','How does WordPress setup work?','Show me the product plans'],
       '/process':['Which stage comes first?','How long does delivery take?','Take me to the contact form'],
       '/contact':['What should I include?','Which service fits my idea?','Show me pricing first'],
       '/bookingkoala':['What can you fix?','Show me the proof','Take me to the enquiry form']
