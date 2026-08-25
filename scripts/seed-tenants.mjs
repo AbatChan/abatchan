@@ -6,9 +6,14 @@ import { northwind } from '../lib/tenants/northwind.js';
 import { tenantSettingKey } from '../lib/tenants/store.js';
 
 const apply = process.argv.includes('--apply');
+const site = process.argv.find(argument => argument.startsWith('--site='))?.slice('--site='.length) || '';
 const url = process.env.SUPABASE_URL;
 const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_KEY;
-const records = [abatchan, northwind];
+const records = [abatchan, northwind].filter(record => !site || record.siteKey === site);
+if (!records.length) {
+  console.error(`No checked-in tenant matches ${site}.`);
+  process.exit(1);
+}
 const rows = records.map(record => ({
   key: tenantSettingKey(record.siteKey),
   value: record,

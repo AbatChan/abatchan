@@ -313,12 +313,13 @@ export default async function handler(req,res){
   const directSection=!receipt&&explicitSectionNavigation(message,tenant.record.pages,page);
   if(directSection){
     const destination=directSection.label;
+    const destinationVerb=/s$/i.test(destination)?'are':'is';
     const action={
       href:directSection.href,
       label:destination,
       departure:`I’ll show you the ${destination}.`,
       status:`Taking you to the ${destination}.`,
-      arrival:`The ${destination} are in view.`,
+      arrival:`The ${destination} ${destinationVerb} in view.`,
       requires_approval:false,
       section_requested:true,
       related_links:[]
