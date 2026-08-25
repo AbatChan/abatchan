@@ -120,6 +120,14 @@ html[data-theme="light"] .assist-form{background:rgba(20,20,24,.025);box-shadow:
 html[data-theme="light"] .assist-form textarea{color:#151519}
 
 .assist-composer-rail{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.assist-dictation-bar{height:36px;display:grid;grid-template-columns:32px minmax(0,1fr) auto 32px;align-items:center;gap:7px;min-width:0}
+.assist-dictation-bar[hidden]{display:none}.assist-form.is-dictating .assist-composer-rail{display:none}
+.assist-dictation-cancel,.assist-dictation-stop{width:32px;height:32px;display:grid;place-items:center;padding:0;border:0;border-radius:11px;background:rgba(255,255,255,.055);color:var(--paper);cursor:pointer}
+.assist-dictation-cancel:hover,.assist-dictation-stop:hover{background:rgba(255,255,255,.1)}
+.assist-dictation-cancel:focus-visible,.assist-dictation-stop:focus-visible{outline:2px solid rgba(129,132,255,.62);outline-offset:1px}
+.assist-dictation-cancel img,.assist-dictation-stop img{width:14px;height:14px;filter:brightness(0) invert(1)!important;opacity:.82}
+.assist-dictation-wave{display:block;width:100%;height:24px;min-width:0}.assist-dictation-time{color:var(--muted);font-size:10.5px;font-variant-numeric:tabular-nums}
+html[data-theme="light"] .assist-dictation-cancel img,html[data-theme="light"] .assist-dictation-stop img{filter:none!important}
 .assist-composer-group{display:flex;align-items:center;gap:3px;min-width:0}.assist-composer-end{margin-left:auto}
 .assist-composer-icon,.assist-composer-choice{min-height:32px;border:0;background:transparent;color:var(--muted);font:inherit;cursor:pointer;
   transition:color .18s,background .18s,transform .18s var(--ease)}

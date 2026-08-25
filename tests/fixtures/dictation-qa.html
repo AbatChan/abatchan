@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Nika dictation QA</title>
+<style>body{margin:0;min-height:100vh;background:#0b0b0d;color:#f7f7f5;font:16px system-ui}main{max-width:720px;padding:80px}h1{font-size:56px}</style>
+<main><section><h1>Voice composer test</h1><p>The production widget is mounted against deterministic browser speech and audio mocks.</p><button type="button" onclick="const input=document.querySelector('[data-nika-mounted]').shadowRoot.querySelector('textarea');input.value='Alpha omega';input.focus();input.setSelectionRange(5,5)">Set middle caret</button></section></main>
+<script>
+  let session=0;
+  class MockRecognition {
+    start(){
+      session+=1;
+      setTimeout(()=>this.onstart?.(),10);
+      setTimeout(()=>{const result=[{transcript:`spoken ${session}`}];result.isFinal=true;this.onresult?.({results:[result]})},55);
+      if(session===1)setTimeout(()=>this.onend?.(),170);
+    }
+    stop(){setTimeout(()=>this.onend?.(),20)}
+    abort(){setTimeout(()=>this.onend?.(),20)}
+  }
+  window.SpeechRecognition=MockRecognition;
+  navigator.mediaDevices={getUserMedia:async()=>({getTracks:()=>[{stop(){}}]})};
+  class MockAudioContext {
+    createAnalyser(){return {fftSize:32,smoothingTimeConstant:0,getByteTimeDomainData(data){for(let i=0;i<data.length;i++)data[i]=128+Math.round(Math.sin(i/2)*28)}}}
+    createMediaStreamSource(){return {connect(){}}}
+    close(){return Promise.resolve()}
+  }
+  window.AudioContext=MockAudioContext;
+  window.NikaConfig={endpoint:'/missing',stylesheet:'/products/nika-core/nika-widget.css',name:'Nika'};
+</script>
+<script src="/products/nika-core/nika-widget.js"></script>
+</html>

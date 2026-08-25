@@ -237,16 +237,20 @@
       .sort((a,b)=>Number(a.matches('p'))-Number(b.matches('p')))
       .slice(0,60)
       .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
-    const active=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h2[id]')]
+    const activeCandidates=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h2[id]')];
+    const focusNode=document.elementFromPoint(Math.max(1,Math.min(innerWidth-1,innerWidth*.34)),Math.max(1,Math.min(innerHeight-1,innerHeight*.5)))
+      ?.closest('main section[id],main article[id],main h2[id],main [data-assist-target]');
+    const active=activeCandidates
       .map(node=>{
         const rect=node.getBoundingClientRect();
         const visible=Math.max(0,Math.min(rect.bottom,innerHeight)-Math.max(rect.top,0));
+        const focusBand=Math.max(0,Math.min(rect.bottom,innerHeight*.66)-Math.max(rect.top,innerHeight*.34));
         const style=getComputedStyle(node);
         const priority=node.matches('dialog,[role="dialog"],[aria-modal="true"]')?4:node.matches('[role="tabpanel"]')?3:node.matches('details[open]')?2:1;
-        return {node,visible:node.hidden||node.getAttribute('aria-hidden')==='true'||style.display==='none'||style.visibility==='hidden'?0:visible,priority,distance:Math.abs(rect.top-innerHeight*.32)};
+        return {node,visible:node.hidden||node.getAttribute('aria-hidden')==='true'||style.display==='none'||style.visibility==='hidden'?0:visible,focusBand,focusHit:node===focusNode||node.contains(focusNode),priority,distance:Math.abs((rect.top+rect.bottom)/2-innerHeight*.5)};
       })
       .filter(item=>item.visible>0)
-      .sort((a,b)=>b.priority-a.priority||b.visible-a.visible||a.distance-b.distance)[0]?.node;
+      .sort((a,b)=>b.priority-a.priority||Number(b.focusHit)-Number(a.focusHit)||b.focusBand-a.focusBand||a.distance-b.distance)[0]?.node;
     const activeContext=active?.matches('h2')?(active.closest('section,article')||active.parentElement):active;
     let journey=[];
     try{journey=JSON.parse(sessionStorage.getItem(JOURNEY_STORE)||'[]')}catch{}
@@ -363,6 +367,11 @@
     const depth=form.querySelector('.assist-depth');
     const depthMenu=form.querySelector('.assist-depth-menu');
     const mic=form.querySelector('.assist-mic');
+    const dictationBar=form.querySelector('.assist-dictation-bar');
+    const dictationCanvas=form.querySelector('.assist-dictation-wave');
+    const dictationTime=form.querySelector('.assist-dictation-time');
+    const dictationCancel=form.querySelector('.assist-dictation-cancel');
+    const dictationStop=form.querySelector('.assist-dictation-stop');
     const LIMIT=Number(input.getAttribute('maxlength'))||1000;
     const storedChoice=(key,allowed,fallback)=>{try{const value=localStorage.getItem(key);return allowed.includes(value)?value:fallback}catch{return fallback}};
     let actionMode=storedChoice(ACTION_MODE_STORE,['ask','allow'],'ask');
@@ -492,18 +501,59 @@
     });
 
     const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-    let recognition=null,listening=false,dictationStart='';
+    let recognition=null,listening=false,dictationWanted=false,dictationCancelled=false,dictationError='';
+    let dictationPrefix='',dictationSuffix='',dictationCommitted='',dictationSessionFinal='',dictationInterim='';
+    let dictationStartedAt=0,dictationTimer=0,audioStream=null,audioContext=null,audioAnalyser=null,waveFrame=0,waveHistory=[];
+    const joinSpeech=(left,speech,right)=>{
+      const value=String(speech||'').trim();
+      const before=value&&left&&/\S$/.test(left)&&/^\S/.test(value)?' ':'';
+      const after=value&&right&&/\S$/.test(value)&&/^\S/.test(right)?' ':'';
+      const room=Math.max(0,LIMIT-left.length-right.length-before.length-after.length);
+      return `${left}${before}${value.slice(0,room)}${after}${right}`.slice(0,LIMIT);
+    };
+    const currentDictation=()=>[dictationCommitted,dictationSessionFinal,dictationInterim].map(value=>value.trim()).filter(Boolean).join(' ');
+    const renderDictation=()=>{input.value=joinSpeech(dictationPrefix,currentDictation(),dictationSuffix);grow();meter(false);const caret=Math.min(input.value.length,dictationPrefix.length+currentDictation().length+1);try{input.setSelectionRange(caret,caret)}catch{}};
+    const drawWave=()=>{
+      if(!dictationCanvas||!dictationWanted)return;
+      const dpr=Math.min(2,devicePixelRatio||1),width=Math.max(1,Math.round(dictationCanvas.clientWidth*dpr)),height=Math.max(1,Math.round(dictationCanvas.clientHeight*dpr));
+      if(dictationCanvas.width!==width||dictationCanvas.height!==height){dictationCanvas.width=width;dictationCanvas.height=height}
+      let level=.035;
+      if(audioAnalyser){const data=new Uint8Array(audioAnalyser.fftSize);audioAnalyser.getByteTimeDomainData(data);let sum=0;for(const sample of data){const value=(sample-128)/128;sum+=value*value}level=Math.min(1,Math.sqrt(sum/data.length)*4.8)}
+      waveHistory.push(level);if(waveHistory.length>58)waveHistory.shift();
+      const context=dictationCanvas.getContext('2d');context.clearRect(0,0,width,height);context.fillStyle=getComputedStyle(form).getPropertyValue('--paper').trim()||'#d8d8d8';context.globalAlpha=.62;
+      const gap=width/58,center=height/2,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      for(let index=0;index<58;index++){const sample=waveHistory[index]??.025;const barHeight=reduced?Math.max(2*dpr,Math.min(height*.24,sample*height)):Math.max(2*dpr,Math.min(height*.88,sample*height));const barWidth=sample>.09?Math.max(2*dpr,gap*.42):Math.max(1.5*dpr,gap*.22);context.beginPath();context.roundRect(index*gap+(gap-barWidth)/2,center-barHeight/2,barWidth,barHeight,barWidth/2);context.fill()}
+      waveFrame=requestAnimationFrame(drawWave);
+    };
+    const stopWave=()=>{cancelAnimationFrame(waveFrame);waveFrame=0;audioStream?.getTracks().forEach(track=>track.stop());audioStream=null;audioAnalyser=null;if(audioContext){audioContext.close().catch(()=>{});audioContext=null}};
+    const startWave=async()=>{waveHistory=[];drawWave();try{audioStream=await navigator.mediaDevices?.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});if(!dictationWanted)return stopWave();audioContext=new (window.AudioContext||window.webkitAudioContext)();audioAnalyser=audioContext.createAnalyser();audioAnalyser.fftSize=1024;audioAnalyser.smoothingTimeConstant=.55;audioContext.createMediaStreamSource(audioStream).connect(audioAnalyser)}catch{audioAnalyser=null}};
+    const finishDictation=()=>{
+      listening=false;dictationWanted=false;clearInterval(dictationTimer);dictationTimer=0;stopWave();form.classList.remove('is-dictating');dictationBar.hidden=true;mic.classList.remove('is-listening');mic.setAttribute('aria-label','Start dictation');mic.dataset.tip='Dictate a message';
+      if(dictationCancelled)input.value=joinSpeech(dictationPrefix,'',dictationSuffix);else{dictationCommitted=[dictationCommitted,dictationSessionFinal].map(value=>value.trim()).filter(Boolean).join(' ');dictationSessionFinal='';dictationInterim='';renderDictation()}
+      grow();meter(false);announceStatus(dictationError|| (dictationCancelled?'Dictation cancelled.':input.value.trim()?'Dictation added.':'Dictation stopped.'),{tone:dictationError?'error':dictationCancelled?'neutral':input.value.trim()?'success':'neutral'});input.focus();
+    };
+    const stopDictation=cancel=>{if(!dictationWanted&&!listening)return;dictationCancelled=Boolean(cancel);dictationWanted=false;try{cancel?recognition.abort():recognition.stop()}catch{finishDictation()}};
+    const beginDictation=()=>{
+      const start=Number.isInteger(input.selectionStart)?input.selectionStart:input.value.length,end=Number.isInteger(input.selectionEnd)?input.selectionEnd:start;
+      dictationPrefix=input.value.slice(0,start);dictationSuffix=input.value.slice(end);dictationCommitted='';dictationSessionFinal='';dictationInterim='';dictationCancelled=false;dictationError='';dictationWanted=true;dictationStartedAt=Date.now();
+      form.classList.add('is-dictating');dictationBar.hidden=false;mic.classList.add('is-listening');mic.setAttribute('aria-label','Stop dictation');mic.dataset.tip='Stop dictation';dictationTime.textContent='0:00';
+      dictationTimer=setInterval(()=>{const seconds=Math.floor((Date.now()-dictationStartedAt)/1000);dictationTime.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`},250);startWave();announceStatus('Listening…',{busy:true,duration:0});
+      try{recognition.start()}catch{dictationWanted=false;finishDictation();announceStatus('Dictation is already starting.',{tone:'warning'})}
+    };
     if(!SpeechRecognition){mic.disabled=true;mic.dataset.tip='Dictation is not supported in this browser.'}
     else{
-      recognition=new SpeechRecognition();recognition.lang=navigator.language||'en-US';recognition.interimResults=true;recognition.continuous=false;
-      recognition.onstart=()=>{listening=true;dictationStart=input.value;mic.classList.add('is-listening');mic.setAttribute('aria-label','Stop dictation');mic.dataset.tip='Stop dictation';announceStatus('Listening…',{busy:true,duration:0})};
+      recognition=new SpeechRecognition();recognition.lang=navigator.language||'en-US';recognition.interimResults=true;recognition.continuous=true;
+      recognition.onstart=()=>{listening=true};
       recognition.onresult=event=>{
-        let words='';for(let index=event.resultIndex;index<event.results.length;index++)words+=event.results[index][0].transcript;
-        input.value=[dictationStart.trim(),words.trim()].filter(Boolean).join(dictationStart.trim()?' ':'');grow();meter(false);
+        dictationSessionFinal='';dictationInterim='';for(let index=0;index<event.results.length;index++){const words=event.results[index][0].transcript;if(event.results[index].isFinal)dictationSessionFinal+=words;else dictationInterim+=words}renderDictation();
       };
-      recognition.onerror=event=>{if(event.error!=='aborted')announceStatus(event.error==='not-allowed'?'Microphone permission was not granted.':'Dictation could not start.',{tone:'error'})};
-      recognition.onend=()=>{listening=false;mic.classList.remove('is-listening');mic.setAttribute('aria-label','Start dictation');mic.dataset.tip='Dictate a message';announceStatus(input.value.trim()?'Dictation added.':'Dictation stopped.',{tone:input.value.trim()?'success':'neutral'});input.focus()};
-      mic.addEventListener('click',()=>{try{listening?recognition.stop():recognition.start()}catch{announceStatus('Dictation is already starting.',{tone:'warning'})}});
+      recognition.onerror=event=>{if(event.error==='aborted')return;if(['not-allowed','service-not-allowed'].includes(event.error)){dictationWanted=false;dictationError='Microphone permission was not granted.'}else if(event.error!=='no-speech')announceStatus('Dictation paused; reconnecting…',{tone:'warning'})};
+      recognition.onend=()=>{listening=false;dictationCommitted=[dictationCommitted,dictationSessionFinal].map(value=>value.trim()).filter(Boolean).join(' ');dictationSessionFinal='';dictationInterim='';renderDictation();if(dictationWanted)setTimeout(()=>{if(dictationWanted)try{recognition.start()}catch{dictationWanted=false;finishDictation()}},180);else finishDictation()};
+      mic.addEventListener('click',()=>dictationWanted?stopDictation(false):beginDictation());
+      dictationStop.addEventListener('click',()=>stopDictation(false));
+      dictationCancel.addEventListener('click',()=>stopDictation(true));
+      launch.addEventListener('click',()=>{if(!panel.classList.contains('is-open')&&dictationWanted)stopDictation(false)});
+      addEventListener('pagehide',()=>{if(dictationWanted)stopDictation(false);else stopWave()},{once:true});
     }
 
     const pagePrompts={

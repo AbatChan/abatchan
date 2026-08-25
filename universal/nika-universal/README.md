@@ -1,4 +1,4 @@
-# Nika Universal 0.3.1
+# Nika Universal 0.3.2
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go
@@ -66,6 +66,10 @@ the next static index refresh, SPA route changes, open dialogs, tabs and expande
 details. Query parameters are never included in page context. Excluded paths are
 also a runtime privacy boundary: the widget does not mount there and the server
 rejects chat requests carrying one of those paths.
+
+Microphone dictation includes a live audio waveform, preserves text already in
+the composer, inserts speech at the selected cursor position, and reconnects
+short browser recognition sessions so longer notes are not cut off.
 
 Request/body ceilings, server-only keys, exact-origin checks, published-route
 validation, prompt-injection rules, and the read-only/no-form boundary are fixed

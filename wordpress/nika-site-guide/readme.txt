@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,11 @@ No. Version 0.2.0 is read-only and does not submit forms, access user accounts, 
 The site owner controls per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 0.3.2 =
+* Add an audio-reactive dictation waveform with cancel, stop, and duration controls.
+* Preserve existing composer text and insert long dictation at the cursor position.
+* Make the center viewport section authoritative and refuse redundant navigation to it.
 
 = 0.3.1 =
 * Improve live page and section awareness on newly published routes.

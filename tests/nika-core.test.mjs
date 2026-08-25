@@ -24,8 +24,13 @@ check('checks destinations against configured pages',widget.includes('allowed.so
 check('persists only short session history',widget.includes('sessionStorage.setItem(historyKey'));
 check('does not submit forms for visitors',!widget.includes('.submit()')&&!widget.includes('requestSubmit'));
 check('customer can disable dictation and navigation',widget.includes('settings.dictation === false')&&widget.includes('settings.autoNavigate !== false'));
-check('dictation toggles stop and preserves final plus interim results',widget.includes('if (listening) recognition.stop()')&&widget.includes('finalWords')&&widget.includes('interimWords'));
-check('dictation explains permission and no-speech failures',widget.includes("event.error === 'not-allowed'")&&widget.includes("event.error === 'no-speech'"));
+check('dictation inserts at the saved cursor without deleting surrounding text',widget.includes('input.selectionStart')&&widget.includes('prefix = input.value.slice(0, start)')&&widget.includes('suffix = input.value.slice(end)')&&widget.includes('joinAtCursor'));
+check('dictation reconnects recognition sessions for long speech',widget.includes('recognition.continuous = true')&&widget.includes('if (wanted) setTimeout')&&widget.includes('recognition.start()'));
+check('dictation renders a real microphone waveform',widget.includes('getUserMedia')&&widget.includes('createAnalyser')&&widget.includes('getByteTimeDomainData')&&css.includes('.nika-dictation canvas'));
+check('dictation has cancel stop and elapsed-time controls',widget.includes('nika-dictation-cancel')&&widget.includes('nika-dictation-stop')&&widget.includes('dictationTime.textContent'));
+check('closing or leaving releases the microphone stream',widget.includes("close.addEventListener('click'")&&widget.includes("addEventListener('pagehide'")&&widget.includes('getTracks().forEach'));
+check('dictation explains permission failures',widget.includes("event.error === 'not-allowed'")&&widget.includes('Microphone permission was not granted'));
+check('the viewport focus band outranks a merely large visible section',widget.includes('focusNode')&&widget.includes('focusBand')&&widget.includes('focusHit'));
 check('customer can choose accent and side',widget.includes("style.setProperty('--nika', accent)")&&widget.includes("settings.position === 'left'"));
 check('isolates its interface with Shadow DOM',widget.includes("attachShadow({ mode: 'open' })"));
 check('includes responsive styling',css.includes('@media(max-width:520px)'));

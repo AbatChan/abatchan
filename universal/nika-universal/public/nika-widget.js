@@ -48,15 +48,20 @@
       ...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden])'),
       ...main.querySelectorAll('[role="tabpanel"]:not([hidden]),details[open],section,article,h1,h2,h3,[data-nika-label]')
     ];
+    const focusNode = document.elementFromPoint(
+      Math.max(1, Math.min(innerWidth - 1, innerWidth * .34)),
+      Math.max(1, Math.min(innerHeight - 1, innerHeight * .5))
+    )?.closest('section,article,h1,h2,h3,[data-nika-label]');
     return candidates.map(node => {
       const pixels = visiblePixels(node);
       const rect = node.getBoundingClientRect();
+      const focusBand = Math.max(0, Math.min(rect.bottom, innerHeight * .66) - Math.max(rect.top, innerHeight * .34));
       const priority = node.matches('dialog,[role="dialog"],[aria-modal="true"]') ? 4
         : node.matches('[role="tabpanel"]') ? 3
           : node.matches('details[open]') ? 2 : 1;
-      return { node, pixels, priority, distance: Math.abs(rect.top - innerHeight * .3) };
+      return { node, pixels, priority, focusBand, focusHit: node === focusNode || node.contains(focusNode), distance: Math.abs((rect.top + rect.bottom) / 2 - innerHeight * .5) };
     }).filter(item => item.pixels > 0 && viewLabel(item.node))
-      .sort((a, b) => b.priority - a.priority || b.pixels - a.pixels || a.distance - b.distance)[0]?.node || null;
+      .sort((a, b) => b.priority - a.priority || Number(b.focusHit) - Number(a.focusHit) || b.focusBand - a.focusBand || a.distance - b.distance)[0]?.node || null;
   }
 
   function pageContext(limit) {
@@ -181,7 +186,7 @@
         <header><div><strong>${name}</strong><span>website guide</span></div><button class="nika-close" type="button" aria-label="Close ${name}">×</button></header>
         <div class="nika-log" role="log" aria-live="polite"><div class="nika-message assistant">${greeting}</div></div>
         <div class="nika-status" aria-live="polite"></div>
-        <form><textarea rows="1" maxlength="2000" placeholder="${placeholder}" aria-label="Message ${name}"></textarea><div class="nika-actions"><button class="nika-mic" type="button" aria-label="Start dictation">◉</button><button class="nika-send" type="submit">Send</button></div></form>
+        <form><textarea rows="1" maxlength="4000" placeholder="${placeholder}" aria-label="Message ${name}"></textarea><div class="nika-dictation" role="group" aria-label="Voice dictation" hidden><button class="nika-dictation-cancel" type="button" aria-label="Cancel dictation">×</button><canvas aria-hidden="true"></canvas><time aria-label="Dictation duration">0:00</time><button class="nika-dictation-stop" type="button" aria-label="Stop dictation">■</button></div><div class="nika-actions"><button class="nika-mic" type="button" aria-label="Start dictation">◉</button><button class="nika-send" type="submit">Send</button></div></form>
         <small>Answers use this website's configured content. Review important information.</small>
       </section>
     </div>`;
@@ -225,6 +230,11 @@
     const input = q('textarea');
     const send = q('.nika-send');
     const mic = q('.nika-mic');
+    const dictation = q('.nika-dictation');
+    const dictationCanvas = q('.nika-dictation canvas');
+    const dictationTime = q('.nika-dictation time');
+    const dictationCancel = q('.nika-dictation-cancel');
+    const dictationStop = q('.nika-dictation-stop');
     const log = q('.nika-log');
     const status = q('.nika-status');
     const accent = /^#[0-9a-f]{6}$/i.test(clean(settings.accent)) ? clean(settings.accent) : DEFAULTS.accent;
@@ -312,42 +322,70 @@
       recognition.lang = clean(settings.dictationLanguage) || document.documentElement.lang || navigator.language || 'en-US';
       recognition.interimResults = true;
       recognition.continuous = true;
-      let start = '', listening = false;
-      recognition.onstart = () => {
-        start = input.value;
-        listening = true;
-        mic.classList.add('listening');
-        mic.setAttribute('aria-label', 'Stop dictation');
-        status.textContent = 'Listening... Tap the microphone again to stop.';
+      const limit = Number(input.maxLength) || 4000;
+      let listening = false, wanted = false, cancelled = false, dictationError = '', prefix = '', suffix = '', committed = '', sessionFinal = '', interim = '';
+      let startedAt = 0, timer = 0, stream = null, audioContext = null, analyser = null, frame = 0, wave = [];
+      const transcript = () => [committed, sessionFinal, interim].map(clean).filter(Boolean).join(' ');
+      const joinAtCursor = (left, speech, right) => {
+        speech = clean(speech);
+        const before = speech && left && /\S$/.test(left) && /^\S/.test(speech) ? ' ' : '';
+        const after = speech && right && /\S$/.test(speech) && /^\S/.test(right) ? ' ' : '';
+        const room = Math.max(0, limit - left.length - right.length - before.length - after.length);
+        return `${left}${before}${speech.slice(0, room)}${after}${right}`.slice(0, limit);
       };
+      const renderTranscript = () => {
+        input.value = joinAtCursor(prefix, transcript(), suffix);
+        const caret = Math.min(input.value.length, prefix.length + transcript().length + 1);
+        try { input.setSelectionRange(caret, caret); } catch {}
+      };
+      const drawWave = () => {
+        if (!wanted) return;
+        const dpr = Math.min(2, devicePixelRatio || 1), width = Math.max(1, Math.round(dictationCanvas.clientWidth * dpr)), height = Math.max(1, Math.round(dictationCanvas.clientHeight * dpr));
+        if (dictationCanvas.width !== width || dictationCanvas.height !== height) { dictationCanvas.width = width; dictationCanvas.height = height; }
+        let level = .035;
+        if (analyser) { const data = new Uint8Array(analyser.fftSize); analyser.getByteTimeDomainData(data); let sum = 0; for (const sample of data) { const value = (sample - 128) / 128; sum += value * value; } level = Math.min(1, Math.sqrt(sum / data.length) * 4.8); }
+        wave.push(level); if (wave.length > 54) wave.shift();
+        const context = dictationCanvas.getContext('2d'); context.clearRect(0, 0, width, height); context.fillStyle = '#d7d7d7'; context.globalAlpha = .68;
+        const gap = width / 54, center = height / 2, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        for (let index = 0; index < 54; index++) { const sample = wave[index] ?? .025; const barHeight = reduced ? Math.max(2 * dpr, Math.min(height * .24, sample * height)) : Math.max(2 * dpr, Math.min(height * .88, sample * height)); const barWidth = sample > .09 ? Math.max(2 * dpr, gap * .42) : Math.max(1.5 * dpr, gap * .22); context.beginPath(); context.roundRect(index * gap + (gap - barWidth) / 2, center - barHeight / 2, barWidth, barHeight, barWidth / 2); context.fill(); }
+        frame = requestAnimationFrame(drawWave);
+      };
+      const stopWave = () => { cancelAnimationFrame(frame); frame = 0; stream?.getTracks().forEach(track => track.stop()); stream = null; analyser = null; if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; } };
+      const startWave = async () => { wave = []; drawWave(); try { stream = await navigator.mediaDevices?.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); if (!wanted) return stopWave(); audioContext = new (global.AudioContext || global.webkitAudioContext)(); analyser = audioContext.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = .55; audioContext.createMediaStreamSource(stream).connect(analyser); } catch { analyser = null; } };
+      const finish = () => {
+        listening = false; wanted = false; clearInterval(timer); timer = 0; stopWave(); form.classList.remove('dictating'); dictation.hidden = true; mic.classList.remove('listening'); mic.setAttribute('aria-label', 'Start dictation');
+        if (cancelled) input.value = joinAtCursor(prefix, '', suffix); else { committed = [committed, sessionFinal].map(clean).filter(Boolean).join(' '); sessionFinal = ''; interim = ''; renderTranscript(); }
+        status.textContent = dictationError || (cancelled ? 'Dictation cancelled.' : input.value ? 'Dictation added.' : 'Dictation stopped.'); input.focus();
+      };
+      const stop = cancel => { if (!wanted && !listening) return; cancelled = Boolean(cancel); wanted = false; try { cancel ? recognition.abort() : recognition.stop(); } catch { finish(); } };
+      const begin = () => {
+        const start = Number.isInteger(input.selectionStart) ? input.selectionStart : input.value.length, end = Number.isInteger(input.selectionEnd) ? input.selectionEnd : start;
+        prefix = input.value.slice(0, start); suffix = input.value.slice(end); committed = ''; sessionFinal = ''; interim = ''; cancelled = false; dictationError = ''; wanted = true; startedAt = Date.now();
+        form.classList.add('dictating'); dictation.hidden = false; mic.classList.add('listening'); mic.setAttribute('aria-label', 'Stop dictation'); dictationTime.textContent = '0:00'; status.textContent = 'Listening...';
+        timer = setInterval(() => { const seconds = Math.floor((Date.now() - startedAt) / 1000); dictationTime.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; }, 250); startWave();
+        try { recognition.start(); } catch { wanted = false; finish(); status.textContent = 'Dictation is already changing state. Try again in a moment.'; }
+      };
+      recognition.onstart = () => { listening = true; };
       recognition.onresult = event => {
-        let finalWords = '', interimWords = '';
-        for (let i = 0; i < event.results.length; i++) {
-          if (event.results[i].isFinal) finalWords += event.results[i][0].transcript;
-          else interimWords += event.results[i][0].transcript;
-        }
-        input.value = [clean(start), clean(`${finalWords} ${interimWords}`)].filter(Boolean).join(' ');
+        sessionFinal = ''; interim = '';
+        for (let i = 0; i < event.results.length; i++) { if (event.results[i].isFinal) sessionFinal += event.results[i][0].transcript; else interim += event.results[i][0].transcript; }
+        renderTranscript();
       };
       recognition.onerror = event => {
-        listening = false;
-        status.textContent = event.error === 'not-allowed' || event.error === 'service-not-allowed'
-          ? 'Microphone permission was not granted. Allow microphone access in the browser and try again.'
-          : event.error === 'no-speech'
-            ? 'No speech was detected. Tap the microphone and try again.'
-            : 'Dictation could not start in this browser.';
+        if (event.error === 'aborted') return;
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') { wanted = false; dictationError = 'Microphone permission was not granted. Allow microphone access and try again.'; }
+        else if (event.error !== 'no-speech') status.textContent = 'Dictation paused; reconnecting...';
       };
       recognition.onend = () => {
         listening = false;
-        mic.classList.remove('listening');
-        mic.setAttribute('aria-label', 'Start dictation');
-        if (status.textContent.startsWith('Listening...')) status.textContent = input.value ? 'Dictation added.' : '';
+        committed = [committed, sessionFinal].map(clean).filter(Boolean).join(' '); sessionFinal = ''; interim = ''; renderTranscript();
+        if (wanted) setTimeout(() => { if (wanted) try { recognition.start(); } catch { wanted = false; finish(); } }, 180); else finish();
       };
-      mic.addEventListener('click', () => {
-        try {
-          if (listening) recognition.stop();
-          else recognition.start();
-        } catch { status.textContent = 'Dictation is already changing state. Try again in a moment.'; }
-      });
+      mic.addEventListener('click', () => wanted ? stop(false) : begin());
+      dictationStop.addEventListener('click', () => stop(false));
+      dictationCancel.addEventListener('click', () => stop(true));
+      close.addEventListener('click', () => { if (wanted) stop(false); });
+      addEventListener('pagehide', () => { if (wanted) stop(false); else stopWave(); }, { once: true });
     }
 
     restorePending();

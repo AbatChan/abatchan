@@ -102,6 +102,12 @@ const permissions=siteHeaders.find(header=>header.key==='Permissions-Policy')?.v
 check('the microphone is allowed only for the site itself',permissions.includes('microphone=(self)'));
 check('camera and location remain disabled',permissions.includes('camera=()')&&permissions.includes('geolocation=()'));
 check('page context admits visual and embedded-content limits',assistant.includes('Visible embedded-frame content')&&assistant.includes('Visible canvas pixels')&&assistant.includes('Image pixels are not inspected'));
+check('dictation shell includes waveform cancel stop and timer controls',shell.includes('assist-dictation-wave')&&shell.includes('assist-dictation-cancel')&&shell.includes('assist-dictation-stop')&&shell.includes('assist-dictation-time'));
+check('waveform reacts to microphone samples',assistant.includes('getByteTimeDomainData')&&assistant.includes('createAnalyser')&&assistant.includes('getUserMedia'));
+check('long dictation reconnects after browser recognition ends',assistant.includes('recognition.continuous=true')&&assistant.includes('if(dictationWanted)setTimeout'));
+check('dictation preserves text around the cursor',assistant.includes('input.selectionStart')&&assistant.includes('dictationPrefix=input.value.slice(0,start)')&&assistant.includes('dictationSuffix=input.value.slice(end)'));
+check('closing or leaving releases the microphone stream',assistant.includes("launch.addEventListener('click'")&&assistant.includes("addEventListener('pagehide'")&&assistant.includes('getTracks().forEach'));
+check('the focus point and center band determine the live section',assistant.includes('focusNode=document.elementFromPoint')&&assistant.includes('focusBand')&&assistant.includes('focusHit'));
 
 console.log('\n=== navigation is allowed against the tenant own routes ===');
 // The widget shipped with abatchan's routes hardcoded. On a buyer's site none

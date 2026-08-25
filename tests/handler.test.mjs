@@ -320,6 +320,12 @@ check('an owner-authored section emits a verified action', result.text.includes(
 check('the exact published anchor is used', decodeURIComponent(result.text).includes('"href":"/nika#beta-plans"'), true);
 check('the initial journey does not depend on a provider call', deepSeekCalls, callsBeforeDirectSection);
 
+result = await call('5.5.5.91', 'Show me the product plans on this page.', '/nika', '', [], {
+  activeSection:{id:'beta-plans',label:'product plans',kind:'section',text:'Choose Personal, Business, or Agency.'}
+});
+check('the guide refuses to navigate to the section already in view', result.text, "You're already at the product plans; it is in view now.");
+check('the already-visible answer emits no action', result.text.includes('<!--abatchan-nav:'), false);
+
 console.log('\n=== attachment context is honest and injection-resistant ===');
 table.clear();
 deepSeekMode='content';
