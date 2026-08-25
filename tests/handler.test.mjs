@@ -10,6 +10,7 @@ process.env.ASSISTANT_IP_DAILY_MAX = '2';
 const table = new Map();
 let deepSeekMode = 'content';
 let lastDeepSeekBody = null;
+let deepSeekCalls = 0;
 
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url);
@@ -18,6 +19,7 @@ globalThis.fetch = async (url, opts = {}) => {
     return { ok: false, status: 404, json: async () => ({}) };
   }
   if (u.includes('api.deepseek.com')) {
+    deepSeekCalls += 1;
     lastDeepSeekBody = JSON.parse(opts.body);
     const isActionContinuation=lastDeepSeekBody.messages?.some(item=>item.role==='tool');
     const continuationResult=isActionContinuation
@@ -289,14 +291,18 @@ check('visitor-led page changes are acknowledged without inventing an error', la
 console.log('\n=== the latest browser route overrides an older journey ===');
 table.clear();
 deepSeekMode='content';
+const callsBeforeLocation=deepSeekCalls;
 result=await call('5.5.5.55','Where am I now?','/work','',[
   {role:'user',content:'Take me to pricing.'},
   {role:'assistant',content:'You are on pricing.'}
-],{navigation:{source:'visitor',from:'/pricing',to:'/work'}});
-const liveStateSystem=lastDeepSeekBody.messages.find(item=>item.role==='system'&&item.content.includes('Authoritative live browser state'))?.content||'';
-check('manual navigation source reaches the model', liveStateSystem.includes('visitor from /pricing to /work'), true);
-check('current work route overrides stale pricing history', lastDeepSeekBody.messages.at(-2).content.includes('browser is on /work'), true);
-check('location questions are explicitly non-navigational', lastDeepSeekBody.messages[0].content.includes('Where are we currently?'), true);
+],{title:'Work | Abatchan',activeSection:{id:'selected-work',label:'Selected work',kind:'section',text:'Recent projects'},navigation:{source:'visitor',from:'/pricing',to:'/work'}});
+check('current work route overrides stale pricing history in the actual answer', result.text, "You're on the Work page, in the Selected work section.");
+check('location answer does not delegate truth to the model', deepSeekCalls, callsBeforeLocation);
+
+result=await call('5.5.5.57','Which page are we on?','/brand-new-page','',[
+  {role:'assistant',content:'You are on Home.'}
+],{title:'Brand New Page | Example'});
+check('an unindexed route is not silently converted to Home', result.text, "You're on the Brand New Page page.");
 
 console.log('\n=== private and unknown destinations are rejected server-side ===');
 table.clear();

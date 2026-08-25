@@ -9,6 +9,9 @@ services:
       - nika-data:/app/data
       - ./nika.config.json:/app/nika.config.json:ro
       - ./content.json:/app/content.json:ro
+      # To detect new and changed static HTML automatically, set
+      # NIKA_SITE_ROOT=/site in .env and mount the site's published directory:
+      # - /absolute/path/to/your/site:/site:ro
 
 volumes:
   nika-data:

@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,6 +53,8 @@ For stronger key protection, define `NIKA_AI_API_KEY` in `wp-config.php` instead
 
 Configuration is stored in the WordPress options table. Published content is read from WordPress when needed. Short conversation history is stored in the visitor's session storage and is cleared with that browser session.
 
+Newly published or updated pages and posts are discovered automatically. Nika clears its bounded local content index whenever WordPress saves or deletes content. The live browser page is checked again for every question, including pages not yet present in the index. Excluded paths do not load Nika and are rejected by the chat endpoint, so their visible content is not sent for answers or navigation.
+
 = Does Abatchan receive my API key or conversations? =
 
 No. This self-hosted package does not call an Abatchan Nika service. WordPress sends AI requests directly to the provider selected by the site owner.
@@ -70,6 +72,16 @@ No. Version 0.2.0 is read-only and does not submit forms, access user accounts, 
 The site owner controls per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 0.3.1 =
+* Improve live page and section awareness on newly published routes.
+* Refuse ambiguous duplicate highlights instead of guessing.
+* Report image, canvas, and iframe visibility limits honestly.
+* Improve dictation toggling, transcript preservation, and microphone errors.
+
+= 0.3.0 =
+* Documented automatic discovery of newly published WordPress pages, posts, and updated content.
+* Refreshed the customer package alongside Universal automatic static-site discovery.
 
 = 0.2.0 =
 * Converted the connector into a self-hosted BYOK product.

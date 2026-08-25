@@ -101,6 +101,7 @@ const siteHeaders=vercel.headers.find(rule=>rule.source==='/(.*)')?.headers||[];
 const permissions=siteHeaders.find(header=>header.key==='Permissions-Policy')?.value||'';
 check('the microphone is allowed only for the site itself',permissions.includes('microphone=(self)'));
 check('camera and location remain disabled',permissions.includes('camera=()')&&permissions.includes('geolocation=()'));
+check('page context admits visual and embedded-content limits',assistant.includes('Visible embedded-frame content')&&assistant.includes('Visible canvas pixels')&&assistant.includes('Image pixels are not inspected'));
 
 console.log('\n=== navigation is allowed against the tenant own routes ===');
 // The widget shipped with abatchan's routes hardcoded. On a buyer's site none

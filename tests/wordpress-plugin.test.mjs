@@ -17,9 +17,14 @@ check('visitor IP is hashed before storage',php.includes("hash_hmac( 'sha256', $
 check('customer controls visitor and site budgets',php.includes("'hourly_limit'")&&php.includes("'daily_limit'")&&php.includes("'site_daily'"));
 check('customer controls features and appearance',php.includes("'navigation'")&&php.includes("'dictation'")&&php.includes("'accent'")&&php.includes("'position'"));
 check('customer can exclude content and destinations',php.includes('function nika_excluded_paths')&&php.includes("'excluded_paths'"));
+check('excluded paths suppress the widget and reject chat context',php.includes("'nika_excluded'")&&php.includes("if ( in_array( $current_path, nika_excluded_paths(), true ) ) return;"));
+check('current-location answers use the live browser snapshot',php.includes('function nika_location_answer')&&php.includes('$direct_location = nika_location_answer'));
+check('stale cross-page assistant replies are marked historical',php.includes('Historical reply from another page'));
+check('visibility limitations and heading anchors reach the provider',php.includes('Visibility limitations:')&&php.includes('Available heading anchors:'));
 check('foreign browser origins are rejected',php.includes('function nika_origin_allowed')&&php.includes("'nika_origin'")&&php.includes("'status' => 403"));
 check('published WordPress content is locally indexed',php.includes('function nika_site_index()')&&php.includes('$post->post_content'));
 check('content index is bounded and cached',php.includes('> 24000')&&php.includes("set_transient( 'nika_site_index_v1'"));
+check('new and changed WordPress content invalidates the index',php.includes("add_action( 'save_post'")&&php.includes("add_action( 'deleted_post'"));
 check('navigation is server allowlisted',php.includes("in_array( $path, wp_list_pluck( $pages, 'path' ), true )"));
 check('cross-origin actions are rejected',php.includes("isset( $parts['host'] )"));
 check('REST response hides provider details',php.includes("Nika could not reach the configured AI provider")&&!php.includes('wp_remote_retrieve_body( $response ) ) return new WP_Error'));

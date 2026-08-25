@@ -1,4 +1,4 @@
-# Nika Universal 0.2.0
+# Nika Universal 0.3.1
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go
@@ -31,7 +31,20 @@ Add this before the closing `</body>` tag:
 
 The API key must stay in `.env`; never place it in HTML or `NikaConfig`.
 
-For a static HTML site, generate the initial content file with:
+For a static HTML site, Nika can discover new pages and changed content
+automatically. Mount the site's published directory read-only, then set:
+
+```env
+NIKA_SITE_ROOT=/site
+NIKA_AUTO_INDEX_SECONDS=60
+```
+
+The scanner reads only HTML, ignores forms, scripts, styles, navigation,
+footers, SVG, hidden folders and `node_modules`, and caps every page plus the
+overall prompt context. New or edited pages become available after the scan
+interval without restarting Nika.
+
+If Nika cannot access the site's files, generate `content.json` instead:
 
 ```sh
 node index-static-site.mjs /path/to/site content.json --exclude=404.html,account/,private.html
@@ -46,6 +59,13 @@ content changes, or replace it with your own CMS/export workflow.
 paths, navigation/highlighting, microphone dictation and language, accent,
 left/right position, context size, session-history length, visitor hourly budget,
 whole-site daily budget, response temperature, and response-token budget.
+
+Nika captures the live route, title, main heading, visible section and rendered
+page text again for every question. This works for newly deployed pages before
+the next static index refresh, SPA route changes, open dialogs, tabs and expanded
+details. Query parameters are never included in page context. Excluded paths are
+also a runtime privacy boundary: the widget does not mount there and the server
+rejects chat requests carrying one of those paths.
 
 Request/body ceilings, server-only keys, exact-origin checks, published-route
 validation, prompt-injection rules, and the read-only/no-form boundary are fixed

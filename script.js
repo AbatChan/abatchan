@@ -456,27 +456,238 @@ themeQuery.addEventListener('change',()=>{
 });
 updateThemeUI();
 
-// A single glass lens tracks the active nav item and follows hover/focus, the way
-// the selected pill behaves in an iOS tab bar.
-qa('.desktop-nav').forEach(nav=>{
+// One shared, deformable lens serves the desktop nav and mobile dock. It keeps
+// links as real links (open-in-new-tab and keyboard navigation still work), but
+// adds the continuous drag -> stretch -> spring-settle motion of a liquid tab
+// bar. No animation runs at rest, and reduced-motion users get an instant lens.
+const liquidMotionQuery=matchMedia('(prefers-reduced-motion: reduce)');
+const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
+qa('.desktop-nav,.mobile-tabs').forEach(nav=>{
   if(nav.querySelector('.nav-lens'))return;
+  const links=qa('a',nav);
+  if(!links.length)return;
+  const chrome=nav.closest('.site-header,.mobile-tabs')||nav;
+
+  nav.classList.add('liquid-nav');
   const lens=document.createElement('span');
   lens.className='nav-lens';lens.setAttribute('aria-hidden','true');
+  lens.innerHTML='<i></i>';
   nav.prepend(lens);
-  const place=el=>{
-    if(!el){lens.style.opacity='0';return}
-    lens.style.width=el.offsetWidth+'px';
-    lens.style.transform='translateX('+el.offsetLeft+'px)';
-    lens.style.opacity='1';
+  links.forEach(link=>link.setAttribute('draggable','false'));
+
+  let x=0,width=0,vx=0,vw=0,targetX=0,targetWidth=0;
+  let stretch=0,stretchV=0,targetStretch=0,skew=0,skewV=0,targetSkew=0;
+  let frame=0,ready=false,pointerId=null,startX=0,startY=0,lastX=0,lastT=0;
+  let dragging=false,preview=null,suppressClickUntil=0,committing=false,pendingCommit=false,commitLink=null;
+
+  const active=()=>nav.querySelector('a.active')||links[0];
+  const metrics=link=>{
+    const host=nav.getBoundingClientRect(),rect=link.getBoundingClientRect();
+    return {x:rect.left-host.left,width:rect.width};
   };
-  const settle=()=>place(nav.querySelector('a.active'));
-  nav.addEventListener('pointerover',e=>{const a=e.target.closest('a');if(a&&nav.contains(a))place(a)});
-  nav.addEventListener('pointerleave',settle);
-  nav.addEventListener('focusin',e=>{const a=e.target.closest('a');if(a)place(a)});
-  nav.addEventListener('focusout',settle);
-  addEventListener('resize',settle);
-  requestAnimationFrame(settle);
+  const render=()=>{
+    lens.style.width=Math.max(0,width)+'px';
+    lens.style.transform=`translate3d(${x}px,0,0) scaleX(${1+stretch}) scaleY(${1-stretch*.24}) skewX(${skew}deg)`;
+    lens.style.setProperty('--lens-direction',skew<-.3?'0%':skew>.3?'100%':'50%');
+    lens.style.opacity=ready?'1':'0';
+  };
+  const place=(link,instant=false)=>{
+    if(!link||nav.offsetWidth===0)return;
+    const box=metrics(link);
+    targetX=box.x;targetWidth=box.width;
+    nav.dataset.liquidTarget=link.dataset.page||'';
+    if(instant||liquidMotionQuery.matches){
+      x=targetX;width=targetWidth;vx=vw=0;
+      stretch=skew=stretchV=skewV=targetStretch=targetSkew=0;
+      ready=true;render();
+    }else wake();
+  };
+  const tick=()=>{
+    frame=0;
+    if(liquidMotionQuery.matches){place(preview||commitLink||active(),true);return}
+    const stiffness=dragging?.3:.16,damping=dragging?.68:.76;
+    vx=(vx+(targetX-x)*stiffness)*damping;
+    vw=(vw+(targetWidth-width)*stiffness)*damping;
+    stretchV=(stretchV+(targetStretch-stretch)*.2)*.7;
+    skewV=(skewV+(targetSkew-skew)*.18)*.68;
+    x+=vx;width+=vw;stretch+=stretchV;skew+=skewV;
+    ready=true;render();
+    const moving=Math.abs(targetX-x)+Math.abs(targetWidth-width)+Math.abs(vx)+Math.abs(vw)+Math.abs(stretch)+Math.abs(skew);
+    if(dragging||moving>.08)frame=requestAnimationFrame(tick);
+    else{
+      x=targetX;width=targetWidth;stretch=skew=0;render();
+      nav.classList.remove('is-settling');
+    }
+  };
+  function wake(){if(!frame)frame=requestAnimationFrame(tick)}
+  const markPreview=link=>{
+    preview=link;
+    links.forEach(item=>item.classList.toggle('is-preview',item===link&&item!==active()));
+  };
+  const clearPreview=()=>{
+    preview=null;
+    links.forEach(item=>item.classList.remove('is-preview'));
+  };
+  const nearest=clientX=>links.reduce((best,link)=>{
+    const rect=link.getBoundingClientRect(),distance=Math.abs(clientX-(rect.left+rect.width/2));
+    return !best||distance<best.distance?{link,distance}:best;
+  },null)?.link;
+  const settle=(instant=false)=>{
+    clearPreview();
+    const current=commitLink||active();
+    links.forEach(item=>item.classList.toggle('is-lens-current',item===current));
+    place(current,instant);
+  };
+
+  nav.addEventListener('pointerover',event=>{
+    if(dragging||event.pointerType==='touch')return;
+    const link=event.target.closest('a');
+    if(link&&nav.contains(link)){markPreview(link);place(link)}
+  });
+  nav.addEventListener('pointerleave',()=>{
+    if(nav.classList.contains('mobile-tabs'))return;
+    // A desktop mouse is deliberately not captured until drag intent is clear,
+    // so leaving during an ordinary press must also clear the primed state.
+    if(pointerId!==null&&!dragging){pointerId=null;chrome.classList.remove('is-drag-primed')}
+    if(!dragging&&!pendingCommit)settle();
+  });
+  nav.addEventListener('focusin',event=>{
+    const link=event.target.closest('a');
+    if(link){markPreview(link);place(link)}
+  });
+  nav.addEventListener('focusout',()=>{if(!pendingCommit&&!nav.matches(':focus-within'))settle()});
+  nav.addEventListener('dragstart',event=>event.preventDefault());
+
+  nav.addEventListener('pointerdown',event=>{
+    if(event.button!==0)return;
+    const link=event.target.closest('a');
+    if(!link||!nav.contains(link))return;
+    pendingCommit=false;commitLink=null;
+    pointerId=event.pointerId;
+    startX=lastX=event.clientX;startY=event.clientY;lastT=event.timeStamp;
+    dragging=false;chrome.classList.add('is-drag-primed');
+    // Touch needs early capture before the browser hands the gesture away.
+    // A mouse stays native until deliberate drag intent is established so a
+    // slightly moving click remains a normal, reliable link activation.
+    if(event.pointerType==='touch'||event.pointerType==='pen'){
+      try{nav.setPointerCapture(pointerId)}catch{}
+    }
+    markPreview(link);place(link);
+  });
+  nav.addEventListener('pointermove',event=>{
+    if(event.pointerId!==pointerId)return;
+    const dx=event.clientX-startX,dy=event.clientY-startY;
+    if(!dragging){
+      const intentDistance=event.pointerType==='mouse'?10:6;
+      if(Math.hypot(dx,dy)<intentDistance)return;
+      if(Math.abs(dx)<=Math.abs(dy)*1.08){
+        const releasedId=pointerId;
+        pointerId=null;chrome.classList.remove('is-drag-primed');settle();
+        try{nav.releasePointerCapture(releasedId)}catch{}
+        return;
+      }
+      dragging=true;nav.classList.add('is-dragging');
+      try{nav.setPointerCapture(pointerId)}catch{}
+      document.dispatchEvent(new CustomEvent('liquid-nav-drag',{detail:{active:true}}));
+    }
+    event.preventDefault();
+    const now=event.timeStamp,dt=Math.max(8,now-lastT);
+    const velocity=(event.clientX-lastX)/dt*1000;
+    lastX=event.clientX;lastT=now;
+    const link=nearest(event.clientX)||active(),box=metrics(link),host=nav.getBoundingClientRect();
+    targetWidth=box.width;
+    targetX=clamp(event.clientX-host.left-targetWidth/2,0,Math.max(0,host.width-targetWidth));
+    targetStretch=liquidMotionQuery.matches?0:clamp(Math.abs(velocity)/1650,0,.28);
+    targetSkew=liquidMotionQuery.matches?0:clamp(velocity/85,-9,9);
+    markPreview(link);wake();
+  });
+
+  const release=(event,cancelled=false)=>{
+    if(event.pointerId!==pointerId)return;
+    // Use the actual release coordinate, not the last pointermove. Mobile
+    // browsers can coalesce the final move, which previously made a valid drop
+    // bounce back to the old/current menu item.
+    const dropped=dragging&&!cancelled?nearest(event.clientX):null;
+    const wasDragging=dragging,chosen=cancelled?active():(dropped||preview||active());
+    commitLink=wasDragging&&!cancelled&&chosen!==active()?chosen:null;
+    pendingCommit=Boolean(commitLink);
+    pointerId=null;dragging=false;nav.classList.remove('is-dragging');chrome.classList.remove('is-drag-primed');
+    targetStretch=targetSkew=0;
+    clearPreview();place(chosen);nav.classList.add('is-settling');wake();
+    document.dispatchEvent(new CustomEvent('liquid-nav-drag',{detail:{active:false}}));
+    if(!wasDragging||cancelled)return;
+    suppressClickUntil=performance.now()+500;
+    if(commitLink){
+      setTimeout(()=>{committing=true;chosen.click();committing=false},70);
+    }
+  };
+  nav.addEventListener('pointerup',event=>release(event));
+  nav.addEventListener('pointercancel',event=>release(event,true));
+  nav.addEventListener('lostpointercapture',event=>release(event,true));
+  nav.addEventListener('click',event=>{
+    if(committing||performance.now()>=suppressClickUntil)return;
+    event.preventDefault();event.stopImmediatePropagation();
+  },true);
+
+  addEventListener('resize',()=>settle(true),{passive:true});
+  document.addEventListener('liquid-nav-layout',()=>settle(true));
+  liquidMotionQuery.addEventListener('change',()=>settle(true));
+  // Measure and paint in the same task. Waiting for a frame exposed the lens at
+  // width:0 on the left edge for one paint before Home had valid dimensions.
+  settle(true);
+  nav.dataset.liquidReady='true';
 });
+
+// Navigation chrome recedes while the visitor scrolls down and returns as soon
+// as they reverse direction, focus it, or touch it. The mobile dock collapses to
+// the current destination rather than disappearing, so navigation stays within
+// reach and the content gains space without losing orientation.
+(function adaptiveNavigationChrome(){
+  const header=q('.site-header'),dock=q('.mobile-tabs');
+  if(!header&&!dock)return;
+  const chrome=[header,dock].filter(Boolean);
+  let lastY=Math.max(0,scrollY),direction=0,distance=0,frame=0,minimized=false,dragging=false,chromeTimer=0,syncFrame=0;
+  const syncLiquidLayout=()=>{
+    const until=performance.now()+470;
+    cancelAnimationFrame(syncFrame);
+    const sync=now=>{
+      document.dispatchEvent(new CustomEvent('liquid-nav-layout'));
+      syncFrame=now<until?requestAnimationFrame(sync):0;
+    };
+    syncFrame=requestAnimationFrame(sync);
+  };
+  const apply=minimize=>{
+    if(minimized===minimize)return;
+    minimized=minimize;
+    chrome.forEach(item=>item.classList.toggle('is-minimized',minimize));
+    syncLiquidLayout();
+    clearTimeout(chromeTimer);
+    chromeTimer=setTimeout(()=>{
+      document.dispatchEvent(new CustomEvent('liquid-nav-layout'));
+    },460);
+    document.documentElement.dataset.chrome=minimize?'minimized':'expanded';
+  };
+  const expand=()=>apply(false);
+  const measure=()=>{
+    frame=0;
+    const y=Math.max(0,scrollY),delta=y-lastY;
+    lastY=y;
+    if(y<72||dragging||document.body.classList.contains('assist-sheet-open')){distance=0;expand();return}
+    if(Math.abs(delta)<1)return;
+    const nextDirection=delta>0?1:-1;
+    distance=nextDirection===direction?distance+Math.abs(delta):Math.abs(delta);
+    direction=nextDirection;
+    if(distance<26)return;
+    apply(direction>0&&y>120);distance=0;
+  };
+  addEventListener('scroll',()=>{if(!frame)frame=requestAnimationFrame(measure)},{passive:true});
+  document.addEventListener('liquid-nav-drag',event=>{dragging=event.detail?.active===true;if(dragging)expand()});
+  chrome.forEach(item=>{
+    item.addEventListener('pointerdown',expand,{passive:true});
+    item.addEventListener('focusin',expand);
+  });
+  addEventListener('pageshow',()=>{lastY=Math.max(0,scrollY);if(lastY<72)expand()},{passive:true});
+})();
 
 // Sidebar scrollspy on the document pages. Targets are mixed — <h2> on privacy
 // and terms, .doc-step and <section> on process — so they are resolved by id
@@ -1166,6 +1377,10 @@ qa('[data-page]').forEach(a=>{
   a.classList.toggle('active',active);
   if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
 });
+// The nav controllers are mounted before route state is assigned. Re-measure in
+// this same script task so non-home pages never paint Home's lens first or wait
+// for a pointer event to correct it.
+document.dispatchEvent(new CustomEvent('liquid-nav-layout'));
 qa('.btn.chip').forEach(btn=>{
   btn.setAttribute('aria-pressed',String(btn.classList.contains('active')));
   btn.addEventListener('click',()=>{

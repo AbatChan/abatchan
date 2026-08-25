@@ -237,18 +237,28 @@
       .sort((a,b)=>Number(a.matches('p'))-Number(b.matches('p')))
       .slice(0,60)
       .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
-    const active=[...document.querySelectorAll('main section[id],main article[id],main h2[id]')]
+    const active=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h2[id]')]
       .map(node=>{
         const rect=node.getBoundingClientRect();
         const visible=Math.max(0,Math.min(rect.bottom,innerHeight)-Math.max(rect.top,0));
-        return {node,visible,distance:Math.abs(rect.top-innerHeight*.32)};
+        const style=getComputedStyle(node);
+        const priority=node.matches('dialog,[role="dialog"],[aria-modal="true"]')?4:node.matches('[role="tabpanel"]')?3:node.matches('details[open]')?2:1;
+        return {node,visible:node.hidden||node.getAttribute('aria-hidden')==='true'||style.display==='none'||style.visibility==='hidden'?0:visible,priority,distance:Math.abs(rect.top-innerHeight*.32)};
       })
       .filter(item=>item.visible>0)
-      .sort((a,b)=>b.visible-a.visible||a.distance-b.distance)[0]?.node;
+      .sort((a,b)=>b.priority-a.priority||b.visible-a.visible||a.distance-b.distance)[0]?.node;
     const activeContext=active?.matches('h2')?(active.closest('section,article')||active.parentElement):active;
     let journey=[];
     try{journey=JSON.parse(sessionStorage.getItem(JOURNEY_STORE)||'[]')}catch{}
     const projectForm=pagePath()==='/contact'?document.querySelector('#project-form'):null;
+    const visibleNode=node=>{
+      const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
+      return !node.hidden&&node.getAttribute('aria-hidden')!=='true'&&style.display!=='none'&&style.visibility!=='hidden'&&rect.bottom>0&&rect.right>0&&rect.top<innerHeight&&rect.left<innerWidth;
+    };
+    const limitations=[];
+    if([...document.querySelectorAll('main iframe')].some(visibleNode))limitations.push('Visible embedded-frame content is not included in the text snapshot.');
+    if([...document.querySelectorAll('main canvas')].some(visibleNode))limitations.push('Visible canvas pixels cannot be inspected as page text.');
+    if([...document.querySelectorAll('main img')].some(visibleNode))limitations.push('Image pixels are not inspected; only surrounding text and accessible labels are available.');
     const formState=projectForm?Object.fromEntries(['name','email','type','message'].map(name=>{
       const field=projectForm.elements.namedItem(name);
       return [name,String(field?.value||'').trim().slice(0,name==='message'?1800:180)];
@@ -261,11 +271,13 @@
       navigation:navigationState,
       activeSection:active?{
         id:active.id,
-        label:(active.matches('h1,h2,h3')?active:active.querySelector('h1,h2,h3'))?.textContent.trim()||active.dataset.assistTarget||'',
+        label:(active.matches('h1,h2,h3')?active:active.querySelector('h1,h2,h3,[role="heading"]'))?.textContent.trim()||active.getAttribute('aria-label')||active.dataset.assistTarget||'',
+        kind:active.matches('dialog,[role="dialog"],[aria-modal="true"]')?'dialog':active.matches('[role="tabpanel"]')?'tab':active.matches('details[open]')?'details':'section',
         text:String(activeContext?.innerText||'').replace(/\s+/g,' ').trim().slice(0,1800)
       }:null,
       hash:location.hash.slice(0,101),
       sections,
+      limitations,
       journey:Array.isArray(journey)?journey.slice(-4):[],
       formState,
       preparedForm:readPrepared()

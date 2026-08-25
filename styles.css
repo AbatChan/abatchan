@@ -50,11 +50,9 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
 .section-index,.process-card span{color:var(--signal-ink)}
 
 /* --- liquid glass ------------------------------------------------------- */
-/* Chrome ignores url(#svg-filter) inside backdrop-filter, so true feDisplacementMap
-   refraction is not available. The rim strips below get the same read a different
-   way: each samples the real content behind the bar at its own blur radius and
-   hue offset, so whatever scrolls underneath is smeared and colour-split at the
-   edge instead of being painted on as a fake gradient. */
+/* The shell owns the live backdrop sample. A single rounded rim adds the colour
+   split and highlight: segmenting that effect into filter strips produced visible
+   rectangular seams in Chromium, especially over high-contrast page content. */
 .site-header,.mobile-tabs{
   --glass-tint:rgba(13,13,13,.005);
   --glass-blur:11px;
@@ -66,14 +64,15 @@ html[data-theme="light"] .field input,html[data-theme="light"] .field textarea,h
   -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(225%) contrast(1.06) brightness(1.05);
   box-shadow:0 0 0 1px var(--glass-ring),inset 0 1px 0 var(--glass-spec),inset 0 -1px 0 rgba(255,255,255,.08),0 20px 50px rgba(0,0,0,.4)}
 /* must out-specify the .site-header>* rule below, or the rim joins the grid flow */
-.site-header .glass-edge,.mobile-tabs .glass-edge{position:absolute;inset:0;z-index:0;pointer-events:none;display:block}
-.glass-edge i{position:absolute;display:block}
-.glass-edge .t1{top:0;left:0;right:0;height:5px;backdrop-filter:blur(1px) saturate(420%) hue-rotate(-24deg) brightness(1.3);-webkit-backdrop-filter:blur(1px) saturate(420%) hue-rotate(-24deg) brightness(1.3)}
-.glass-edge .t2{top:5px;left:0;right:0;height:8px;backdrop-filter:blur(5px) saturate(320%) hue-rotate(-9deg) brightness(1.1);-webkit-backdrop-filter:blur(5px) saturate(320%) hue-rotate(-9deg) brightness(1.1)}
-.glass-edge .b2{bottom:5px;left:0;right:0;height:8px;backdrop-filter:blur(5px) saturate(320%) hue-rotate(9deg) brightness(1.1);-webkit-backdrop-filter:blur(5px) saturate(320%) hue-rotate(9deg) brightness(1.1)}
-.glass-edge .b1{bottom:0;left:0;right:0;height:5px;backdrop-filter:blur(1px) saturate(420%) hue-rotate(24deg) brightness(1.3);-webkit-backdrop-filter:blur(1px) saturate(420%) hue-rotate(24deg) brightness(1.3)}
-.glass-edge .l1{top:0;bottom:0;left:0;width:16px;backdrop-filter:blur(3px) saturate(380%) hue-rotate(-22deg);-webkit-backdrop-filter:blur(3px) saturate(380%) hue-rotate(-22deg)}
-.glass-edge .r1{top:0;bottom:0;right:0;width:16px;backdrop-filter:blur(3px) saturate(380%) hue-rotate(22deg);-webkit-backdrop-filter:blur(3px) saturate(380%) hue-rotate(22deg)}
+.site-header .glass-edge,.mobile-tabs .glass-edge{
+  position:absolute;inset:0;z-index:0;pointer-events:none;display:block;
+  overflow:hidden;border-radius:inherit;
+  background:
+    radial-gradient(75% 130% at 14% -34%,rgba(129,132,255,.18),transparent 58%),
+    radial-gradient(70% 120% at 88% 134%,rgba(255,124,202,.11),transparent 60%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),inset 1px 0 0 rgba(129,132,255,.08),inset -1px 0 0 rgba(255,124,202,.06)}
+/* Legacy strip nodes stay inert so old cached markup cannot reintroduce seams. */
+.glass-edge i{display:none}
 /* specular sheen, and it tracks the pointer via --glass-x/--glass-y */
 .site-header::after,.mobile-tabs::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(180px 130px at var(--glass-x,50%) var(--glass-y,-35%),rgba(255,255,255,.07),transparent 72%)}
@@ -92,10 +91,34 @@ html[data-theme="light"] .site-header .desktop-nav a,html[data-theme="light"] .s
 
 /* --- desktop nav lens --------------------------------------------------- */
 .desktop-nav{position:relative}
-.desktop-nav .nav-lens{position:absolute;top:0;left:0;width:0;height:100%;z-index:0;opacity:0;pointer-events:none;border-radius:999px;background:rgba(245,245,243,.12);box-shadow:0 0 0 1px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.36);transition:transform .42s var(--ease),width .42s var(--ease),opacity .28s linear}
-html[data-theme="light"] .desktop-nav .nav-lens{background:rgba(79,70,229,.12);box-shadow:0 0 0 1px rgba(79,70,229,.22),inset 0 1px 0 rgba(255,255,255,.9)}
-.desktop-nav a{position:relative;z-index:1;border-radius:999px}
-.desktop-nav a:hover,.desktop-nav a.active{background:transparent;color:var(--paper)}
+.liquid-nav{touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.desktop-nav.liquid-nav{position:relative}
+.mobile-tabs.liquid-nav{position:fixed}
+.liquid-nav .nav-lens{position:absolute;top:0;left:0;width:0;height:100%;z-index:0;opacity:0;pointer-events:none;overflow:hidden;border-radius:999px;transform-origin:center;background:rgba(245,245,243,.105);backdrop-filter:blur(2px) brightness(1.18) saturate(1.55);-webkit-backdrop-filter:blur(2px) brightness(1.18) saturate(1.55);box-shadow:0 0 0 1px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(99,102,241,.18),0 7px 22px rgba(0,0,0,.14);will-change:transform,width;transition:opacity .16s ease}
+.liquid-nav .nav-lens::before{content:"";position:absolute;inset:-1px;border-radius:inherit;background:linear-gradient(105deg,rgba(99,102,241,.26),transparent 26%,rgba(255,255,255,.34) 51%,transparent 74%,rgba(129,132,255,.2));mix-blend-mode:screen;opacity:.62}
+.liquid-nav .nav-lens::after{content:"";position:absolute;inset:2px;border-radius:inherit;background:radial-gradient(70% 120% at var(--lens-direction,50%) 0,rgba(255,255,255,.28),transparent 58%);opacity:.72}
+.liquid-nav .nav-lens>i{position:absolute;inset:0;border-radius:inherit;box-shadow:inset 2px 0 2px rgba(129,132,255,.12),inset -2px 0 2px rgba(255,124,202,.08)}
+html[data-theme="light"] .liquid-nav .nav-lens{background:rgba(79,70,229,.12);box-shadow:0 0 0 1px rgba(79,70,229,.22),inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 0 rgba(79,70,229,.12),0 8px 24px rgba(44,45,65,.11)}
+.liquid-nav a{position:relative;z-index:1;border-radius:999px;transition:color .22s var(--ease),transform .22s var(--ease),opacity .16s ease}
+.liquid-nav a:hover,.liquid-nav a.active,.liquid-nav a.is-preview{background:transparent;color:var(--paper)}
+.liquid-nav.is-dragging{cursor:grabbing}
+.liquid-nav.is-dragging a{pointer-events:none}
+.liquid-nav.is-dragging .nav-lens{box-shadow:0 0 0 1px rgba(129,132,255,.38),inset 0 1px 0 rgba(255,255,255,.48),inset 0 -1px 0 rgba(99,102,241,.3),0 10px 30px rgba(99,102,241,.18)}
+
+/* The chrome shrinks rather than vanishing: visitors keep their location while
+   the page gains breathing room. Width/height animate on the shell only; the
+   moving selection lens remains transform-driven and does not trigger reflow. */
+.site-header,.mobile-tabs{transition:top .42s var(--ease),bottom .42s var(--ease),width .42s var(--ease),height .42s var(--ease),min-height .42s var(--ease),padding .42s var(--ease),border-radius .42s var(--ease),transform .42s var(--ease),box-shadow .42s var(--ease)}
+.site-header.is-drag-primed,.mobile-tabs.is-drag-primed{transition:none}
+.site-header.is-drag-primed .desktop-nav a,.mobile-tabs.is-drag-primed a>span{transition:none}
+.site-header .brand,.site-header .header-cta,.mobile-tabs a>span{transition:width .42s var(--ease),opacity .28s var(--ease),transform .42s var(--ease)}
+@media(min-width:901px){
+  .site-header.is-minimized{top:8px;width:min(820px,calc(100% - 32px));height:54px;padding-inline:14px 8px;border-radius:18px}
+  .site-header.is-minimized .brand{width:118px}
+  .site-header .desktop-nav a{transition:color .22s var(--ease),transform .22s var(--ease),padding .42s var(--ease)}
+  .site-header.is-minimized .desktop-nav a{padding:8px 11px}
+  .site-header.is-minimized .header-cta{padding:9px 13px}
+}
 
 /* --- footer ------------------------------------------------------------- */
 footer{padding:22px 0 28px;border-top:1px solid var(--line)}
@@ -152,7 +175,10 @@ html.nav-arriving .page-transition .pt-mark{opacity:1;transform:translate(-50%,-
 @media(max-width:900px){
   /* the pill used to be width:auto with only a left offset, so the toggle was
      laid out on top of the wordmark once the lockup reached its full width */
-  .site-header{left:16px;right:16px;width:auto;height:60px;padding:0 12px 0 16px;transform:none;gap:12px}
+  /* Keep the same centred positioning model in both header sizes. Switching
+     from left/right anchoring to left:50% during scroll caused the mobile bar
+     to catapult sideways instead of interpolating its width. */
+  .site-header{height:60px;padding:0 12px 0 16px;gap:12px}
   .site-header .brand{width:122px}
   .footer-mark{width:108px}
     .intro video{width:min(52vw,320px);max-height:34vh}
@@ -164,7 +190,7 @@ html.nav-arriving .page-transition .pt-mark{opacity:1;transform:translate(-50%,-
   .social-rail{max-width:none}
   .footer-meta{white-space:normal;justify-content:center}
   /* self-sizing so the injected pricing tab cannot wrap the row */
-  .mobile-tabs{bottom:max(12px,env(safe-area-inset-bottom));width:min(440px,calc(100% - 24px));min-height:66px;padding:7px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+  .mobile-tabs{bottom:max(12px,env(safe-area-inset-bottom));width:min(440px,calc(100% - 24px));min-height:66px;padding:7px;border-radius:999px;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
   .mobile-tabs a{min-width:0;padding:8px 2px;border-radius:15px;font-size:10px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   /* one grid for every tab, so the icon box and the label sit on the same two
      baselines no matter how tall the individual glyph is */
@@ -172,9 +198,19 @@ html.nav-arriving .page-transition .pt-mark{opacity:1;transform:translate(-50%,-
   .mobile-tabs a>svg{width:20px;height:20px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .mobile-tabs a>span{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis}
   .mobile-tabs b{display:none}
-  .mobile-tabs a.active{background:rgba(245,245,243,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.24)}
+  .mobile-tabs .nav-lens{top:7px;height:calc(100% - 14px)}
+  .mobile-tabs a.active,.mobile-tabs a.is-preview{background:transparent;box-shadow:none}
   html[data-theme="light"] .mobile-tabs a{color:#3c3e46}
-  html[data-theme="light"] .mobile-tabs a.active{color:#151519;background:rgba(79,70,229,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
+  html[data-theme="light"] .mobile-tabs a.active,html[data-theme="light"] .mobile-tabs a.is-preview{color:#151519;background:transparent;box-shadow:none}
+  .site-header.is-minimized{top:8px;left:50%;right:auto;width:166px;height:50px;padding:0 14px;transform:translateX(-50%);border-radius:18px}
+  .site-header.is-minimized .brand{width:118px}
+  .mobile-tabs.is-minimized{width:68px;min-height:54px;padding:6px;border-radius:999px;grid-auto-columns:1fr}
+  .mobile-tabs.is-minimized a:not(.active):not(.is-lens-current){display:none}
+  .mobile-tabs.is-minimized a.active,.mobile-tabs.is-minimized a.is-lens-current{grid-template-rows:22px;gap:0;padding:10px}
+  .mobile-tabs.is-minimized a.active>span,.mobile-tabs.is-minimized a.is-lens-current>span{display:none;width:0;opacity:0;transform:translateY(5px)}
+  /* At one icon the outer glass shell already is the selection lens. Hiding the
+     inner lens avoids a duplicate ring and any zero-width resize flash. */
+  .mobile-tabs.is-minimized .nav-lens{top:6px;height:calc(100% - 12px);opacity:0!important}
   /* clear the fixed dock: 12 bottom offset + 66 bar + breathing room */
   footer{padding-bottom:calc(104px + env(safe-area-inset-bottom))}}
 
@@ -199,7 +235,8 @@ html.nav-arriving .page-transition .pt-mark{opacity:1;transform:translate(-50%,-
   .glass-edge,.site-header::after,.mobile-tabs::after{display:none}}
 
 @media(prefers-reduced-motion:reduce){
-  .desktop-nav .nav-lens,.page-transition>i,.page-transition .pt-mark{transition:none}
+  .site-header,.mobile-tabs,.site-header .brand,.site-header .header-cta,.mobile-tabs a>span,.page-transition>i,.page-transition .pt-mark{transition:none}
+  .liquid-nav .nav-lens{transform:none}
   .skip{animation:none;transform:translateX(-50%)}}
 
 
