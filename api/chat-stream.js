@@ -4,7 +4,7 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { resolveTenant, originAllowed, quotaScope, PRIMARY_SITE_KEY } from '../lib/tenants/registry.js';
 import { handlePreflight, applyCors, isCrossOrigin } from '../lib/http/cors.js';
 import { consume } from './quota.js';
-import { currentLocationAnswer, normalizeCurrentPath } from '../lib/context-awareness.js';
+import { currentLocationAnswer, explicitSectionNavigation, normalizeCurrentPath } from '../lib/context-awareness.js';
 
 const API_URL='https://api.deepseek.com/chat/completions';
 // Instructions, published facts, verified destinations and canaries all come
@@ -307,6 +307,34 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-cache, no-store, no-transform');
     res.setHeader('X-Content-Type-Options','nosniff');
     res.write(directLocation);
+    res.end();
+    return;
+  }
+  const directSection=!receipt&&explicitSectionNavigation(message,tenant.record.pages,page);
+  if(directSection){
+    const destination=directSection.label;
+    const action={
+      href:directSection.href,
+      label:destination,
+      departure:`I’ll show you the ${destination}.`,
+      status:`Taking you to the ${destination}.`,
+      arrival:`The ${destination} are in view.`,
+      requires_approval:false,
+      section_requested:true,
+      related_links:[]
+    };
+    const callId=`call_${randomUUID().replace(/-/g,'')}`;
+    const actionReceipt=signReceipt({v:1,issuedAt:Date.now(),callId,message,answerDepth,action});
+    const actionToken=randomUUID();
+    res.statusCode=200;
+    res.setHeader('X-Guide-Remaining',String(usage.remaining));
+    res.setHeader('X-Guide-Personal',String(usage.personal));
+    res.setHeader('Content-Type','text/plain; charset=utf-8');
+    res.setHeader('X-Abatchan-Action-Token',actionToken);
+    res.setHeader('Cache-Control','no-cache, no-store, no-transform');
+    res.setHeader('X-Content-Type-Options','nosniff');
+    res.write(action.departure);
+    res.write(`\n<!--abatchan-nav:${actionToken}:${encodeURIComponent(JSON.stringify({...action,receipt:actionReceipt}))}-->`);
     res.end();
     return;
   }

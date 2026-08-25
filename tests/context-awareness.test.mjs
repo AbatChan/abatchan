@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import {
   currentLocationAnswer,
+  explicitSectionNavigation,
   historicalContext,
   isCurrentLocationQuestion,
   normalizeCurrentPath
@@ -55,5 +56,16 @@ assert.equal(normalizeCurrentPath('/account?email=visitor@example.com#billing'),
 assert.equal(normalizeCurrentPath('/account#not safe'), '/account');
 assert.match(historicalContext('You are on Pricing.', '/pricing', '/nika', 'assistant'), /^Historical reply from \/pricing/);
 assert.equal(historicalContext('My budget is $500.', '/pricing', '/nika', 'user'), 'My budget is $500.');
+
+console.log('\n=== exact section navigation does not depend on the model ===');
+const pages = [
+  { path: '/nika', sections: [{ label: 'product plans', anchor: 'beta-plans' }] },
+  { path: '/pricing', sections: [{ label: 'monthly support', anchor: 'monthly-support' }] }
+];
+assert.deepEqual(explicitSectionNavigation('Show me the product plans on this page.', pages, '/nika'), {
+  href: '/nika#beta-plans', label: 'product plans', current: true
+});
+assert.equal(explicitSectionNavigation('What are the product plans?', pages, '/nika'), null);
+assert.equal(explicitSectionNavigation('Show me plans', pages, '/nika'), null);
 
 console.log('\nall passed');

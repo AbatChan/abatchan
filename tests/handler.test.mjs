@@ -312,6 +312,14 @@ check('no private navigation marker is emitted', result.text.includes('<!--abatc
 check('model promise to open a private route is not shown', result.text.includes('Opening the private dashboard'), false);
 check('unusable tool calls become a safe fallback', result.text.includes('could not produce an answer'), true);
 
+console.log('\n=== an exact current-page section survives malformed provider tools ===');
+table.clear();
+const callsBeforeDirectSection = deepSeekCalls;
+result = await call('5.5.5.9', 'Show me the product plans on this page.', '/nika');
+check('an owner-authored section emits a verified action', result.text.includes('<!--abatchan-nav:'), true);
+check('the exact published anchor is used', decodeURIComponent(result.text).includes('"href":"/nika#beta-plans"'), true);
+check('the initial journey does not depend on a provider call', deepSeekCalls, callsBeforeDirectSection);
+
 console.log('\n=== attachment context is honest and injection-resistant ===');
 table.clear();
 deepSeekMode='content';
