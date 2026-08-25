@@ -890,7 +890,7 @@ const assistantPageContext=()=>{
 // keep it off the critical path for visitors who never open it.
 (async function assistant(){
   if(q('.assist-launch'))return;
-  const {mountGuideShell}=await import('/guide-shell.js?v=1');
+  const {mountGuideShell}=await import('/guide-shell.js?v=2');
   await mountGuideShell({
     greeting:ASSISTANT.greeting,
     chips:ASSISTANT.chips,

@@ -37,7 +37,7 @@ export async function mountGuideShell(options = {}) {
     chips: ['What do you build?', 'How much does it cost?', 'How long does it take?', 'What can you help with?'],
     retiredGreeting: 'Hi. Ask me anything about the work, pricing, or how a project runs.',
     endpoint: null,
-    stylesheet: '/assistant.css?v=24',
+    stylesheet: '/assistant.css?v=25',
     loadSettings: async () => null,
     ...options
   };

@@ -78,7 +78,7 @@
       avatar: config.avatar,
       assetBase: sameOrigin ? '' : apiBase,
       apiBase: sameOrigin ? '' : apiBase,
-      stylesheet: asset('/assistant.css?v=24'),
+      stylesheet: asset('/assistant.css?v=25'),
       placeholder: config.placeholder,
       disclaimer: config.disclaimer,
       greeting: config.greeting,
@@ -86,7 +86,7 @@
       loadSettings: async () => null   // the config call above already answered this
     });
 
-    await load(asset('/assistant-v2.js?v=45'));
+    await load(asset('/assistant-v2.js?v=48'));
   };
 
   if (document.readyState === 'loading') {
