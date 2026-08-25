@@ -108,6 +108,7 @@ check('long dictation reconnects after browser recognition ends',assistant.inclu
 check('dictation preserves text around the cursor',assistant.includes('input.selectionStart')&&assistant.includes('dictationPrefix=input.value.slice(0,start)')&&assistant.includes('dictationSuffix=input.value.slice(end)'));
 check('closing or leaving releases the microphone stream',assistant.includes("launch.addEventListener('click'")&&assistant.includes("addEventListener('pagehide'")&&assistant.includes('getTracks().forEach'));
 check('the focus point and center band determine the live section',assistant.includes('focusNode=document.elementFromPoint')&&assistant.includes('focusBand')&&assistant.includes('focusHit'));
+check('Nika never mistakes its own dialog for page content',assistant.includes(".filter(node=>!node.closest('.assist-panel'))"));
 
 console.log('\n=== navigation is allowed against the tenant own routes ===');
 // The widget shipped with abatchan's routes hardcoded. On a buyer's site none

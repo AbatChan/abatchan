@@ -237,7 +237,8 @@
       .sort((a,b)=>Number(a.matches('p'))-Number(b.matches('p')))
       .slice(0,60)
       .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
-    const activeCandidates=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h2[id]')];
+    const activeCandidates=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h2[id]')]
+      .filter(node=>!node.closest('.assist-panel'));
     const focusNode=document.elementFromPoint(Math.max(1,Math.min(innerWidth-1,innerWidth*.34)),Math.max(1,Math.min(innerHeight-1,innerHeight*.5)))
       ?.closest('main section[id],main article[id],main h2[id],main [data-assist-target]');
     const active=activeCandidates
