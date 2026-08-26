@@ -628,6 +628,19 @@ html body .adm-test{gap:12px}
 html body .adm-test .btn{min-width:92px}
 html body .adm-test-output{margin-top:14px}
 html body .adm-announcement-actions{margin-top:22px}
+html body .adm-ip-checker{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+  padding:14px;
+  border:1px solid var(--adm-hairline);
+  border-radius:15px;
+  background:rgba(99,102,241,.045);
+}
+html body .adm-ip-actions{display:flex;flex-wrap:wrap;gap:10px}
+html body .adm-ip-actions .btn{min-height:42px}
+html body .adm-ip-checker .adm-field-help{margin:0}
+html body .adm-ip-checker .adm-field-help.is-error{color:#ff948b}
 
 /* FAQ manager */
 html body .faq-admin-shell{max-width:1100px}
@@ -734,7 +747,7 @@ html[data-theme="light"] body .faq-admin-item{background:linear-gradient(145deg,
   }
   html body .adm-side img{width:108px;margin:0}
   html body .adm-side footer{padding:0;border:0}
-  html body .adm-side footer #signOut{display:none}
+  html body .adm-side footer #signOut{display:inline-flex;width:auto;padding-inline:10px;font-size:11px}
   /* icon-only at this width: the label collapses to zero width but is still a
      flex item, so the gap would push the arrow off centre. */
   html body .adm-side footer .btn{font-size:0;width:44px;padding:0;gap:0}

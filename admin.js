@@ -679,10 +679,68 @@
   // Accepts newlines or commas, because both are what people actually paste.
   // Anything that is not an IPv4 or IPv6 address is dropped rather than saved,
   // since a typo here silently fails to exempt rather than announcing itself.
-  const IP_SHAPE = /^(\d{1,3}(\.\d{1,3}){3}|[0-9a-f:]{3,45})$/i;
+  const validIp = value => {
+    const candidate = String(value || '').trim();
+    const parts = candidate.split('.');
+    if (parts.length === 4) return parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255);
+    if (!candidate.includes(':') || !/^[0-9a-f:]+$/i.test(candidate)) return false;
+    try { new URL(`http://[${candidate}]/`); return true; } catch { return false; }
+  };
   const exemptList = value => [...new Set(
-    String(value || '').split(/[\s,]+/).map(s => s.trim()).filter(s => IP_SHAPE.test(s))
+    String(value || '').split(/[\s,]+/).map(s => s.trim()).filter(validIp)
   )];
+  let currentAssistantIp = '';
+
+  const syncAssistantIp = () => {
+    const status = q('#a-ip-status');
+    const add = q('#addAssistantIp');
+    status.classList.remove('is-error');
+    if (!currentAssistantIp) {
+      status.textContent = 'Check the public IP this browser is using before adding an exemption.';
+      add.hidden = true;
+      return;
+    }
+    const listed = exemptList(q('#a-exempt').value).includes(currentAssistantIp);
+    status.textContent = listed
+      ? `Current connection: ${currentAssistantIp}. Already in this dashboard list.`
+      : `Current connection: ${currentAssistantIp}. Not in this dashboard list yet.`;
+    add.hidden = listed;
+  };
+
+  q('#checkAssistantIp')?.addEventListener('click', async () => {
+    const button = q('#checkAssistantIp');
+    pending(button, true, 'checking');
+    q('#a-ip-status').textContent = 'Checking this browser’s public IP…';
+    try {
+      const response = await fetch('/api/admin-ip', {
+        headers: { Authorization: `Bearer ${sb.session.token || ''}` },
+        cache: 'no-store'
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error?.message || 'The IP check could not be completed.');
+      currentAssistantIp = String(data.ip || '').trim();
+      if (!validIp(currentAssistantIp)) throw new Error('The server returned an invalid IP address.');
+      syncAssistantIp();
+    } catch (error) {
+      currentAssistantIp = '';
+      q('#addAssistantIp').hidden = true;
+      q('#a-ip-status').classList.add('is-error');
+      q('#a-ip-status').textContent = error.message;
+    } finally {
+      pending(button, false);
+    }
+  });
+
+  q('#addAssistantIp')?.addEventListener('click', () => {
+    if (!currentAssistantIp) return;
+    const field = q('#a-exempt');
+    const next = [...exemptList(field.value), currentAssistantIp];
+    field.value = [...new Set(next)].join('\n');
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    syncAssistantIp();
+    q('#a-ip-status').textContent = `Added ${currentAssistantIp}. Save Assistant to apply it.`;
+  });
+  q('#a-exempt')?.addEventListener('input', syncAssistantIp);
 
   // ------------------------------------------------------------- socials
   // Icons ship with the site, so the platforms are fixed. You type the handle;
@@ -889,6 +947,7 @@
         : (assistantRows['assistant.model'] || 'deepseek-v4-flash');
       const exempt = assistantRows['assistant.exempt_ips'];
       q('#a-exempt').value = Array.isArray(exempt) ? exempt.join('\n') : String(exempt || '');
+      syncAssistantIp();
       qa('#assistantForm input,#assistantForm textarea').forEach(el => {
         if (el === q('#a-enabled') || el === q('#a-test')) return;
         el.addEventListener('input', () => {

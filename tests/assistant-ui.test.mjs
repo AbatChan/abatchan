@@ -6,6 +6,11 @@ const assistant=readFileSync(new URL('../assistant-v2.js',import.meta.url),'utf8
 const shell=readFileSync(new URL('../guide-shell.js',import.meta.url),'utf8');
 const assistantCss=readFileSync(new URL('../assistant.css',import.meta.url),'utf8');
 const embed=readFileSync(new URL('../embed.js',import.meta.url),'utf8');
+const admin=readFileSync(new URL('../admin.js',import.meta.url),'utf8');
+const adminHtml=readFileSync(new URL('../admin.html',import.meta.url),'utf8');
+const adminCss=readFileSync(new URL('../admin-polish.css',import.meta.url),'utf8');
+const faqAdmin=readFileSync(new URL('../faq-admin.js',import.meta.url),'utf8');
+const reviewsAdmin=readFileSync(new URL('../reviews-admin.js',import.meta.url),'utf8');
 const vercel=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
 
 let failed=false;
@@ -98,6 +103,23 @@ check('both configured models have a context entry',server.includes("'deepseek-v
 check('every model model() accepts is in the table',['deepseek-v4-flash','deepseek-v4-pro'].every(name=>server.includes(`'${name}':{context:`)));
 check('the budget is derived from the window, not hardcoded',server.includes('contextTokens(name)*TOKEN_CHARS*HISTORY_SHARE'));
 check('the share is tunable',server.includes('ASSISTANT_HISTORY_SHARE'));
+
+console.log('\n=== concise and detailed are meaningfully different modes ===');
+check('concise has a clear word target',server.includes('stay under 120 words'));
+check('detailed has a useful multi-part range',server.includes('normally use 180 to 420 words'));
+check('concise receives the smaller output budget',server.includes("answerDepth==='detailed'?850:300"));
+
+console.log('\n=== admin controls remain usable and understandable ===');
+const validIpSource=admin.match(/const validIp = (value => \{[\s\S]*?\n  \});/)?.[1];
+const validIp=validIpSource?Function(`return (${validIpSource})`)():null;
+check('manual IPv4 validation rejects impossible octets',validIp?.('999.999.999.999')===false&&validIp?.('198.51.100.21')===true);
+check('IPv6 exemptions remain supported',validIp?.('2001:db8::7')===true);
+check('IP lookup is explicit and announced',adminHtml.includes('id="checkAssistantIp"')&&adminHtml.includes('id="a-ip-status" role="status" aria-live="polite"'));
+check('IP lookup errors are visually distinct',admin.includes("classList.add('is-error')")&&adminCss.includes('.adm-field-help.is-error'));
+check('mobile keeps the sign-out control',adminCss.includes('.adm-side footer #signOut{display:inline-flex'));
+check('long mobile tab labels have short variants',adminHtml.includes('<span class="adm-nav-narrow">copy</span>')&&adminHtml.includes('<span class="adm-nav-narrow">guide</span>'));
+check('generated FAQ fields have associated labels',faqAdmin.includes('for="faq-question-${index}"')&&faqAdmin.includes('for="faq-answer-${index}"'));
+check('generated review fields associate their labels',reviewsAdmin.includes('label.htmlFor=field.id'));
 
 console.log('\n=== the shell has one implementation, shared with the embed ===');
 check('script.js no longer builds it',!script.includes("panel.className='assist-panel'"));

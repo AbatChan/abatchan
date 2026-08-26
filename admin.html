@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0D0D0D"><meta name="robots" content="noindex,nofollow"><title>dashboard | abatchan</title><link rel="stylesheet" href="/styles.css?v=22"><link rel="icon" href="/assets/abatchan-symbol-indigo-tight.svg"><link rel="alternate icon" href="/assets/abatchan-favicon.ico" sizes="any">
-<link rel="stylesheet" href="/admin-polish.css?v=17">
+<link rel="stylesheet" href="/admin-polish.css?v=19">
 </head><body>
 
 <!-- login ---------------------------------------------------------------- -->
@@ -43,8 +43,8 @@
     <nav class="adm-nav" id="tabs" aria-label="Dashboard sections">
       <span class="glass-edge" aria-hidden="true"><i class="t1"></i><i class="t2"></i><i class="b2"></i><i class="b1"></i><i class="l1"></i><i class="r1"></i></span>
       <button data-view="work" aria-current="true"><svg viewBox="0 0 24 24"><rect x="2.8" y="7.2" width="18.4" height="13.6" rx="2.4"/><path d="M8.6 7.2V5.4a2.2 2.2 0 0 1 2.2-2.2h2.4a2.2 2.2 0 0 1 2.2 2.2v1.8M2.8 12.4h18.4"/></svg>work</button>
-      <button data-view="copy"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>site copy</button>
-      <button data-view="assistant"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg>assistant</button>
+      <button data-view="copy"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="adm-nav-wide">site copy</span><span class="adm-nav-narrow">copy</span></button>
+      <button data-view="assistant"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg><span class="adm-nav-wide">assistant</span><span class="adm-nav-narrow">guide</span></button>
       <button data-view="announcements"><svg viewBox="0 0 24 24"><path d="M4 13.5V8.8l12-4.6v13.9L4 13.5Z"/><path d="M8 15v4.2a1.8 1.8 0 0 0 3.6 0v-2.8M16 8.5h2.2a2.3 2.3 0 0 1 0 4.6H16"/></svg><span class="adm-nav-wide">announcements</span><span class="adm-nav-narrow">news</span></button>
       <button data-view="faqs"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M9 9h6M9 12h4"/></svg>FAQs</button>
       <button data-view="reviews"><svg viewBox="0 0 24 24"><path d="M12 3.5 14.6 9l6 .8-4.4 4.2 1.1 6-5.3-2.9L6.7 20l1.1-6L3.4 9.8 9.4 9Z"/></svg>reviews</button>
@@ -155,6 +155,13 @@
           <label for="a-exempt">connections that do not count</label>
           <textarea id="a-exempt" style="min-height:80px" placeholder="102.89.82.178"></textarea>
           <p class="adm-field-help">One IP address per line, or separated by commas. These skip the daily limit entirely, so your own testing and demos do not spend what visitors need. Addresses set in Vercel are always exempt and cannot be removed here. Changes take effect within a minute.</p>
+          <div class="adm-ip-checker">
+            <div class="adm-ip-actions">
+              <button class="btn sm" id="checkAssistantIp" type="button">check my current IP</button>
+              <button class="btn sm" id="addAssistantIp" type="button" hidden>add to list</button>
+            </div>
+            <p class="adm-field-help" id="a-ip-status" role="status" aria-live="polite">Check the public IP this browser is using before adding an exemption.</p>
+          </div>
         </div>
         <div class="adm-note">
           <b>What the guide does, and does not do.</b><br>
@@ -186,7 +193,7 @@
 <div class="adm-toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="/supabase-config.js?v=3"></script>
-<script src="/admin-ui.js?v=4"></script><script src="/admin.js?v=16"></script>
+<script src="/admin-ui.js?v=4"></script><script src="/admin.js?v=18"></script>
 <script src="/admin-runtime-fixes.js?v=1"></script>
 <script src="/admin-guided-controls.js?v=3"></script>
 <script src="/admin-announcement-ux.js?v=3"></script>
@@ -197,7 +204,7 @@
 <script src="/admin-theme-sync.js?v=3"></script>
 <script src="/admin-work-enhancements.js?v=6"></script>
 <script src="/admin-work-list.js?v=7"></script>
-<script src="/faq-data.js?v=2"></script><script src="/faq-admin.js?v=16"></script>
-<script src="/reviews-data.js?v=4"></script><script src="/reviews-admin.js?v=6"></script>
+<script src="/faq-data.js?v=2"></script><script src="/faq-admin.js?v=17"></script>
+<script src="/reviews-data.js?v=4"></script><script src="/reviews-admin.js?v=7"></script>
 <script src="/admin-auth-gallery-fix.js?v=5"></script>
 </body></html>

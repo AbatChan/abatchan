@@ -233,6 +233,14 @@
         <label class="adm-switch"><input data-published type="checkbox"><span class="adm-switch-track" aria-hidden="true"></span><span>published</span></label>
       </div>`;
 
+      ['quote','engagement','source','client','date','project'].forEach(name=>{
+        const field=q(`[data-${name}]`,panel);
+        const label=field?.closest('.faq-admin-field')?.querySelector('label');
+        if(!field||!label)return;
+        field.id=`review-${name}-${index}`;
+        label.htmlFor=field.id;
+      });
+
       q('[data-up]',panel).disabled=index===0||filtering;
       q('[data-down]',panel).disabled=index===items.length-1||filtering;
       q('[data-up]',panel).addEventListener('click',()=>move(index,-1));
