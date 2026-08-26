@@ -389,7 +389,7 @@ export default async function handler(req,res){
       : '';
     const responseDepth=answerDepth==='detailed'
       ? 'Visitor-selected answer depth: detailed. Give a complete, well-structured answer with the material context, caveats, and supporting facts needed to understand the result. Use short headings or a compact list when helpful. When the question genuinely has several parts, normally use 180 to 420 words; never pad a simple answer merely to reach a length.'
-      : 'Visitor-selected answer depth: concise. Give the direct answer first, then only the minimum facts needed to make it useful. Normally use 1 to 3 short paragraphs or no more than 5 compact bullets, stay under 120 words, and omit generic recap or closing questions. Exceed that only when safety or accuracy truly requires it.';
+      : 'Visitor-selected answer depth: concise. STRICT FORMAT: the entire answer must stay under 120 words and finish cleanly. Compress multi-part answers into at most 5 compact bullets, combining related facts instead of reproducing the detailed structure. Give the direct answer first, omit generic recap, headings that add no meaning, and closing questions. Never begin a point you cannot finish inside the limit. Exceed 120 words only when a safety refusal truly requires it.';
     const attachmentContext=attachments.length?attachments.map(item=>item.kind==='image'
       ? `Image reference: ${item.name} (${item.type||'image'}, ${item.size} bytes). The DeepSeek model is text-only and cannot see its pixels. Be honest about that and ask for a short description or point to contact when visual review is needed.`
       : item.kind==='file'
@@ -435,7 +435,7 @@ export default async function handler(req,res){
           {role:'tool',tool_call_id:receipt.callId,content:JSON.stringify(verifiedResult)}
         ]
       : [{role:'system',content:system},...history,{role:'system',content:routeCheck},{role:'user',content:visitorMessage}];
-    const providerBody={model:chosenModel,thinking:{type:'disabled'},stream:true,max_tokens:receipt?260:(answerDepth==='detailed'?850:300),temperature:.35,messages:providerMessages};
+    const providerBody={model:chosenModel,thinking:{type:'disabled'},stream:true,max_tokens:receipt?260:(answerDepth==='detailed'?850:360),temperature:.35,messages:providerMessages};
     if(!receipt){providerBody.tools=[NAV_TOOL];providerBody.tool_choice='auto';}
     const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify(providerBody)});
     if(!upstream.ok){

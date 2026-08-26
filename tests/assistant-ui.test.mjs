@@ -106,8 +106,9 @@ check('the share is tunable',server.includes('ASSISTANT_HISTORY_SHARE'));
 
 console.log('\n=== concise and detailed are meaningfully different modes ===');
 check('concise has a clear word target',server.includes('stay under 120 words'));
+check('concise must finish rather than token-cut',server.includes('finish cleanly')&&server.includes('Never begin a point you cannot finish'));
 check('detailed has a useful multi-part range',server.includes('normally use 180 to 420 words'));
-check('concise receives the smaller output budget',server.includes("answerDepth==='detailed'?850:300"));
+check('concise receives the smaller output budget',server.includes("answerDepth==='detailed'?850:360"));
 
 console.log('\n=== admin controls remain usable and understandable ===');
 const validIpSource=admin.match(/const validIp = (value => \{[\s\S]*?\n  \});/)?.[1];
