@@ -435,7 +435,10 @@ export default async function handler(req,res){
           {role:'tool',tool_call_id:receipt.callId,content:JSON.stringify(verifiedResult)}
         ]
       : [{role:'system',content:system},...history,{role:'system',content:routeCheck},{role:'user',content:visitorMessage}];
-    const providerBody={model:chosenModel,thinking:{type:'disabled'},stream:true,max_tokens:receipt?260:(answerDepth==='detailed'?850:360),temperature:.35,messages:providerMessages};
+    // Answer depth is a writing instruction, never a clipping mechanism. Both
+    // modes get enough output room to finish; the history budget above is what
+    // keeps the request and provider cost bounded.
+    const providerBody={model:chosenModel,thinking:{type:'disabled'},stream:true,max_tokens:receipt?400:1200,temperature:.35,messages:providerMessages};
     if(!receipt){providerBody.tools=[NAV_TOOL];providerBody.tool_choice='auto';}
     const upstream=await fetch(API_URL,{method:'POST',signal:AbortSignal.timeout(30000),headers:{'Content-Type':'application/json',Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify(providerBody)});
     if(!upstream.ok){
