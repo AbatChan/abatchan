@@ -237,10 +237,10 @@
       .sort((a,b)=>Number(a.matches('p'))-Number(b.matches('p')))
       .slice(0,60)
       .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
-    const activeCandidates=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h2[id]')]
+    const activeCandidates=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h1[id],main h2[id],main h3[id],main [data-assist-target][id]')]
       .filter(node=>!node.closest('.assist-panel'));
     const focusNode=document.elementFromPoint(Math.max(1,Math.min(innerWidth-1,innerWidth*.34)),Math.max(1,Math.min(innerHeight-1,innerHeight*.5)))
-      ?.closest('main section[id],main article[id],main h2[id],main [data-assist-target]');
+      ?.closest('main section[id],main article[id],main h1[id],main h2[id],main h3[id],main [data-assist-target]');
     const active=activeCandidates
       .map(node=>{
         const rect=node.getBoundingClientRect();
@@ -252,7 +252,7 @@
       })
       .filter(item=>item.visible>0)
       .sort((a,b)=>b.priority-a.priority||Number(b.focusHit)-Number(a.focusHit)||b.focusBand-a.focusBand||a.distance-b.distance)[0]?.node;
-    const activeContext=active?.matches('h2')?(active.closest('section,article')||active.parentElement):active;
+    const activeContext=active?.matches('h1,h2,h3')?(active.closest('section,article')||active.parentElement):active;
     let journey=[];
     try{journey=JSON.parse(sessionStorage.getItem(JOURNEY_STORE)||'[]')}catch{}
     const projectForm=pagePath()==='/contact'?document.querySelector('#project-form'):null;

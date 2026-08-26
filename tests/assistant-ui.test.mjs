@@ -60,6 +60,11 @@ check('one timer clears the complete guidance state',assistant.includes('guidanc
 console.log('\n=== mobile cross-page arrival keeps the target visible ===');
 check('phone handoff stays minimized',assistant.includes("const keepPageVisible=matchMedia('(max-width:640px)').matches")&&assistant.includes("if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click()"));
 
+console.log('\n=== viewport context includes automatic hero targets ===');
+check('top-level hero headings can win the active-section resolver',assistant.includes('main h1[id],main h2[id],main h3[id],main [data-assist-target][id]'));
+check('the focal-point lookup includes every supported heading level',assistant.includes("closest('main section[id],main article[id],main h1[id],main h2[id],main h3[id],main [data-assist-target]')"));
+check('heading context expands to its containing section when available',assistant.includes("active?.matches('h1,h2,h3')"));
+
 console.log('\n=== a hidden tab never strands a reply or a journey ===');
 // requestAnimationFrame is suspended while the tab is hidden. Anything that
 // resolves a promise or starts an action from inside a rAF tick would stall
