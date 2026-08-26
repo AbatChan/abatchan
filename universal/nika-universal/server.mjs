@@ -90,7 +90,7 @@ function siteData() {
     config: {
       enabled: config.enabled !== false,
       name: text(config.name, 80) || 'Nika',
-      greeting: text(config.greeting, 240) || 'Hi. What can I help you find?',
+      suggestions: suggestions(config.suggestions),
       placeholder: text(config.placeholder, 120) || 'Ask about this website...',
       instructions: text(config.instructions, 4000) || 'Help visitors understand this website and find published information.',
       navigation: config.navigation !== false,
@@ -125,6 +125,20 @@ function decimalBetween(value, min, max, fallback) {
 
 function text(value, limit) {
   return typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, limit) : '';
+}
+
+function suggestions(value) {
+  const fallback = [
+    { label: 'Find the right service', description: 'See what fits your needs' },
+    { label: 'How does it work?', description: 'Review the process' },
+    { label: 'Compare the options', description: 'See plans or packages' }
+  ];
+  if (!Array.isArray(value)) return fallback;
+  const cleaned = value.slice(0, 3).map(item => ({
+    label: text(typeof item === 'string' ? item : item?.label, 90),
+    description: text(typeof item === 'object' ? item?.description : '', 120)
+  })).filter(item => item.label).map(item => ({ ...item, question: item.label }));
+  return cleaned.length ? cleaned : fallback;
 }
 
 function send(res, status, payload, headers = {}) {
@@ -256,7 +270,7 @@ const server = createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/nika/config') {
     const { config, pages } = siteData();
     const directory = pages.map(({ path, title }) => ({ path, title }));
-    return send(res, 200, { enabled: config.enabled, name: config.name, greeting: config.greeting, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
+    return send(res, 200, { enabled: config.enabled, name: config.name, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
   }
   if (req.method === 'POST' && url.pathname === '/nika/chat') {
     try { return await chat(req, res); } catch (error) { return send(res, error.status || 500, { error: error.status ? 'Invalid request.' : 'Nika encountered a server error.' }); }

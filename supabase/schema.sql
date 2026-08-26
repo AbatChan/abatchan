@@ -125,7 +125,7 @@ insert into public.settings (key, value, is_public) values
   ('copy.pricing.platform','"$2,500"',                    true),
   ('copy.pricing.system', '"$5,000"',                     true),
   ('assistant.enabled',   'true',                         true),
-  ('assistant.greeting',  '"Hey, I''m the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?"', true),
+  ('assistant.suggestions','[{"label":"What makes Nika different?","description":"See the four core moves","question":"What makes Nika different?"},{"label":"How does WordPress setup work?","description":"Review the installation steps","question":"How does WordPress setup work?"},{"label":"Show me the product plans","description":"Compare Personal, Business, and Agency","question":"Show me the product plans"}]', true),
   ('assistant.model',     '"deepseek-v4-flash"',          false),
   ('assistant.system',    '"Sound like a warm, practical studio guide rather than a support script. Lead with the answer, keep it concise, and give one useful next step. Refer to the owner as Abat. Prices are starting points, never quotes. If a visitor needs a human decision or a fact you do not have, say so plainly and point them to the contact page."', false),
   ('news.items',          '[{"id":"2026-07-brand-and-assistant","tag":"what''s new","title":"Brand page, process, and an assistant","body":"The full brand system with downloadable lockups is up, along with how projects actually run. There is also a chat bubble now if you would rather ask than read.","href":"/brand","cta":"see the brand page","soon":false}]', true)

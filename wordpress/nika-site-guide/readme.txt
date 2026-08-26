@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.3.2
+Stable tag: 0.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,7 +41,7 @@ Site owners should update their own privacy notice before enabling Nika.
 2. Activate Nika Site Guide.
 3. Open Settings > Nika Site Guide.
 4. Select a provider and model, then add your API key.
-5. Add website-specific instructions and review the hourly limit.
+5. Add website-specific instructions, customize the three starter suggestions, and review the hourly limit.
 6. Choose navigation, microphone, appearance, context/history, daily budget, and any excluded paths.
 7. Enable Nika and test it while logged out.
 
@@ -69,9 +69,13 @@ No. Version 0.2.0 is read-only and does not submit forms, access user accounts, 
 
 = Which limits can I control? =
 
-The site owner controls per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
+The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 0.3.3 =
+* Replace the obsolete opening greeting with three owner-editable starter suggestions.
+* Keep the starter title and supporting text customer-owned in WordPress and Universal settings.
 
 = 0.3.2 =
 * Add an audio-reactive dictation waveform with cancel, stop, and duration controls.

@@ -2,7 +2,7 @@
 //
 // The public face of a tenant record: what the widget needs to paint itself
 // before anyone has asked a question. The embed on a buyer's site has no other
-// way to learn the assistant's name, greeting or suggested questions.
+// way to learn the assistant's name or suggested questions.
 //
 // Deliberately narrow. Everything here is already visible to any visitor of the
 // site it belongs to, so nothing in the record that is not needed for painting
@@ -30,7 +30,6 @@ export default async function handler(req, res) {
     siteKey,
     name: record.assistantName,
     subtitle: record.assistantSubtitle || `site help, backed by ${record.ownerName}`,
-    greeting: record.greeting || `Hey, I'm ${record.assistantName}. What are you looking for?`,
     placeholder: record.composerPlaceholder || 'Ask about your project…',
     disclaimer: record.disclaimer || 'Site help only, no account access, payments, or promises.',
     chips: (record.chips || []).slice(0, 6),

@@ -845,26 +845,44 @@
 
   // ------------------------------------------------------------ assistant
   let assistantRows = {};
-  const CANONICAL_GREETING = "Hey, I'm Nika. I know the work, pricing, process, and how to reach Abat. What are you trying to build?";
-  const RETIRED_GREETING = "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?";
-  const LEGACY_GREETING = 'Hi. Ask me anything about the work, pricing, or how a project runs.';
+  const DEFAULT_SUGGESTIONS = [
+    { label: 'What makes Nika different?', description: 'See the four core moves' },
+    { label: 'How does WordPress setup work?', description: 'Review the installation steps' },
+    { label: 'Show me the product plans', description: 'Compare Personal, Business, and Agency' }
+  ];
   const CANONICAL_OWNER_PROMPT = 'Sound like a warm, practical studio guide rather than a support script. Lead with the answer, keep it concise, and give one useful next step. Refer to the owner as Abat. Prices are starting points, never quotes. If a visitor needs a human decision or a fact you do not have, say so plainly and point them to the contact page.';
+  const normalizeSuggestions = value => {
+    if (typeof value === 'string') try { value = JSON.parse(value); } catch { value = []; }
+    if (!Array.isArray(value)) value = [];
+    const cleaned = value.slice(0, 3).map(item => typeof item === 'string'
+      ? { label: item.trim(), description: '' }
+      : { label: String(item?.label || '').trim(), description: String(item?.description || '').trim() }
+    ).filter(item => item.label);
+    return cleaned.length ? cleaned : DEFAULT_SUGGESTIONS;
+  };
+  const paintSuggestions = value => normalizeSuggestions(value).forEach((item, index) => {
+    q(`#a-suggestion-${index + 1}-label`).value = item.label;
+    q(`#a-suggestion-${index + 1}-description`).value = item.description;
+  });
+  const readSuggestions = () => [1, 2, 3].map(index => {
+    const label = q(`#a-suggestion-${index}-label`).value.trim();
+    const description = q(`#a-suggestion-${index}-description`).value.trim();
+    return label ? { label, description, question: label } : null;
+  }).filter(Boolean);
   async function loadAssistant() {
     try {
       const rows = await sb.select('settings', 'key=like.assistant.%25&select=key,value,is_public');
       assistantRows = Object.fromEntries(rows.map(row => [row.key, row.value]));
-      const greeting = !assistantRows['assistant.greeting'] || [LEGACY_GREETING, RETIRED_GREETING].includes(assistantRows['assistant.greeting'])
-        ? CANONICAL_GREETING
-        : assistantRows['assistant.greeting'];
+      const suggestions = normalizeSuggestions(assistantRows['assistant.suggestions']);
       const ownerPrompt = !assistantRows['assistant.system'] || String(assistantRows['assistant.system']).includes('Websites start at $750')
         ? CANONICAL_OWNER_PROMPT
         : assistantRows['assistant.system'];
       const migrations = [];
-      if (greeting !== assistantRows['assistant.greeting']) migrations.push({ key: 'assistant.greeting', value: greeting, is_public: true });
+      if (!assistantRows['assistant.suggestions']) migrations.push({ key: 'assistant.suggestions', value: suggestions, is_public: true });
       if (ownerPrompt !== assistantRows['assistant.system']) migrations.push({ key: 'assistant.system', value: ownerPrompt, is_public: false });
       if (migrations.length) await sb.upsert('settings', migrations);
       q('#a-enabled').checked = assistantRows['assistant.enabled'] !== false;
-      q('#a-greeting').value = greeting;
+      paintSuggestions(suggestions);
       q('#a-system').value = ownerPrompt;
       q('#a-model').value = assistantRows['assistant.model'] === 'deepseek-chat'
         ? 'deepseek-v4-flash'
@@ -904,7 +922,7 @@
     try {
       await sb.upsert('settings', [
         { key: 'assistant.enabled', value: q('#a-enabled').checked, is_public: true },
-        { key: 'assistant.greeting', value: q('#a-greeting').value.trim(), is_public: true },
+        { key: 'assistant.suggestions', value: readSuggestions(), is_public: true },
         { key: 'assistant.system', value: q('#a-system').value.trim(), is_public: false },
         { key: 'assistant.model', value: q('#a-model').value.trim(), is_public: false },
         // Private: this list is what turns the daily ceiling off.

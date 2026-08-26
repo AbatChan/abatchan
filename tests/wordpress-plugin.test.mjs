@@ -16,6 +16,7 @@ check('API key is not returned by config',!php.match(/nika_config_response[\s\S]
 check('visitor IP is hashed before storage',php.includes("hash_hmac( 'sha256', $ip")&&php.includes('set_transient( $key'));
 check('customer controls visitor and site budgets',php.includes("'hourly_limit'")&&php.includes("'daily_limit'")&&php.includes("'site_daily'"));
 check('customer controls features and appearance',php.includes("'navigation'")&&php.includes("'dictation'")&&php.includes("'accent'")&&php.includes("'position'"));
+check('customer controls pre-chat starter suggestions',php.includes('nika_sanitize_suggestions')&&php.includes("'suggestions' => $s['suggestions']")&&!php.includes("'greeting' =>"));
 check('customer can exclude content and destinations',php.includes('function nika_excluded_paths')&&php.includes("'excluded_paths'"));
 check('excluded paths suppress the widget and reject chat context',php.includes("'nika_excluded'")&&php.includes("if ( in_array( $current_path, nika_excluded_paths(), true ) ) return;"));
 check('current-location answers use the live browser snapshot',php.includes('function nika_location_answer')&&php.includes('$direct_location = nika_location_answer'));

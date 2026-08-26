@@ -574,54 +574,6 @@
       addEventListener('pagehide',()=>{if(dictationWanted)stopDictation(false);else stopWave()},{once:true});
     }
 
-    const pagePrompts={
-      '/':['Show me relevant work','How does a project start?','What can you build?'],
-      '/work':['Which project fits my idea?','Show me the AI work','How do I start a project?'],
-      '/pricing':['Compare the options','What will my project cost?','How do payments work?'],
-      '/nika':['What makes Nika different?','How does WordPress setup work?','Show me the product plans'],
-      '/process':['Which stage comes first?','How long does delivery take?','Take me to the contact form'],
-      '/contact':['What should I include?','Which service fits my idea?','Show me pricing first'],
-      '/bookingkoala':['What can you fix?','Show me the proof','Take me to the enquiry form']
-    };
-    const promptDetails={
-      'Show me relevant work':'See projects similar to yours',
-      'How does a project start?':'Learn about the process',
-      'What can you build?':'Explore possibilities',
-      'Which project fits my idea?':'Match your goals to real work',
-      'Show me the AI work':'Browse AI and automation projects',
-      'How do I start a project?':'See the delivery process',
-      'Compare the options':'Understand the starting scopes',
-      'What will my project cost?':'See what changes the quote',
-      'How do payments work?':'Learn about project milestones',
-      'What makes Nika different?':'See the four core moves',
-      'How does WordPress setup work?':'Review the installation steps',
-      'Show me the product plans':'Compare Personal, Business, and Agency',
-      'Which stage comes first?':'Start with the real problem',
-      'How long does delivery take?':'Review the typical timeline',
-      'Take me to the contact form':'Prepare a project enquiry',
-      'What should I include?':'Build a useful project brief',
-      'Which service fits my idea?':'Find the smallest sensible scope',
-      'Show me pricing first':'Review the starting prices',
-      'What can you fix?':'See the BookingKoala scope',
-      'Show me the proof':'Read relevant client outcomes',
-      'Take me to the enquiry form':'Start a BookingKoala enquiry'
-    };
-    const promptIcons=['suggestion-work.svg','suggestion-process.svg','suggestion-capabilities.svg'];
-    const promptButton=(text,index)=>{
-      const button=document.createElement('button');button.type='button';button.dataset.question=text;
-      const iconWrap=document.createElement('span');iconWrap.className='assist-chip-icon';
-      const icon=document.createElement('img');icon.src=`${API_BASE}/assets/icons/${promptIcons[index%promptIcons.length]}`;icon.alt='';icon.setAttribute('aria-hidden','true');iconWrap.append(icon);
-      const copy=document.createElement('span');copy.className='assist-chip-copy';
-      const label=document.createElement('strong');label.textContent=text;
-      const description=document.createElement('small');description.textContent=promptDetails[text]||'Ask Nika about this';copy.append(label,description);
-      const chevron=document.createElement('img');chevron.className='assist-chip-chevron';chevron.src=`${API_BASE}/assets/icons/chevron-down.svg`;chevron.alt='';chevron.setAttribute('aria-hidden','true');
-      button.append(iconWrap,copy,chevron);return button;
-    };
-    const contextualPrompts=pagePrompts[pagePath()];
-    if(chips&&contextualPrompts){
-      chips.replaceChildren(...contextualPrompts.map(promptButton));
-    }
-
     // The field grows with the question up to a ceiling, then scrolls, so a
     // long paste never pushes the send button off the panel.
     const GROW_MAX=132;
@@ -1060,25 +1012,19 @@
       dislike:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.2 11.8 2.6 5.2c.4.8 1.6.5 1.6-.4v-3.4h3.1c1.1 0 1.9-1 1.6-2l-1.2-5.3c-.2-.7-.8-1.2-1.6-1.2H7.2z"/><path d="M3.8 4.7h3.4v7.1H3.8z"/></svg>',
       clock:'<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>'
     };
-    const timeLabel=value=>{
+    const timeLabel=(value,nowValue=Date.now())=>{
       const date=new Date(Number(value));
       if(!Number.isFinite(date.getTime()))return 'Earlier';
-      const now=new Date();
-      const start=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate());
-      const day=Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());
-      const days=Math.round((start-day)/86400000);
+      const now=new Date(Number(nowValue));
       const time=date.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
-      if(days===0)return time;
-      if(days===1)return `Yesterday, ${time}`;
-      const options={month:'long',day:'numeric'};
+      const sameDay=date.getFullYear()===now.getFullYear()&&date.getMonth()===now.getMonth()&&date.getDate()===now.getDate();
+      if(sameDay)return time;
+      const day=new Date(date.getFullYear(),date.getMonth(),date.getDate());
+      const startOfWeek=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7));
+      if(day>=startOfWeek&&day<now)return `${date.toLocaleDateString(undefined,{weekday:'long'})} ${time}`;
+      const options={month:'short',day:'numeric'};
       if(date.getFullYear()!==now.getFullYear())options.year='numeric';
       return `${date.toLocaleDateString(undefined,options)}, ${time}`;
-    };
-    const absoluteTime=value=>{
-      const date=new Date(Number(value));
-      return Number.isFinite(date.getTime())
-        ? date.toLocaleString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'})
-        : 'Earlier in this conversation';
     };
     const copyText=async text=>{
       try{
@@ -1139,7 +1085,7 @@
       }
       const time=document.createElement('time');time.className='assist-message-time';
       if(entry.createdAt)time.dateTime=new Date(entry.createdAt).toISOString();
-      time.dataset.tip=absoluteTime(entry.createdAt);time.innerHTML=ICONS.clock+`<span>${escapeText(timeLabel(entry.createdAt))}</span>`;
+      time.innerHTML=ICONS.clock+`<span>${escapeText(timeLabel(entry.createdAt))}</span>`;
       meta.append(actions,time);element.appendChild(meta);
       if(!element.dataset.toolsBound){
         element.dataset.toolsBound='true';

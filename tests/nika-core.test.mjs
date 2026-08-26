@@ -22,6 +22,7 @@ check('excluded pages never mount or capture context',widget.includes('if (block
 check('rejects cross-origin navigation',widget.includes('target.origin !== location.origin'));
 check('checks destinations against configured pages',widget.includes('allowed.some(path =>'));
 check('persists only short session history',widget.includes('sessionStorage.setItem(historyKey'));
+check('starts with owner-authored suggestions instead of a bot greeting',widget.includes('nika-suggestions')&&widget.includes('normalizeSuggestions')&&!widget.includes('settings.greeting'));
 check('does not submit forms for visitors',!widget.includes('.submit()')&&!widget.includes('requestSubmit'));
 check('customer can disable dictation and navigation',widget.includes('settings.dictation === false')&&widget.includes('settings.autoNavigate !== false'));
 check('dictation inserts at the saved cursor without deleting surrounding text',widget.includes('input.selectionStart')&&widget.includes('prefix = input.value.slice(0, start)')&&widget.includes('suffix = input.value.slice(end)')&&widget.includes('joinAtCursor'));

@@ -26,12 +26,21 @@ check('only persisted assistant replies can become the latest reply',assistant.i
 
 console.log('\n=== first-use suggestions guide without cluttering chat ===');
 check('empty state uses three structured suggestion cards',shell.includes(".slice(0,3)")&&shell.includes('assist-chip-copy')&&shell.includes('assist-chip-icon'));
-check('page-specific prompts keep the same card structure',assistant.includes('const promptButton=')&&assistant.includes('assist-chip-copy')&&assistant.includes('promptDetails[text]'));
+check('owner-configured prompts keep the same card structure',shell.includes("settings?.['assistant.suggestions']")&&shell.includes('renderSuggestions')&&!assistant.includes('const pagePrompts='));
 check('suggestions carry their question separately from supporting copy',shell.includes('data-question=')&&assistant.includes('button.dataset.question'));
 check('suggestions disappear after the first question',assistant.includes("panel.classList.remove('is-empty')")&&assistant.includes('chips.hidden=true'));
 check('clearing the conversation restores the empty state',assistant.includes("panel.classList.add('is-empty')")&&assistant.includes('chips.hidden=false'));
 check('clearing also removes transient errors and typing rows',assistant.includes("[data-chat-entry=\"true\"],.assist-error,.assist-typing"));
 check('cards retain visible keyboard focus',assistantCss.includes('.assist-chips button:focus-visible'));
+
+console.log('\n=== message times explain themselves without a tooltip ===');
+const timeSource=assistant.match(/const timeLabel=(\([\s\S]*?\n    \};)/)?.[1];
+const timeLabel=timeSource?Function(`return (${timeSource.replace(/;$/,'')})`)():null;
+const now=new Date(2026,7,26,15,0).getTime();
+check('today shows only the time',timeLabel?.(new Date(2026,7,26,14,55).getTime(),now)==='2:55 PM');
+check('another day this week includes the weekday',timeLabel?.(new Date(2026,7,25,14,55).getTime(),now)==='Tuesday 2:55 PM');
+check('older messages use an abbreviated date',timeLabel?.(new Date(2026,6,27,4,33).getTime(),now)==='Jul 27, 4:33 AM');
+check('message times do not create hover tooltips',!assistant.includes('time.dataset.tip=absoluteTime'));
 
 console.log('\n=== near-limit warning stays out of the transcript ===');
 check('warning is a labelled header control with a tooltip',assistant.includes('assist-budget-trigger')&&assistant.includes("setAttribute('aria-describedby'")&&assistant.includes("setAttribute('role','tooltip')"));

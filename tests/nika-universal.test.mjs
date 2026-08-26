@@ -19,6 +19,7 @@ const checks = [
   ['hashes visitor addresses before SQLite', server.includes("createHmac('sha256', SECRET)")],
   ['customer controls visitor and site budgets', server.includes('config.hourlyLimit') && server.includes('config.dailyLimit') && server.includes('site_usage')],
   ['customer controls features and appearance', server.includes('config.navigation') && server.includes('config.dictation') && server.includes('config.accent') && server.includes('config.position')],
+  ['customer controls pre-chat starter suggestions', server.includes('suggestions(config.suggestions)') && server.includes('suggestions: config.suggestions') && !server.includes('greeting: config.greeting')],
   ['customer can exclude pages', server.includes('config.excludedPaths') && server.includes('excluded.has(path)')],
   ['excluded pages are blocked before visible context reaches AI', server.includes("return send(res, 403, { error: 'Nika is not available on this excluded page.'")],
   ['current-location answers do not depend on model obedience', server.includes('currentLocationAnswer(message, current)')],

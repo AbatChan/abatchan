@@ -10,7 +10,11 @@ on the customer's server.
 {
   "enabled": true,
   "name": "Nika",
-  "greeting": "Hi. What can I help you find?",
+  "suggestions": [
+    { "label": "Find the right service", "description": "See what fits your needs" },
+    { "label": "How does it work?", "description": "Review the process" },
+    { "label": "Compare the options", "description": "See plans or packages" }
+  ],
   "placeholder": "Ask about this website...",
   "autoNavigate": true,
   "dictation": true,

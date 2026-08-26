@@ -33,7 +33,11 @@ export async function mountGuideShell(options = {}) {
     apiBase: '',
     placeholder: 'Ask about your project…',
     disclaimer: 'Site help only, no account access, payments, or promises.',
-    chips: ['Show me relevant work', 'How does a project start?', 'What can you build?'],
+    chips: [
+      {label:'Show me relevant work',description:'See projects similar to yours'},
+      {label:'How does a project start?',description:'Learn about the process'},
+      {label:'What can you build?',description:'Explore possibilities'}
+    ],
     endpoint: null,
     stylesheet: '/assistant.css?v=26',
     loadSettings: async () => null,
@@ -56,20 +60,19 @@ export async function mountGuideShell(options = {}) {
   const ICON_CHAT='<svg class="chat" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg>';
   const ICON_CLOSE='<svg class="close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   const safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const suggestionDetails={
-    'Show me relevant work':{description:'See projects similar to yours',icon:'/assets/icons/suggestion-work.svg'},
-    'How does a project start?':{description:'Learn about the process',icon:'/assets/icons/suggestion-process.svg'},
-    'What can you build?':{description:'Explore possibilities',icon:'/assets/icons/suggestion-capabilities.svg'}
-  };
   const suggestionIcons=['/assets/icons/suggestion-work.svg','/assets/icons/suggestion-process.svg','/assets/icons/suggestion-capabilities.svg'];
-  const suggestionMarkup=(cfg.chips||[]).slice(0,3).map((item,index)=>{
-    const label=typeof item==='string'?item:item?.label;
-    if(!label)return '';
-    const authored=typeof item==='object'?item:{};
-    const detail=suggestionDetails[label]||{};
-    const question=authored.question||label;
-    const description=authored.description||detail.description||`Ask ${cfg.name} about this`;
-    const icon=detail.icon||suggestionIcons[index%suggestionIcons.length];
+  const normalizeSuggestions=value=>{
+    if(typeof value==='string')try{value=JSON.parse(value)}catch{return []}
+    if(!Array.isArray(value))return [];
+    return value.slice(0,3).map(item=>typeof item==='string'?{label:item,question:item}:item).filter(item=>item&&String(item.label||'').trim());
+  };
+  let activeSuggestions=normalizeSuggestions(settings?.['assistant.suggestions']);
+  if(!activeSuggestions.length)activeSuggestions=normalizeSuggestions(cfg.chips);
+  const suggestionMarkup=items=>normalizeSuggestions(items).map((item,index)=>{
+    const label=item.label;
+    const question=item.question||label;
+    const description=item.description||`Ask ${cfg.name} about this`;
+    const icon=suggestionIcons[index%suggestionIcons.length];
     return `<button type="button" data-question="${safe(question)}"><span class="assist-chip-icon"><img src="${safe(cfg.assetBase+icon)}" alt="" aria-hidden="true"></span><span class="assist-chip-copy"><strong>${safe(label)}</strong><small>${safe(description)}</small></span><img class="assist-chip-chevron" src="${safe(cfg.assetBase+'/assets/icons/chevron-down.svg')}" alt="" aria-hidden="true"></button>`;
   }).join('');
 
@@ -90,7 +93,7 @@ export async function mountGuideShell(options = {}) {
       '<i class="assist-dot" aria-hidden="true"></i>'+
     '</div>'+
     '<div class="assist-log" role="log" aria-live="polite"></div>'+
-    '<div class="assist-chips" aria-label="Suggested questions">'+suggestionMarkup+'</div>'+
+    '<div class="assist-chips" aria-label="Suggested questions">'+suggestionMarkup(activeSuggestions)+'</div>'+
     '<form class="assist-form">'+
       '<div class="assist-attachment-list" aria-live="polite" hidden></div>'+
       '<p class="assist-attachment-error" role="alert" hidden></p>'+
@@ -126,6 +129,12 @@ export async function mountGuideShell(options = {}) {
 
   const log=q('.assist-log',panel), form=q('.assist-form',panel), input=q('textarea,input',form);
   const chips=q('.assist-chips',panel);
+  const renderSuggestions=value=>{
+    const next=normalizeSuggestions(value);
+    if(!next.length)return;
+    activeSuggestions=next;
+    chips.innerHTML=suggestionMarkup(activeSuggestions);
+  };
   const history=[];
   let pending=false,lastQuestion='';
 
@@ -143,6 +152,7 @@ export async function mountGuideShell(options = {}) {
       launch.remove();panel.remove();q('.assist-backdrop')?.remove();
       document.body.classList.remove('assist-sheet-open');return
     }
+    renderSuggestions(fresh?.['assistant.suggestions']);
   });
   const addError=(issue,question)=>{
     const safe=issue&&typeof issue==='object'?issue:ASSISTANT_FALLBACK_ERROR;

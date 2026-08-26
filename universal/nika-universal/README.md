@@ -1,4 +1,4 @@
-# Nika Universal 0.3.2
+# Nika Universal 0.3.3
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go
@@ -55,7 +55,7 @@ content changes, or replace it with your own CMS/export workflow.
 
 ## Customer controls
 
-`nika.config.json` controls identity, greeting, owner instructions, excluded
+`nika.config.json` controls identity, the three pre-chat starter suggestions, owner instructions, excluded
 paths, navigation/highlighting, microphone dictation and language, accent,
 left/right position, context size, session-history length, visitor hourly budget,
 whole-site daily budget, response temperature, and response-token budget.

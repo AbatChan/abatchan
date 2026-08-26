@@ -3,7 +3,11 @@
 
   const DEFAULTS = Object.freeze({
     name: 'Nika',
-    greeting: 'Hi. What can I help you find?',
+    suggestions: [
+      { label: 'Find the right service', description: 'See what fits your needs' },
+      { label: 'How does it work?', description: 'Review the process' },
+      { label: 'Compare the options', description: 'See plans or packages' }
+    ],
     placeholder: 'Ask about this website...',
     endpoint: '/wp-json/nika/v1',
     autoNavigate: true,
@@ -25,6 +29,10 @@
     }
   };
   const textKey = value => clean(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const normalizeSuggestions = value => (Array.isArray(value) ? value : []).slice(0, 3).map(item => typeof item === 'string'
+    ? { label: clean(item), description: '' }
+    : { label: clean(item?.label), description: clean(item?.description), question: clean(item?.question) }
+  ).filter(item => item.label);
 
   const visiblePixels = node => {
     if (!node || node.hidden || node.getAttribute('aria-hidden') === 'true') return 0;
@@ -176,15 +184,16 @@
     setTimeout(() => highlightTarget(findTarget(url, pending.label), pending.label, pending.accent), 450);
   }
 
-  function template(name, greeting, placeholder) {
+  function template(name, suggestions, placeholder) {
     name = escapeHtml(name);
-    greeting = escapeHtml(greeting);
     placeholder = escapeHtml(placeholder);
+    const starters = normalizeSuggestions(suggestions).map(item => `<button type="button" data-question="${escapeHtml(item.question || item.label)}"><strong>${escapeHtml(item.label)}</strong>${item.description ? `<span>${escapeHtml(item.description)}</span>` : ''}</button>`).join('');
     return `<div class="nika-root">
       <button class="nika-launch" type="button" aria-label="Open ${name}"><span aria-hidden="true">✦</span><b>${name}</b></button>
       <section class="nika-panel" aria-label="${name} website guide" hidden>
         <header><div><strong>${name}</strong><span>website guide</span></div><button class="nika-close" type="button" aria-label="Close ${name}">×</button></header>
-        <div class="nika-log" role="log" aria-live="polite"><div class="nika-message assistant">${greeting}</div></div>
+        <div class="nika-log" role="log" aria-live="polite"></div>
+        <div class="nika-suggestions" aria-label="Suggested questions">${starters}</div>
         <div class="nika-status" aria-live="polite"></div>
         <form><textarea rows="1" maxlength="4000" placeholder="${placeholder}" aria-label="Message ${name}"></textarea><div class="nika-dictation" role="group" aria-label="Voice dictation" hidden><button class="nika-dictation-cancel" type="button" aria-label="Cancel dictation">×</button><canvas aria-hidden="true"></canvas><time aria-label="Dictation duration">0:00</time><button class="nika-dictation-stop" type="button" aria-label="Stop dictation">■</button></div><div class="nika-actions"><button class="nika-mic" type="button" aria-label="Start dictation">◉</button><button class="nika-send" type="submit">Send</button></div></form>
         <small>Answers use this website's configured content. Review important information.</small>
@@ -218,7 +227,8 @@
     css.rel = 'stylesheet';
     css.href = settings.stylesheet || new URL('nika-widget.css', document.currentScript && document.currentScript.src || location.href).href;
     const shell = document.createElement('div');
-    shell.innerHTML = template(clean(settings.name) || DEFAULTS.name, clean(settings.greeting) || DEFAULTS.greeting, clean(settings.placeholder) || DEFAULTS.placeholder);
+    const suggestions = normalizeSuggestions(settings.suggestions);
+    shell.innerHTML = template(clean(settings.name) || DEFAULTS.name, suggestions.length ? suggestions : DEFAULTS.suggestions, clean(settings.placeholder) || DEFAULTS.placeholder);
     root.append(css, shell.firstElementChild);
     document.body.append(host);
 
@@ -236,6 +246,7 @@
     const dictationCancel = q('.nika-dictation-cancel');
     const dictationStop = q('.nika-dictation-stop');
     const log = q('.nika-log');
+    const starters = q('.nika-suggestions');
     const status = q('.nika-status');
     const accent = /^#[0-9a-f]{6}$/i.test(clean(settings.accent)) ? clean(settings.accent) : DEFAULTS.accent;
     q('.nika-root').style.setProperty('--nika', accent);
@@ -254,6 +265,7 @@
     close.addEventListener('click', () => setOpen(false));
 
     const message = (role, text) => {
+      if (starters) starters.hidden = true;
       const node = document.createElement('div');
       node.className = `nika-message ${role}`;
       node.textContent = clean(text);
@@ -261,6 +273,12 @@
       log.scrollTop = log.scrollHeight;
       return node;
     };
+    starters?.addEventListener('click', event => {
+      const button = event.target.closest('button[data-question]');
+      if (!button) return;
+      input.value = button.dataset.question || '';
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
     const remember = (role, content, context = pageContext(1)) => {
       history.push({
         role,

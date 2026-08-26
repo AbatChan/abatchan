@@ -862,7 +862,11 @@ const ASSISTANT={
   // This path only runs if that never happens and reports a real connection
   // state instead of impersonating the model with keyword-matched replies.
   endpoint:null,
-  chips:['Show me relevant work','How does a project start?','What can you build?']
+  chips:[
+    {label:'What makes Nika different?',description:'See the four core moves'},
+    {label:'How does WordPress setup work?',description:'Review the installation steps'},
+    {label:'Show me the product plans',description:'Compare Personal, Business, and Agency'}
+  ]
 };
 const ASSISTANT_FALLBACK_ERROR={
   code:'network',
@@ -888,7 +892,7 @@ const assistantPageContext=()=>{
 // keep it off the critical path for visitors who never open it.
 (async function assistant(){
   if(q('.assist-launch'))return;
-  const {mountGuideShell}=await import('/guide-shell.js?v=4');
+  const {mountGuideShell}=await import('/guide-shell.js?v=5');
   await mountGuideShell({
     chips:ASSISTANT.chips,
     endpoint:ASSISTANT.endpoint,
