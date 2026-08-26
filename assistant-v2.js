@@ -98,7 +98,7 @@
       if(node.closest('[hidden],[aria-hidden="true"]'))return;
       const label=targetText(node);
       if(!label||label.length<3)return;
-      if(!node.dataset.assistTarget)node.dataset.assistTarget=label;
+      if(!node.dataset.assistTarget){node.dataset.assistTarget=label;node.dataset.assistAuto='true'}
       if(node.id){used.add(node.id);return}
       const base=`assist-${targetSlug(label)}`;
       let id=base,index=2;
@@ -238,7 +238,7 @@
       .slice(0,60)
       .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
     const activeCandidates=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h1[id],main h2[id],main h3[id],main [data-assist-target][id]')]
-      .filter(node=>!node.closest('.assist-panel'));
+      .filter(node=>!node.closest('.assist-panel')&&!(node.dataset.assistAuto==='true'&&node.matches('p,.field')));
     const focusNode=document.elementFromPoint(Math.max(1,Math.min(innerWidth-1,innerWidth*.34)),Math.max(1,Math.min(innerHeight-1,innerHeight*.5)))
       ?.closest('main section[id],main article[id],main h1[id],main h2[id],main h3[id],main [data-assist-target]');
     const active=activeCandidates

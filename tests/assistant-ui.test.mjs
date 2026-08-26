@@ -64,6 +64,7 @@ console.log('\n=== viewport context includes automatic hero targets ===');
 check('top-level hero headings can win the active-section resolver',assistant.includes('main h1[id],main h2[id],main h3[id],main [data-assist-target][id]'));
 check('the focal-point lookup includes every supported heading level',assistant.includes("closest('main section[id],main article[id],main h1[id],main h2[id],main h3[id],main [data-assist-target]')"));
 check('heading context expands to its containing section when available',assistant.includes("active?.matches('h1,h2,h3')"));
+check('automatic body copy cannot become a section title',assistant.includes("node.dataset.assistAuto='true'")&&assistant.includes("node.matches('p,.field')"));
 
 console.log('\n=== a hidden tab never strands a reply or a journey ===');
 // requestAnimationFrame is suspended while the tab is hidden. Anything that
@@ -165,7 +166,7 @@ check('provisional speech cannot flicker inside the editable message',assistant.
 check('an automatic recognition restart preserves its last interim phrase',assistant.includes('joinDictationParts([dictationCommitted,dictationSessionFinal,dictationInterim])'));
 check('closing or leaving releases the microphone stream',assistant.includes("launch.addEventListener('click'")&&assistant.includes("addEventListener('pagehide'")&&assistant.includes('getTracks().forEach'));
 check('the focus point and center band determine the live section',assistant.includes('focusNode=document.elementFromPoint')&&assistant.includes('focusBand')&&assistant.includes('focusHit'));
-check('Nika never mistakes its own dialog for page content',assistant.includes(".filter(node=>!node.closest('.assist-panel'))"));
+check('Nika never mistakes its own dialog for page content',assistant.includes(".filter(node=>!node.closest('.assist-panel')"));
 
 console.log('\n=== navigation is allowed against the tenant own routes ===');
 // The widget shipped with abatchan's routes hardcoded. On a buyer's site none
