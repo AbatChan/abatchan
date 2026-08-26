@@ -323,9 +323,23 @@
       recognition.interimResults = true;
       recognition.continuous = true;
       const limit = Number(input.maxLength) || 4000;
-      let listening = false, wanted = false, cancelled = false, dictationError = '', prefix = '', suffix = '', committed = '', sessionFinal = '', interim = '';
+      let listening = false, wanted = false, cancelled = false, dictationError = '', prefix = '', suffix = '', committed = '', sessionFinal = '', interim = '', segments = [];
       let startedAt = 0, timer = 0, stream = null, audioContext = null, analyser = null, frame = 0, wave = [];
-      const transcript = () => [committed, sessionFinal, interim].map(clean).filter(Boolean).join(' ');
+      const joinParts = parts => parts.map(clean).filter(Boolean).join(' ');
+      // The browser may rewrite interim recognition several times. Only put
+      // stable chunks in the editable field; the waveform remains live while
+      // the current phrase is still provisional.
+      const transcript = () => joinParts([committed, sessionFinal]);
+      const updateSegments = event => {
+        const start = Number.isInteger(event.resultIndex) ? event.resultIndex : 0;
+        for (let i = start; i < event.results.length; i++) {
+          const result = event.results[i];
+          segments[i] = { text: result?.[0]?.transcript || '', final: Boolean(result?.isFinal) };
+        }
+        if (event.results.length < segments.length) segments = segments.filter((segment, index) => index < event.results.length || segment?.final);
+        sessionFinal = joinParts(segments.filter(segment => segment?.final).map(segment => segment.text));
+        interim = joinParts(segments.filter(segment => segment && !segment.final).map(segment => segment.text));
+      };
       const joinAtCursor = (left, speech, right) => {
         speech = clean(speech);
         const before = speech && left && /\S$/.test(left) && /^\S/.test(speech) ? ' ' : '';
@@ -354,23 +368,19 @@
       const startWave = async () => { wave = []; drawWave(); try { stream = await navigator.mediaDevices?.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); if (!wanted) return stopWave(); audioContext = new (global.AudioContext || global.webkitAudioContext)(); analyser = audioContext.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = .55; audioContext.createMediaStreamSource(stream).connect(analyser); } catch { analyser = null; } };
       const finish = () => {
         listening = false; wanted = false; clearInterval(timer); timer = 0; stopWave(); form.classList.remove('dictating'); dictation.hidden = true; mic.classList.remove('listening'); mic.setAttribute('aria-label', 'Start dictation');
-        if (cancelled) input.value = joinAtCursor(prefix, '', suffix); else { committed = [committed, sessionFinal].map(clean).filter(Boolean).join(' '); sessionFinal = ''; interim = ''; renderTranscript(); }
+        if (cancelled) input.value = joinAtCursor(prefix, '', suffix); else { committed = joinParts([committed, sessionFinal, interim]); sessionFinal = ''; interim = ''; segments = []; renderTranscript(); }
         status.textContent = dictationError || (cancelled ? 'Dictation cancelled.' : input.value ? 'Dictation added.' : 'Dictation stopped.'); input.focus();
       };
       const stop = cancel => { if (!wanted && !listening) return; cancelled = Boolean(cancel); wanted = false; try { cancel ? recognition.abort() : recognition.stop(); } catch { finish(); } };
       const begin = () => {
         const start = Number.isInteger(input.selectionStart) ? input.selectionStart : input.value.length, end = Number.isInteger(input.selectionEnd) ? input.selectionEnd : start;
-        prefix = input.value.slice(0, start); suffix = input.value.slice(end); committed = ''; sessionFinal = ''; interim = ''; cancelled = false; dictationError = ''; wanted = true; startedAt = Date.now();
+        prefix = input.value.slice(0, start); suffix = input.value.slice(end); committed = ''; sessionFinal = ''; interim = ''; segments = []; cancelled = false; dictationError = ''; wanted = true; startedAt = Date.now();
         form.classList.add('dictating'); dictation.hidden = false; mic.classList.add('listening'); mic.setAttribute('aria-label', 'Stop dictation'); dictationTime.textContent = '0:00'; status.textContent = 'Listening...';
         timer = setInterval(() => { const seconds = Math.floor((Date.now() - startedAt) / 1000); dictationTime.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; }, 250); startWave();
         try { recognition.start(); } catch { wanted = false; finish(); status.textContent = 'Dictation is already changing state. Try again in a moment.'; }
       };
       recognition.onstart = () => { listening = true; };
-      recognition.onresult = event => {
-        sessionFinal = ''; interim = '';
-        for (let i = 0; i < event.results.length; i++) { if (event.results[i].isFinal) sessionFinal += event.results[i][0].transcript; else interim += event.results[i][0].transcript; }
-        renderTranscript();
-      };
+      recognition.onresult = event => { updateSegments(event); renderTranscript(); };
       recognition.onerror = event => {
         if (event.error === 'aborted') return;
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') { wanted = false; dictationError = 'Microphone permission was not granted. Allow microphone access and try again.'; }
@@ -378,7 +388,7 @@
       };
       recognition.onend = () => {
         listening = false;
-        committed = [committed, sessionFinal].map(clean).filter(Boolean).join(' '); sessionFinal = ''; interim = ''; renderTranscript();
+        committed = joinParts([committed, sessionFinal, interim]); sessionFinal = ''; interim = ''; segments = []; renderTranscript();
         if (wanted) setTimeout(() => { if (wanted) try { recognition.start(); } catch { wanted = false; finish(); } }, 180); else finish();
       };
       mic.addEventListener('click', () => wanted ? stop(false) : begin());

@@ -121,6 +121,10 @@ check('dictation shell includes waveform cancel stop and timer controls',shell.i
 check('waveform reacts to microphone samples',assistant.includes('getByteTimeDomainData')&&assistant.includes('createAnalyser')&&assistant.includes('getUserMedia'));
 check('long dictation reconnects after browser recognition ends',assistant.includes('recognition.continuous=true')&&assistant.includes('if(dictationWanted)setTimeout'));
 check('dictation preserves text around the cursor',assistant.includes('input.selectionStart')&&assistant.includes('dictationPrefix=input.value.slice(0,start)')&&assistant.includes('dictationSuffix=input.value.slice(end)'));
+check('speech chunks are joined with normalized spaces',assistant.includes('const joinDictationParts=')&&assistant.includes(".filter(Boolean).join(' ')"));
+check('final speech segments survive later interim revisions',assistant.includes('dictationSegments[index]=')&&assistant.includes('segment?.final')&&assistant.includes('updateDictationSegments(event)'));
+check('provisional speech cannot flicker inside the editable message',assistant.includes('joinDictationParts([dictationCommitted,dictationSessionFinal])'));
+check('an automatic recognition restart preserves its last interim phrase',assistant.includes('joinDictationParts([dictationCommitted,dictationSessionFinal,dictationInterim])'));
 check('closing or leaving releases the microphone stream',assistant.includes("launch.addEventListener('click'")&&assistant.includes("addEventListener('pagehide'")&&assistant.includes('getTracks().forEach'));
 check('the focus point and center band determine the live section',assistant.includes('focusNode=document.elementFromPoint')&&assistant.includes('focusBand')&&assistant.includes('focusHit'));
 check('Nika never mistakes its own dialog for page content',assistant.includes(".filter(node=>!node.closest('.assist-panel'))"));

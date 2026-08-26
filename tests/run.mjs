@@ -6,6 +6,7 @@ const suites = [
   'graduated.test.mjs',
   'handler.test.mjs',
   'assistant-ui.test.mjs',
+  'dictation-transcript.test.mjs',
   'liquid-navigation.test.mjs',
   'prompt.test.mjs',
   'tenant-store.test.mjs',

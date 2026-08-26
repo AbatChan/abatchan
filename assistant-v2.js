@@ -503,7 +503,7 @@
 
     const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
     let recognition=null,listening=false,dictationWanted=false,dictationCancelled=false,dictationError='';
-    let dictationPrefix='',dictationSuffix='',dictationCommitted='',dictationSessionFinal='',dictationInterim='';
+    let dictationPrefix='',dictationSuffix='',dictationCommitted='',dictationSessionFinal='',dictationInterim='',dictationSegments=[];
     let dictationStartedAt=0,dictationTimer=0,audioStream=null,audioContext=null,audioAnalyser=null,waveFrame=0,waveHistory=[];
     const joinSpeech=(left,speech,right)=>{
       const value=String(speech||'').trim();
@@ -512,7 +512,26 @@
       const room=Math.max(0,LIMIT-left.length-right.length-before.length-after.length);
       return `${left}${before}${value.slice(0,room)}${after}${right}`.slice(0,LIMIT);
     };
-    const currentDictation=()=>[dictationCommitted,dictationSessionFinal,dictationInterim].map(value=>value.trim()).filter(Boolean).join(' ');
+    const joinDictationParts=parts=>parts.map(value=>String(value||'').trim()).filter(Boolean).join(' ');
+    // Keep provisional recognition out of the editable value. Browsers revise
+    // interim phrases aggressively; painting them made words appear and then
+    // vanish. Final chunks still arrive continuously, while the waveform shows
+    // that the current phrase is being heard.
+    const currentDictation=()=>joinDictationParts([dictationCommitted,dictationSessionFinal]);
+    const updateDictationSegments=event=>{
+      const start=Number.isInteger(event.resultIndex)?event.resultIndex:0;
+      for(let index=start;index<event.results.length;index++){
+        const result=event.results[index];
+        dictationSegments[index]={text:result?.[0]?.transcript||'',final:Boolean(result?.isFinal)};
+      }
+      // Some engines briefly return a shorter result list while reconnecting.
+      // Keep finalized segments, but discard obsolete interim tails.
+      if(event.results.length<dictationSegments.length){
+        dictationSegments=dictationSegments.filter((segment,index)=>index<event.results.length||segment?.final);
+      }
+      dictationSessionFinal=joinDictationParts(dictationSegments.filter(segment=>segment?.final).map(segment=>segment.text));
+      dictationInterim=joinDictationParts(dictationSegments.filter(segment=>segment&&!segment.final).map(segment=>segment.text));
+    };
     const renderDictation=()=>{input.value=joinSpeech(dictationPrefix,currentDictation(),dictationSuffix);grow();meter(false);const caret=Math.min(input.value.length,dictationPrefix.length+currentDictation().length+1);try{input.setSelectionRange(caret,caret)}catch{}};
     const drawWave=()=>{
       if(!dictationCanvas||!dictationWanted)return;
@@ -530,13 +549,13 @@
     const startWave=async()=>{waveHistory=[];drawWave();try{audioStream=await navigator.mediaDevices?.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});if(!dictationWanted)return stopWave();audioContext=new (window.AudioContext||window.webkitAudioContext)();audioAnalyser=audioContext.createAnalyser();audioAnalyser.fftSize=1024;audioAnalyser.smoothingTimeConstant=.55;audioContext.createMediaStreamSource(audioStream).connect(audioAnalyser)}catch{audioAnalyser=null}};
     const finishDictation=()=>{
       listening=false;dictationWanted=false;clearInterval(dictationTimer);dictationTimer=0;stopWave();form.classList.remove('is-dictating');dictationBar.hidden=true;mic.classList.remove('is-listening');mic.setAttribute('aria-label','Start dictation');mic.dataset.tip='Dictate a message';
-      if(dictationCancelled)input.value=joinSpeech(dictationPrefix,'',dictationSuffix);else{dictationCommitted=[dictationCommitted,dictationSessionFinal].map(value=>value.trim()).filter(Boolean).join(' ');dictationSessionFinal='';dictationInterim='';renderDictation()}
+      if(dictationCancelled)input.value=joinSpeech(dictationPrefix,'',dictationSuffix);else{dictationCommitted=joinDictationParts([dictationCommitted,dictationSessionFinal,dictationInterim]);dictationSessionFinal='';dictationInterim='';dictationSegments=[];renderDictation()}
       grow();meter(false);announceStatus(dictationError|| (dictationCancelled?'Dictation cancelled.':input.value.trim()?'Dictation added.':'Dictation stopped.'),{tone:dictationError?'error':dictationCancelled?'neutral':input.value.trim()?'success':'neutral'});input.focus();
     };
     const stopDictation=cancel=>{if(!dictationWanted&&!listening)return;dictationCancelled=Boolean(cancel);dictationWanted=false;try{cancel?recognition.abort():recognition.stop()}catch{finishDictation()}};
     const beginDictation=()=>{
       const start=Number.isInteger(input.selectionStart)?input.selectionStart:input.value.length,end=Number.isInteger(input.selectionEnd)?input.selectionEnd:start;
-      dictationPrefix=input.value.slice(0,start);dictationSuffix=input.value.slice(end);dictationCommitted='';dictationSessionFinal='';dictationInterim='';dictationCancelled=false;dictationError='';dictationWanted=true;dictationStartedAt=Date.now();
+      dictationPrefix=input.value.slice(0,start);dictationSuffix=input.value.slice(end);dictationCommitted='';dictationSessionFinal='';dictationInterim='';dictationSegments=[];dictationCancelled=false;dictationError='';dictationWanted=true;dictationStartedAt=Date.now();
       form.classList.add('is-dictating');dictationBar.hidden=false;mic.classList.add('is-listening');mic.setAttribute('aria-label','Stop dictation');mic.dataset.tip='Stop dictation';dictationTime.textContent='0:00';
       dictationTimer=setInterval(()=>{const seconds=Math.floor((Date.now()-dictationStartedAt)/1000);dictationTime.textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`},250);startWave();announceStatus('Listening…',{busy:true,duration:0});
       try{recognition.start()}catch{dictationWanted=false;finishDictation();announceStatus('Dictation is already starting.',{tone:'warning'})}
@@ -545,11 +564,9 @@
     else{
       recognition=new SpeechRecognition();recognition.lang=navigator.language||'en-US';recognition.interimResults=true;recognition.continuous=true;
       recognition.onstart=()=>{listening=true};
-      recognition.onresult=event=>{
-        dictationSessionFinal='';dictationInterim='';for(let index=0;index<event.results.length;index++){const words=event.results[index][0].transcript;if(event.results[index].isFinal)dictationSessionFinal+=words;else dictationInterim+=words}renderDictation();
-      };
+      recognition.onresult=event=>{updateDictationSegments(event);renderDictation()};
       recognition.onerror=event=>{if(event.error==='aborted')return;if(['not-allowed','service-not-allowed'].includes(event.error)){dictationWanted=false;dictationError='Microphone permission was not granted.'}else if(event.error!=='no-speech')announceStatus('Dictation paused; reconnecting…',{tone:'warning'})};
-      recognition.onend=()=>{listening=false;dictationCommitted=[dictationCommitted,dictationSessionFinal].map(value=>value.trim()).filter(Boolean).join(' ');dictationSessionFinal='';dictationInterim='';renderDictation();if(dictationWanted)setTimeout(()=>{if(dictationWanted)try{recognition.start()}catch{dictationWanted=false;finishDictation()}},180);else finishDictation()};
+      recognition.onend=()=>{listening=false;dictationCommitted=joinDictationParts([dictationCommitted,dictationSessionFinal,dictationInterim]);dictationSessionFinal='';dictationInterim='';dictationSegments=[];renderDictation();if(dictationWanted)setTimeout(()=>{if(dictationWanted)try{recognition.start()}catch{dictationWanted=false;finishDictation()}},180);else finishDictation()};
       mic.addEventListener('click',()=>dictationWanted?stopDictation(false):beginDictation());
       dictationStop.addEventListener('click',()=>stopDictation(false));
       dictationCancel.addEventListener('click',()=>stopDictation(true));

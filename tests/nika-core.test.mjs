@@ -26,6 +26,10 @@ check('does not submit forms for visitors',!widget.includes('.submit()')&&!widge
 check('customer can disable dictation and navigation',widget.includes('settings.dictation === false')&&widget.includes('settings.autoNavigate !== false'));
 check('dictation inserts at the saved cursor without deleting surrounding text',widget.includes('input.selectionStart')&&widget.includes('prefix = input.value.slice(0, start)')&&widget.includes('suffix = input.value.slice(end)')&&widget.includes('joinAtCursor'));
 check('dictation reconnects recognition sessions for long speech',widget.includes('recognition.continuous = true')&&widget.includes('if (wanted) setTimeout')&&widget.includes('recognition.start()'));
+check('dictation normalizes boundaries between recognition chunks',widget.includes('const joinParts =')&&widget.includes(".filter(Boolean).join(' ')"));
+check('dictation retains finalized segments while interim speech changes',widget.includes('segments[i] =')&&widget.includes('segment?.final')&&widget.includes('updateSegments(event)'));
+check('dictation keeps provisional speech out of the editable value',widget.includes('joinParts([committed, sessionFinal])'));
+check('dictation preserves the last interim phrase across recognition restarts',widget.includes('joinParts([committed, sessionFinal, interim])'));
 check('dictation renders a real microphone waveform',widget.includes('getUserMedia')&&widget.includes('createAnalyser')&&widget.includes('getByteTimeDomainData')&&css.includes('.nika-dictation canvas'));
 check('dictation has cancel stop and elapsed-time controls',widget.includes('nika-dictation-cancel')&&widget.includes('nika-dictation-stop')&&widget.includes('dictationTime.textContent'));
 check('closing or leaving releases the microphone stream',widget.includes("close.addEventListener('click'")&&widget.includes("addEventListener('pagehide'")&&widget.includes('getTracks().forEach'));
