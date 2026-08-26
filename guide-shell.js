@@ -33,11 +33,9 @@ export async function mountGuideShell(options = {}) {
     apiBase: '',
     placeholder: 'Ask about your project…',
     disclaimer: 'Site help only, no account access, payments, or promises.',
-    greeting: "Hey, I'm Nika. What are you looking to build?",
-    chips: ['What do you build?', 'How much does it cost?', 'How long does it take?', 'What can you help with?'],
-    retiredGreeting: 'Hi. Ask me anything about the work, pricing, or how a project runs.',
+    chips: ['Show me relevant work', 'How does a project start?', 'What can you build?'],
     endpoint: null,
-    stylesheet: '/assistant.css?v=25',
+    stylesheet: '/assistant.css?v=26',
     loadSettings: async () => null,
     ...options
   };
@@ -55,17 +53,25 @@ export async function mountGuideShell(options = {}) {
   ]);
   if(settings?.['assistant.enabled']===false)return;
   await styles;
-  const storedGreeting=settings?.['assistant.greeting'];
-  const retiredGreetings=[
-    cfg.retiredGreeting,
-    "Hey, I'm the abatchan guide. I know the work, pricing, process, and how to reach Abat. What are you trying to build?",
-    "Hey, I’m the Nika. What are you looking to build?"
-  ];
-  if(typeof storedGreeting==='string'&&!retiredGreetings.includes(storedGreeting)){
-    cfg.greeting=storedGreeting;
-  }
   const ICON_CHAT='<svg class="chat" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z"/></svg>';
   const ICON_CLOSE='<svg class="close" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  const safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const suggestionDetails={
+    'Show me relevant work':{description:'See projects similar to yours',icon:'/assets/icons/suggestion-work.svg'},
+    'How does a project start?':{description:'Learn about the process',icon:'/assets/icons/suggestion-process.svg'},
+    'What can you build?':{description:'Explore possibilities',icon:'/assets/icons/suggestion-capabilities.svg'}
+  };
+  const suggestionIcons=['/assets/icons/suggestion-work.svg','/assets/icons/suggestion-process.svg','/assets/icons/suggestion-capabilities.svg'];
+  const suggestionMarkup=(cfg.chips||[]).slice(0,3).map((item,index)=>{
+    const label=typeof item==='string'?item:item?.label;
+    if(!label)return '';
+    const authored=typeof item==='object'?item:{};
+    const detail=suggestionDetails[label]||{};
+    const question=authored.question||label;
+    const description=authored.description||detail.description||`Ask ${cfg.name} about this`;
+    const icon=detail.icon||suggestionIcons[index%suggestionIcons.length];
+    return `<button type="button" data-question="${safe(question)}"><span class="assist-chip-icon"><img src="${safe(cfg.assetBase+icon)}" alt="" aria-hidden="true"></span><span class="assist-chip-copy"><strong>${safe(label)}</strong><small>${safe(description)}</small></span><img class="assist-chip-chevron" src="${safe(cfg.assetBase+'/assets/icons/chevron-down.svg')}" alt="" aria-hidden="true"></button>`;
+  }).join('');
 
   const launch=document.createElement('button');
   launch.type='button';launch.className='assist-launch';
@@ -75,7 +81,7 @@ export async function mountGuideShell(options = {}) {
   launch.innerHTML=ICON_CHAT+ICON_CLOSE;
 
   const panel=document.createElement('div');
-  panel.className='assist-panel';panel.setAttribute('role','dialog');
+  panel.className='assist-panel is-empty';panel.setAttribute('role','dialog');
   panel.setAttribute('aria-label',`${cfg.name}, ${cfg.siteName} assistant`);panel.setAttribute('aria-modal','false');
   panel.innerHTML=
     `<div class="assist-head">`+
@@ -84,7 +90,7 @@ export async function mountGuideShell(options = {}) {
       '<i class="assist-dot" aria-hidden="true"></i>'+
     '</div>'+
     '<div class="assist-log" role="log" aria-live="polite"></div>'+
-    '<div class="assist-chips">'+cfg.chips.map(c=>`<button type="button">${c}</button>`).join('')+'</div>'+
+    '<div class="assist-chips" aria-label="Suggested questions">'+suggestionMarkup+'</div>'+
     '<form class="assist-form">'+
       '<div class="assist-attachment-list" aria-live="polite" hidden></div>'+
       '<p class="assist-attachment-error" role="alert" hidden></p>'+
@@ -121,7 +127,7 @@ export async function mountGuideShell(options = {}) {
   const log=q('.assist-log',panel), form=q('.assist-form',panel), input=q('textarea,input',form);
   const chips=q('.assist-chips',panel);
   const history=[];
-  let greeted=false,pending=false,lastQuestion='';
+  let pending=false,lastQuestion='';
 
   const add=(text,who)=>{
     const el=document.createElement('div');
@@ -129,18 +135,6 @@ export async function mountGuideShell(options = {}) {
     log.appendChild(el);log.scrollTop=log.scrollHeight;
     return el;
   };
-  const ensureGreeting=()=>{
-    let el=q('[data-guide-intro="true"]',log);
-    if(!el){
-      el=document.createElement('div');
-      el.className='assist-msg bot assist-intro';
-      el.dataset.guideIntro='true';
-    }
-    el.textContent=cfg.greeting;
-    if(log.firstElementChild!==el)log.prepend(el);
-    return el;
-  };
-
   // A slower settings response can still update the already-rendered shell.
   // If the owner disabled Nika, remove it as soon as that authoritative value
   // arrives instead of leaving the optimistic launcher on screen.
@@ -148,15 +142,6 @@ export async function mountGuideShell(options = {}) {
     if(fresh?.['assistant.enabled']===false){
       launch.remove();panel.remove();q('.assist-backdrop')?.remove();
       document.body.classList.remove('assist-sheet-open');return
-    }
-    const freshGreeting=fresh?.['assistant.greeting'];
-    if(typeof freshGreeting==='string'&&!retiredGreetings.includes(freshGreeting)){
-      cfg.greeting=freshGreeting;
-      const intro=q('[data-guide-intro="true"]',log);
-      if(intro){
-        const content=q('.assist-message-content',intro);
-        if(content)content.textContent=freshGreeting;else intro.textContent=freshGreeting;
-      }
     }
   });
   const addError=(issue,question)=>{
@@ -238,7 +223,6 @@ export async function mountGuideShell(options = {}) {
     launch.dataset.tip=on?'Close':'Ask about the work';
     if(on){
       launch.style.setProperty('animation','none');
-      if(!greeted){greeted=true;ensureGreeting()}
       setTimeout(()=>input.focus(),260);
     }
   };
@@ -253,11 +237,12 @@ export async function mountGuideShell(options = {}) {
     if(!text.trim()||pending)return;
     add(text.trim(),'me');
     chips.hidden=true;
+    panel.classList.remove('is-empty');
     input.value='';
     reply(text.trim());
   };
   form.addEventListener('submit',e=>{e.preventDefault();ask(input.value)});
   chips.addEventListener('click',e=>{
-    const b=e.target.closest('button');if(b)ask(b.textContent);
+    const b=e.target.closest('button');if(b)ask(b.dataset.question||b.querySelector('strong')?.textContent||'');
   });
 }

@@ -566,9 +566,43 @@
       '/contact':['What should I include?','Which service fits my idea?','Show me pricing first'],
       '/bookingkoala':['What can you fix?','Show me the proof','Take me to the enquiry form']
     };
+    const promptDetails={
+      'Show me relevant work':'See projects similar to yours',
+      'How does a project start?':'Learn about the process',
+      'What can you build?':'Explore possibilities',
+      'Which project fits my idea?':'Match your goals to real work',
+      'Show me the AI work':'Browse AI and automation projects',
+      'How do I start a project?':'See the delivery process',
+      'Compare the options':'Understand the starting scopes',
+      'What will my project cost?':'See what changes the quote',
+      'How do payments work?':'Learn about project milestones',
+      'What makes Nika different?':'See the four core moves',
+      'How does WordPress setup work?':'Review the installation steps',
+      'Show me the product plans':'Compare Personal, Business, and Agency',
+      'Which stage comes first?':'Start with the real problem',
+      'How long does delivery take?':'Review the typical timeline',
+      'Take me to the contact form':'Prepare a project enquiry',
+      'What should I include?':'Build a useful project brief',
+      'Which service fits my idea?':'Find the smallest sensible scope',
+      'Show me pricing first':'Review the starting prices',
+      'What can you fix?':'See the BookingKoala scope',
+      'Show me the proof':'Read relevant client outcomes',
+      'Take me to the enquiry form':'Start a BookingKoala enquiry'
+    };
+    const promptIcons=['suggestion-work.svg','suggestion-process.svg','suggestion-capabilities.svg'];
+    const promptButton=(text,index)=>{
+      const button=document.createElement('button');button.type='button';button.dataset.question=text;
+      const iconWrap=document.createElement('span');iconWrap.className='assist-chip-icon';
+      const icon=document.createElement('img');icon.src=`${API_BASE}/assets/icons/${promptIcons[index%promptIcons.length]}`;icon.alt='';icon.setAttribute('aria-hidden','true');iconWrap.append(icon);
+      const copy=document.createElement('span');copy.className='assist-chip-copy';
+      const label=document.createElement('strong');label.textContent=text;
+      const description=document.createElement('small');description.textContent=promptDetails[text]||'Ask Nika about this';copy.append(label,description);
+      const chevron=document.createElement('img');chevron.className='assist-chip-chevron';chevron.src=`${API_BASE}/assets/icons/chevron-down.svg`;chevron.alt='';chevron.setAttribute('aria-hidden','true');
+      button.append(iconWrap,copy,chevron);return button;
+    };
     const contextualPrompts=pagePrompts[pagePath()];
     if(chips&&contextualPrompts){
-      chips.replaceChildren(...contextualPrompts.map(text=>{const button=document.createElement('button');button.type='button';button.textContent=text;return button}));
+      chips.replaceChildren(...contextualPrompts.map(promptButton));
     }
 
     // The field grows with the question up to a ceiling, then scrolls, so a
@@ -1078,7 +1112,7 @@
         retry.addEventListener('click',()=>{retry.disabled=true;entry.state='pending';writeStored(transcript);reply(entry.content,entry.id,entry.attachments||[])});
         actions.append(retry);
       }
-      if(entry.role==='assistant'&&!entry.isIntro){
+      if(entry.role==='assistant'){
         ['helpful','not-helpful'].forEach(reaction=>{
           const helpful=reaction==='helpful';
           const button=action(reaction,helpful?'Helpful response':'Report a problem',helpful?ICONS.like:ICONS.dislike);
@@ -1101,8 +1135,7 @@
     };
     const refreshLatestAssistant=()=>{
       log.querySelectorAll('.assist-msg.bot.is-latest').forEach(node=>node.classList.remove('is-latest'));
-      const latest=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1)
-        ||log.querySelector('[data-guide-intro="true"]');
+      const latest=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
       latest?.classList.add('is-latest');
     };
     const refreshUserTools=entry=>{
@@ -1152,31 +1185,8 @@
       transcript.forEach(item=>add(item.content,item.role==='assistant'?'bot':'me',true,item));
       refreshLatestAssistant();
       chips&&(chips.hidden=true);
+      panel.classList.remove('is-empty');
     }
-    const pinIntro=()=>{
-      const intro=log.querySelector('[data-guide-intro="true"]');
-      if(!intro)return;
-      if(log.firstElementChild!==intro)log.prepend(intro);
-      if(!intro.querySelector('.assist-message-content')){
-        const content=document.createElement('div');
-        content.className='assist-message-content';
-        content.textContent=intro.textContent.trim();
-        intro.replaceChildren(content);
-      }
-      // The greeting is a real guide message too. Give it the same compact
-      // utility row as the conversation, without asking visitors to rate a
-      // fixed introduction.
-      if(!intro.querySelector('.assist-message-meta')){
-        const greetingAt=Number(sessionStorage.getItem('abatchanGuideGreetingAtV1'))||Date.now();
-        try{sessionStorage.setItem('abatchanGuideGreetingAtV1',String(greetingAt))}catch{}
-        addMessageTools(intro,{id:'guide-intro',role:'assistant',content:intro.querySelector('.assist-message-content').textContent.trim(),createdAt:greetingAt,isIntro:true});
-      }
-      refreshLatestAssistant();
-    };
-    const greetingObserver=new MutationObserver(pinIntro);
-    greetingObserver.observe(log,{childList:true});
-    pinIntro();
-
     // Operational feedback is not part of the conversation. Keep it in one
     // compact live region instead of drawing “chat cleared” or “opening…” as
     // though the guide sent another reply.
@@ -1447,7 +1457,28 @@
     const clear=document.createElement('button');
     clear.type='button';clear.className='assist-clear';clear.setAttribute('aria-label','Delete chat history');
     const trash='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4.8C8 3.8 8.8 3 9.8 3h4.4c1 0 1.8.8 1.8 1.8V6M19 6l-.8 13.1c-.1 1.1-1 1.9-2.1 1.9H7.9c-1.1 0-2-.8-2.1-1.9L5 6M10 10.5v6M14 10.5v6"/></svg>';
-    clear.innerHTML=trash;head.appendChild(clear);
+    clear.innerHTML=trash;
+    const budgetIndicator=document.createElement('div');
+    budgetIndicator.className='assist-budget-indicator';budgetIndicator.hidden=true;
+    const budgetButton=document.createElement('button');
+    budgetButton.type='button';budgetButton.className='assist-budget-trigger';
+    budgetButton.setAttribute('aria-label','Usage warning');budgetButton.setAttribute('aria-expanded','false');
+    const budgetTipId=`assist-budget-${Math.random().toString(36).slice(2,9)}`;
+    budgetButton.setAttribute('aria-describedby',budgetTipId);
+    budgetButton.innerHTML=`<img src="${API_BASE}/assets/icons/alert-circle.svg" alt="" aria-hidden="true">`;
+    const budgetTooltip=document.createElement('span');
+    budgetTooltip.className='assist-budget-tooltip';budgetTooltip.id=budgetTipId;budgetTooltip.setAttribute('role','tooltip');
+    const budgetStatus=document.createElement('span');
+    budgetStatus.className='assist-sr-only';budgetStatus.setAttribute('role','status');budgetStatus.setAttribute('aria-live','polite');
+    budgetIndicator.append(budgetButton,budgetTooltip,budgetStatus);head.append(budgetIndicator,clear);
+    const closeBudgetTip=()=>{budgetIndicator.classList.remove('is-open');budgetButton.setAttribute('aria-expanded','false')};
+    budgetButton.addEventListener('click',event=>{
+      event.stopPropagation();
+      const open=!budgetIndicator.classList.contains('is-open');
+      budgetIndicator.classList.toggle('is-open',open);budgetButton.setAttribute('aria-expanded',String(open));
+    });
+    budgetButton.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeBudgetTip()}});
+    document.addEventListener('pointerdown',event=>{if(!budgetIndicator.contains(event.target))closeBudgetTip()});
     const resetClear=()=>{clear.classList.remove('is-confirming');clear.innerHTML=trash;clear.setAttribute('aria-label','Delete chat history');clearTimeout(confirmTimer)};
     clear.addEventListener('click',()=>{
       if(!clear.classList.contains('is-confirming')){
@@ -1455,8 +1486,10 @@
         confirmTimer=setTimeout(resetClear,4000);return;
       }
       transcript=[];history.length=0;localStorage.removeItem(STORE);try{localStorage.removeItem(PREPARED_STORE)}catch{}
-      log.querySelectorAll('[data-chat-entry="true"]').forEach(el=>el.remove());
-      chips&&(chips.hidden=false);clearUnread();resetClear();
+      log.querySelectorAll('[data-chat-entry="true"],.assist-error,.assist-typing').forEach(el=>el.remove());
+      chips&&(chips.hidden=false);panel.classList.add('is-empty');
+      delete panel.dataset.budgetWarned;budgetIndicator.hidden=true;closeBudgetTip();
+      clearUnread();resetClear();
       announceStatus('Chat history cleared.',{tone:'success'});
     });
 
@@ -1574,12 +1607,10 @@
             : '';
         if(warning&&!panel.dataset.budgetWarned){
           panel.dataset.budgetWarned='1';
-          const note=document.createElement('div');
-          note.className='assist-budget';
-          note.setAttribute('role','status');
-          note.textContent=warning;
-          log.append(note);
-          scrollLatest();
+          budgetTooltip.textContent=warning;
+          budgetButton.setAttribute('aria-label',`Usage warning. ${warning}`);
+          budgetStatus.textContent=warning;
+          budgetIndicator.hidden=false;
         }
         const type=res.headers.get('content-type')||'';
         if(!res.ok){
@@ -1661,15 +1692,10 @@
       const entry={id:uid(),role:'user',content:clean,createdAt:Date.now(),state:'pending',attachments:runtimeAttachments};
       transcript.push(entry);add(clean,'me',true,entry);writeStored(transcript);
       pendingAttachments=[];renderPendingAttachments();
-      if(chips)chips.hidden=true;input.value='';grow();meter(false);reply(clean,entry.id,files);
+      if(chips)chips.hidden=true;panel.classList.remove('is-empty');input.value='';grow();meter(false);reply(clean,entry.id,files);
     };
     form.addEventListener('submit',e=>{e.preventDefault();if(pending){activeController?.abort();return}ask(input.value)});
-    chips?.addEventListener('click',e=>{const button=e.target.closest('button');if(button)ask(button.textContent)});
+    chips?.addEventListener('click',e=>{const button=e.target.closest('button');if(button)ask(button.dataset.question||button.querySelector('strong')?.textContent||'')});
 
-    // Existing greeting messages were inserted as plain text before this module.
-    // Render any bot message that already contains Markdown-like syntax.
-    log.querySelectorAll('.assist-msg.bot:not([data-chat-entry="true"])').forEach(el=>{
-      const text=el.textContent;if(/[\[*_`#]|\]\(/.test(text))render(el,text)
-    });
   });
 })();

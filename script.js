@@ -862,10 +862,8 @@ const ASSISTANT={
   // This path only runs if that never happens and reports a real connection
   // state instead of impersonating the model with keyword-matched replies.
   endpoint:null,
-  greeting:"Hey, I'm Nika. What are you looking to build?",
-  chips:['What do you build?','How much does it cost?','How long does it take?','What can you help with?']
+  chips:['Show me relevant work','How does a project start?','What can you build?']
 };
-const LEGACY_ASSISTANT_GREETING="Hi. Ask me anything about the work, pricing, or how a project runs.";
 const ASSISTANT_FALLBACK_ERROR={
   code:'network',
   title:'I lost the connection.',
@@ -890,12 +888,10 @@ const assistantPageContext=()=>{
 // keep it off the critical path for visitors who never open it.
 (async function assistant(){
   if(q('.assist-launch'))return;
-  const {mountGuideShell}=await import('/guide-shell.js?v=2');
+  const {mountGuideShell}=await import('/guide-shell.js?v=4');
   await mountGuideShell({
-    greeting:ASSISTANT.greeting,
     chips:ASSISTANT.chips,
     endpoint:ASSISTANT.endpoint,
-    retiredGreeting:LEGACY_ASSISTANT_GREETING,
     loadSettings:loadPublicSettings
   });
 })();

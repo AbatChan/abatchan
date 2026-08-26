@@ -78,15 +78,14 @@
       avatar: config.avatar,
       assetBase: sameOrigin ? '' : apiBase,
       apiBase: sameOrigin ? '' : apiBase,
-      stylesheet: asset('/assistant.css?v=25'),
+      stylesheet: asset('/assistant.css?v=26'),
       placeholder: config.placeholder,
       disclaimer: config.disclaimer,
-      greeting: config.greeting,
       chips: config.chips || [],
       loadSettings: async () => null   // the config call above already answered this
     });
 
-    await load(asset('/assistant-v2.js?v=49'));
+    await load(asset('/assistant-v2.js?v=51'));
   };
 
   if (document.readyState === 'loading') {

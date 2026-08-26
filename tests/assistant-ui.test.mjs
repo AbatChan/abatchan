@@ -4,6 +4,7 @@ const script=readFileSync(new URL('../script.js',import.meta.url),'utf8');
 const assistant=readFileSync(new URL('../assistant-v2.js',import.meta.url),'utf8');
 // The shell moved out of script.js so the embed and this site share one copy.
 const shell=readFileSync(new URL('../guide-shell.js',import.meta.url),'utf8');
+const assistantCss=readFileSync(new URL('../assistant.css',import.meta.url),'utf8');
 const embed=readFileSync(new URL('../embed.js',import.meta.url),'utf8');
 const vercel=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
 
@@ -18,11 +19,25 @@ console.log('=== assistant shell starts independently of slow settings ===');
 check('settings wait has a short upper bound',shell.includes('Promise.race([')&&shell.includes('setTimeout(()=>resolve(null),240)'));
 check('authoritative disabled state still removes the shell',shell.includes("fresh?.['assistant.enabled']===false")&&shell.includes('launch.remove();panel.remove()'));
 
-console.log('\n=== greeting receives the shared message utility row ===');
-check('intro is normalized into the shared content structure',assistant.includes("content.className='assist-message-content'")&&assistant.includes('intro.replaceChildren(content)'));
-check('intro gets message tools without rating controls',assistant.includes("isIntro:true")&&assistant.includes("entry.role==='assistant'&&!entry.isIntro"));
-check('intro is treated as latest until a real reply exists',assistant.includes("||log.querySelector('[data-guide-intro=\"true\"]')"));
-check('copy reads the live greeting after settings refresh',assistant.includes("element.querySelector('.assist-message-content')?.textContent||entry.content"));
+console.log('\n=== the visitor starts the transcript ===');
+check('opening the panel does not insert an assistant greeting',!shell.includes('ensureGreeting')&&!shell.includes('data-guide-intro'));
+check('the empty state contains guidance without a chat message',shell.includes('assist-chips')&&shell.includes('<div class="assist-log" role="log" aria-live="polite"></div>'));
+check('only persisted assistant replies can become the latest reply',assistant.includes("log.querySelectorAll('.assist-msg.bot[data-chat-entry=\"true\"]')")&&!assistant.includes('data-guide-intro'));
+
+console.log('\n=== first-use suggestions guide without cluttering chat ===');
+check('empty state uses three structured suggestion cards',shell.includes(".slice(0,3)")&&shell.includes('assist-chip-copy')&&shell.includes('assist-chip-icon'));
+check('page-specific prompts keep the same card structure',assistant.includes('const promptButton=')&&assistant.includes('assist-chip-copy')&&assistant.includes('promptDetails[text]'));
+check('suggestions carry their question separately from supporting copy',shell.includes('data-question=')&&assistant.includes('button.dataset.question'));
+check('suggestions disappear after the first question',assistant.includes("panel.classList.remove('is-empty')")&&assistant.includes('chips.hidden=true'));
+check('clearing the conversation restores the empty state',assistant.includes("panel.classList.add('is-empty')")&&assistant.includes('chips.hidden=false'));
+check('clearing also removes transient errors and typing rows',assistant.includes("[data-chat-entry=\"true\"],.assist-error,.assist-typing"));
+check('cards retain visible keyboard focus',assistantCss.includes('.assist-chips button:focus-visible'));
+
+console.log('\n=== near-limit warning stays out of the transcript ===');
+check('warning is a labelled header control with a tooltip',assistant.includes('assist-budget-trigger')&&assistant.includes("setAttribute('aria-describedby'")&&assistant.includes("setAttribute('role','tooltip')"));
+check('hover focus and tap reveal the same warning',assistantCss.includes('.assist-budget-indicator:hover .assist-budget-tooltip')&&assistantCss.includes('.assist-budget-indicator:focus-within .assist-budget-tooltip')&&assistantCss.includes('.assist-budget-indicator.is-open .assist-budget-tooltip'));
+check('warning is announced without becoming a chat message',assistant.includes("budgetStatus.setAttribute('aria-live','polite')")&&!assistant.includes("note.className='assist-budget'"));
+check('escape and outside press dismiss the tooltip',assistant.includes("event.key==='Escape'")&&assistant.includes('if(!budgetIndicator.contains(event.target))closeBudgetTip()'));
 
 console.log('\n=== guided highlight is one synchronized state ===');
 check('one cleanup removes both border and title pill',assistant.includes("document.querySelectorAll('.assist-guided-target')")&&assistant.includes("document.querySelectorAll('.assist-guide-marker')"));
@@ -77,7 +92,7 @@ check('the share is tunable',server.includes('ASSISTANT_HISTORY_SHARE'));
 
 console.log('\n=== the shell has one implementation, shared with the embed ===');
 check('script.js no longer builds it',!script.includes("panel.className='assist-panel'"));
-check('the shell module does',shell.includes("panel.className='assist-panel'"));
+check('the shell module does',shell.includes("panel.className='assist-panel is-empty'"));
 check('the site still mounts it',script.includes('mountGuideShell('));
 check('and so does the embed',embed.includes('mountGuideShell('));
 check('identity is parameterised, not hardcoded',!shell.includes('<b>Nika</b>')&&shell.includes('${cfg.name}'));
