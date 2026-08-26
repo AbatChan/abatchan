@@ -639,6 +639,7 @@ html body .adm-ip-checker{
 }
 html body .adm-ip-actions{display:flex;flex-wrap:wrap;gap:10px}
 html body .adm-ip-actions .btn{min-height:42px}
+html body .adm-ip-actions [hidden]{display:none!important}
 html body .adm-ip-checker .adm-field-help{margin:0}
 html body .adm-ip-checker .adm-field-help.is-error{color:#ff948b}
 
