@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.4.2
+ * Version:           0.4.3
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.4.2';
+const NIKA_VERSION = '0.4.3';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -119,6 +119,7 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 	wp_enqueue_script( 'nika-admin', plugin_dir_url( __FILE__ ) . 'assets/nika-admin.js', array(), NIKA_VERSION, true );
 	wp_localize_script( 'nika-admin', 'NikaAdmin', array(
 		'suggestionsEndpoint' => rest_url( 'nika/v1/admin/suggestions' ),
+			'modelsEndpoint' => rest_url( 'nika/v1/admin/models' ),
 		'nonce' => wp_create_nonce( 'wp_rest' ),
 	) );
 } );
@@ -157,7 +158,7 @@ function nika_settings_page() {
 				</section>
 
 				<section class="nika-card" id="nika-starters">
-					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'New conversations', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Starter suggestions', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Visitors see these options before they send a message. The title becomes their question.', 'nika-site-guide' ); ?></p></div><button type="button" class="nika-generate" id="nika-generate-suggestions"><?php esc_html_e( 'Generate suggestions', 'nika-site-guide' ); ?></button></div>
+					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'New conversations', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Starter suggestions', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Visitors see these options before they send a message. The title becomes their question.', 'nika-site-guide' ); ?></p></div><button type="button" class="nika-generate" id="nika-generate-suggestions"><svg class="nika-generate__icon" viewBox="0 0 20 20" width="13" height="13" aria-hidden="true" focusable="false"><path d="M10 2.2l1.5 4.3 4.3 1.5-4.3 1.5L10 13.8 8.5 9.5 4.2 8l4.3-1.5z" fill="currentColor"></path><path d="M15.4 12.6l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" fill="currentColor" opacity=".7"></path></svg><span><?php esc_html_e( 'Generate', 'nika-site-guide' ); ?></span></button></div>
 					<div class="nika-suggestions"><?php foreach ( array_slice( nika_sanitize_suggestions( $s['suggestions'] ?? array() ), 0, 3 ) as $index => $suggestion ) : ?><fieldset class="nika-suggestion"><legend><?php echo esc_html( sprintf( __( 'Suggestion %d', 'nika-site-guide' ), $index + 1 ) ); ?></legend><label class="nika-field"><span><?php esc_html_e( 'Title', 'nika-site-guide' ); ?></span><input maxlength="90" name="<?php echo esc_attr( NIKA_OPTION ); ?>[suggestions][<?php echo esc_attr( $index ); ?>][label]" value="<?php echo esc_attr( $suggestion['label'] ); ?>"></label><label class="nika-field"><span><?php esc_html_e( 'Supporting text', 'nika-site-guide' ); ?></span><input maxlength="120" name="<?php echo esc_attr( NIKA_OPTION ); ?>[suggestions][<?php echo esc_attr( $index ); ?>][description]" value="<?php echo esc_attr( $suggestion['description'] ); ?>"></label></fieldset><?php endforeach; ?></div>
 					<p class="nika-generator-status" id="nika-generator-status" role="status" aria-live="polite"></p>
 				</section>
@@ -166,7 +167,18 @@ function nika_settings_page() {
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Answers', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'AI provider and website content', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Connect your provider and tell Nika what matters on this website. Saved pages and posts are refreshed automatically.', 'nika-site-guide' ); ?></p></div><span class="nika-lock"><?php esc_html_e( 'API key stays on this server', 'nika-site-guide' ); ?></span></div>
 					<div class="nika-grid nika-grid--2">
 						<label class="nika-field"><span><?php esc_html_e( 'AI provider', 'nika-site-guide' ); ?></span><select id="nika-provider" name="<?php echo esc_attr( NIKA_OPTION ); ?>[provider]"><option value="openai" <?php selected( $s['provider'], 'openai' ); ?>>OpenAI</option><option value="deepseek" <?php selected( $s['provider'], 'deepseek' ); ?>>DeepSeek</option><option value="compatible" <?php selected( $s['provider'], 'compatible' ); ?>>OpenAI-compatible</option></select></label>
-						<label class="nika-field"><span><?php esc_html_e( 'Model', 'nika-site-guide' ); ?></span><input class="code" id="nika-model" name="<?php echo esc_attr( NIKA_OPTION ); ?>[model]" value="<?php echo esc_attr( $s['model'] ); ?>"></label>
+						<?php $model_options = array_values( array_unique( array_filter( array( $s['model'], nika_default_model( $s['provider'] ) ) ) ) ); ?>
+						<label class="nika-field"><span><?php esc_html_e( 'Model', 'nika-site-guide' ); ?></span>
+							<span class="nika-model">
+								<select class="code" id="nika-model" name="<?php echo esc_attr( NIKA_OPTION ); ?>[model]">
+									<?php foreach ( $model_options as $model_option ) : ?><option value="<?php echo esc_attr( $model_option ); ?>" <?php selected( $s['model'], $model_option ); ?>><?php echo esc_html( $model_option ); ?></option><?php endforeach; ?>
+									<option value="__custom__"><?php esc_html_e( 'Custom model...', 'nika-site-guide' ); ?></option>
+								</select>
+								<button type="button" class="nika-iconbutton" id="nika-model-refresh" title="<?php esc_attr_e( 'Load models from your provider', 'nika-site-guide' ); ?>" aria-label="<?php esc_attr_e( 'Load models from your provider', 'nika-site-guide' ); ?>"><svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" focusable="false"><path d="M16.4 9a6.4 6.4 0 1 1-1.9-4.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M16.6 2.6v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+							</span>
+							<input class="code nika-model__custom" id="nika-model-custom" type="text" value="" placeholder="<?php esc_attr_e( 'Type a model name', 'nika-site-guide' ); ?>" hidden>
+							<small class="nika-model-status" id="nika-model-status"></small>
+						</label>
 						<label class="nika-field nika-grid__wide"><span><?php esc_html_e( 'API key', 'nika-site-guide' ); ?></span><input class="code" id="nika-key" name="<?php echo esc_attr( NIKA_OPTION ); ?>[api_key]" type="password" value="" autocomplete="new-password" placeholder="<?php echo esc_attr( $key_saved ? __( 'Saved securely. Leave blank to keep it.', 'nika-site-guide' ) : __( 'Required before enabling Nika', 'nika-site-guide' ) ); ?>"><small><?php esc_html_e( 'For stronger protection, define NIKA_AI_API_KEY in wp-config.php. The key is never sent to visitors.', 'nika-site-guide' ); ?></small></label>
 						<label class="nika-field nika-grid__wide"><span><?php esc_html_e( 'Compatible endpoint', 'nika-site-guide' ); ?></span><input class="code" id="nika-endpoint" name="<?php echo esc_attr( NIKA_OPTION ); ?>[endpoint]" type="url" value="<?php echo esc_attr( $s['endpoint'] ); ?>" placeholder="https://provider.example/v1/chat/completions"><small><?php esc_html_e( 'Only required for an OpenAI-compatible provider.', 'nika-site-guide' ); ?></small></label>
 						<label class="nika-field nika-grid__wide"><span><?php esc_html_e( 'Website instructions', 'nika-site-guide' ); ?></span><textarea rows="8" id="nika-instructions" name="<?php echo esc_attr( NIKA_OPTION ); ?>[instructions]" placeholder="Describe what Nika should know, prioritize, recommend, and refuse."><?php echo esc_textarea( $s['instructions'] ); ?></textarea><small><?php esc_html_e( 'Write for this site: services, audience, tone, important facts, and hard boundaries.', 'nika-site-guide' ); ?></small></label>
@@ -249,6 +261,7 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'nika/v1', '/config', array( 'methods' => 'GET', 'callback' => 'nika_config_response', 'permission_callback' => '__return_true' ) );
 	register_rest_route( 'nika/v1', '/chat', array( 'methods' => 'POST', 'callback' => 'nika_chat_response', 'permission_callback' => '__return_true' ) );
 	register_rest_route( 'nika/v1', '/admin/suggestions', array( 'methods' => 'POST', 'callback' => 'nika_generate_suggestions_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
+	register_rest_route( 'nika/v1', '/admin/models', array( 'methods' => 'GET', 'callback' => 'nika_models_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 } );
 
 function nika_config_response() {
@@ -284,6 +297,46 @@ function nika_provider_details( $s ) {
 	if ( 'deepseek' === $s['provider'] ) return array( 'url' => 'https://api.deepseek.com/chat/completions', 'model' => $s['model'] ?: 'deepseek-chat' );
 	if ( 'compatible' === $s['provider'] ) return array( 'url' => $s['endpoint'], 'model' => $s['model'] );
 	return array( 'url' => 'https://api.openai.com/v1/chat/completions', 'model' => $s['model'] ?: 'gpt-4o-mini' );
+}
+
+function nika_default_model( $provider ) {
+	if ( 'deepseek' === $provider ) return 'deepseek-chat';
+	if ( 'compatible' === $provider ) return '';
+	return 'gpt-4o-mini';
+}
+
+function nika_provider_models_url( $s ) {
+	if ( 'deepseek' === $s['provider'] ) return 'https://api.deepseek.com/models';
+	if ( 'compatible' === $s['provider'] ) {
+		$parts = wp_parse_url( trim( (string) $s['endpoint'] ) );
+		if ( 'https' !== ( $parts['scheme'] ?? '' ) || empty( $parts['host'] ) ) return '';
+		$base = preg_replace( '#/chat/completions/?$#i', '', (string) ( $parts['path'] ?? '' ) );
+		$port = isset( $parts['port'] ) ? ':' . (int) $parts['port'] : '';
+		return 'https://' . $parts['host'] . $port . $base . '/models';
+	}
+	return 'https://api.openai.com/v1/models';
+}
+
+function nika_models_response() {
+	$s = nika_settings();
+	$key = defined( 'NIKA_AI_API_KEY' ) ? trim( (string) NIKA_AI_API_KEY ) : trim( (string) $s['api_key'] );
+	if ( ! $key ) return new WP_Error( 'nika_not_configured', __( 'Save an AI API key first, then load the model list.', 'nika-site-guide' ), array( 'status' => 503 ) );
+	$url = nika_provider_models_url( $s );
+	if ( ! $url ) return new WP_Error( 'nika_provider', __( 'Save an HTTPS compatible endpoint before loading models.', 'nika-site-guide' ), array( 'status' => 503 ) );
+	$response = wp_remote_get( $url, array( 'timeout' => 20, 'headers' => array( 'Authorization' => 'Bearer ' . $key, 'Accept' => 'application/json' ) ) );
+	if ( is_wp_error( $response ) ) return new WP_Error( 'nika_upstream', __( 'Nika could not reach the configured AI provider.', 'nika-site-guide' ), array( 'status' => 502 ) );
+	if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'nika_upstream', __( 'The configured AI provider rejected the request. Check the API key, model, and provider settings.', 'nika-site-guide' ), array( 'status' => 502 ) );
+	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	$items = is_array( $data['data'] ?? null ) ? $data['data'] : array();
+	$models = array();
+	foreach ( $items as $item ) {
+		$id = sanitize_text_field( is_array( $item ) ? (string) ( $item['id'] ?? '' ) : (string) $item );
+		if ( '' !== $id ) $models[ $id ] = true;
+	}
+	$models = array_keys( $models );
+	sort( $models );
+	if ( ! $models ) return new WP_Error( 'nika_models', __( 'The AI provider returned no usable models.', 'nika-site-guide' ), array( 'status' => 502 ) );
+	return rest_ensure_response( array( 'models' => array_slice( $models, 0, 200 ) ) );
 }
 
 function nika_generate_suggestions_response() {
