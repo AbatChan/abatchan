@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.5.1
+ * Version:           0.5.2
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.5.1';
+const NIKA_VERSION = '0.5.2';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -748,8 +748,22 @@ add_action( 'upgrader_process_complete', function ( $upgrader, $extra ) {
 add_filter( 'pre_set_site_transient_update_plugins', function ( $transient ) {
 	if ( ! is_object( $transient ) || empty( $transient->checked ) ) return $transient;
 	$manifest = nika_update_manifest();
-	if ( empty( $manifest['version'] ) || ! version_compare( NIKA_VERSION, $manifest['version'], '<' ) ) return $transient;
 	$plugin_file = plugin_basename( __FILE__ );
+	// Right after an upgrade the new files are on disk while this request still has
+	// the previous NIKA_VERSION in memory, so trust what WordPress read from disk.
+	$installed = (string) ( $transient->checked[ $plugin_file ] ?? NIKA_VERSION );
+	if ( empty( $manifest['version'] ) || ! version_compare( $installed, $manifest['version'], '<' ) ) {
+		unset( $transient->response[ $plugin_file ] );
+		$transient->no_update[ $plugin_file ] = (object) array(
+			'id' => 'https://abatchan.com/nika',
+			'slug' => 'nika-site-guide',
+			'plugin' => $plugin_file,
+			'new_version' => $installed,
+			'url' => 'https://abatchan.com/nika',
+			'package' => '',
+		);
+		return $transient;
+	}
 	$transient->response[ $plugin_file ] = (object) array(
 		'id' => 'https://abatchan.com/nika',
 		'slug' => 'nika-site-guide',

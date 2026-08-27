@@ -1,12 +1,12 @@
 {
-  "version": "0.5.1",
-  "package": "https://abatchan.com/downloads/nika-site-guide-0.5.1.zip",
+  "version": "0.5.2",
+  "package": "https://abatchan.com/downloads/nika-site-guide-0.5.2.zip",
   "homepage": "https://abatchan.com/nika",
   "requires": "6.2",
   "requires_php": "7.4",
   "tested": "7.0.4",
   "sections": {
     "description": "A self-hosted, context-aware website guide with customer-owned AI billing and WordPress data.",
-    "changelog": "<h4>0.5.1</h4><ul><li>Serve the visitor guide stylesheet per version so upgrades are not hidden by a cached copy.</li></ul>"
+    "changelog": "<h4>0.5.2</h4><ul><li>Stop offering an update to the version already installed.</li></ul>"
   }
 }
