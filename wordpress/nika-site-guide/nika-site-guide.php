@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.4.9
+ * Version:           0.5.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.4.9';
+const NIKA_VERSION = '0.5.0';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -487,16 +487,25 @@ function nika_request_suggestions( $s, $provider, $key, $content, $strict ) {
 	$prompt = "Create exactly three distinct starter questions for this website. Base them only on the published content below. Focus this variation on {$angle}. Each item needs a short label under 90 characters that works as the visitor's full question, and a supporting description under 120 characters. Avoid generic filler, repeated ideas, sales hype, and facts not present in the content. {$shape}";
 	if ( $strict ) $prompt = "All three items are required and every item needs both a label and a description. {$prompt}";
 	$prompt .= "\n\nPUBLISHED WEBSITE CONTENT:\n{$content}";
+	$messages = array(
+		array( 'role' => 'system', 'content' => 'You write concise, factual website starter questions. Return valid JSON only, and never return placeholder values.' ),
+	);
+	if ( $strict ) {
+		// Smaller models fill a described schema with placeholders, so show them a
+		// filled answer for a different site and ask for the same level of detail.
+		$messages[] = array( 'role' => 'user', 'content' => 'Example for an unrelated bicycle repair shop. Answer in this style, never reuse this wording.' );
+		$messages[] = array( 'role' => 'assistant', 'content' => '{"suggestions":[{"label":"How much does a full bike service cost?","description":"See what the workshop tiers include"},{"label":"Do you repair electric bikes?","description":"Check which e-bike systems are supported"},{"label":"Can I book a same day repair?","description":"Find out when walk-ins are accepted"}]}' );
+	}
+	$messages[] = array( 'role' => 'user', 'content' => $prompt );
 	$payload = array(
 		'model' => $provider['model'],
-		'messages' => array(
-			array( 'role' => 'system', 'content' => 'You write concise, factual website starter questions. Return valid JSON only.' ),
-			array( 'role' => 'user', 'content' => $prompt ),
-		),
+		'messages' => $messages,
 		'temperature' => $strict ? 0.4 : 0.9,
 		'max_tokens' => 900,
 	);
-	if ( 'compatible' !== $s['provider'] ) $payload['response_format'] = array( 'type' => 'json_object' );
+	// JSON mode can push a small model towards emitting the schema rather than
+	// filling it, so the retry asks for plain text and relies on parsing instead.
+	if ( 'compatible' !== $s['provider'] && ! $strict ) $payload['response_format'] = array( 'type' => 'json_object' );
 	$response = wp_remote_post( $provider['url'], array( 'timeout' => 45, 'headers' => array( 'Authorization' => 'Bearer ' . $key, 'Content-Type' => 'application/json' ), 'body' => wp_json_encode( $payload ) ) );
 	if ( is_wp_error( $response ) ) return new WP_Error( 'nika_upstream', __( 'Nika could not reach the configured AI provider.', 'nika-site-guide' ), array( 'status' => 502 ) );
 	if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'nika_upstream', __( 'The configured AI provider rejected the request. Check the API key, model, and provider settings.', 'nika-site-guide' ), array( 'status' => 502 ) );
