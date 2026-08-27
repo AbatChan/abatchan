@@ -1,21 +1,133 @@
 (function () {
   'use strict';
 
-  const button = document.getElementById('nika-generate-suggestions');
-  const status = document.getElementById('nika-generator-status');
   const feedback = document.querySelector('.nika-feedback');
   const dismissFeedback = document.querySelector('.nika-feedback__dismiss');
   if (dismissFeedback && feedback) dismissFeedback.addEventListener('click', () => feedback.remove());
   if (feedback && feedback.querySelector('.nika-feedback__message')) window.setTimeout(() => feedback.remove(), 6000);
   if (!window.NikaAdmin) return;
 
+  const form = document.querySelector('form.nika-shell');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const request = (url, options) => fetch(url, Object.assign({
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.NikaAdmin.nonce }
   }, options || {}));
+  const byName = (suffix) => form && form.querySelector(`[name$="[${suffix}]"]`);
 
-  /* Model list ------------------------------------------------------------ */
+  /* Fields that only matter for one choice ---------------------------------- */
+
+  const conditionals = [...document.querySelectorAll('[data-nika-when]')];
+  const syncConditionals = () => {
+    conditionals.forEach((field) => {
+      const source = byName(field.dataset.nikaWhen);
+      if (!source) return;
+      const shown = field.dataset.nikaChecked ? source.checked : source.value === field.dataset.nikaEquals;
+      field.hidden = !shown;
+    });
+  };
+  if (form && conditionals.length) {
+    form.addEventListener('change', syncConditionals);
+    syncConditionals();
+  }
+
+  /* Unsaved changes --------------------------------------------------------- */
+
+  const savebar = document.querySelector('.nika-savebar');
+  const savebarNote = savebar && savebar.querySelector('span');
+  const savedNote = savebarNote ? savebarNote.textContent : '';
+  const controls = form ? [...form.elements].filter((el) => el.name && el.type !== 'hidden' && el.type !== 'submit') : [];
+  const initial = new Map(controls.map((el) => [el, el.type === 'checkbox' || el.type === 'radio' ? String(el.checked) : el.value]));
+  const providerFields = ['provider', 'api_key', 'endpoint'];
+
+  const dirtyControls = () => controls.filter((el) => {
+    const now = el.type === 'checkbox' || el.type === 'radio' ? String(el.checked) : el.value;
+    return initial.has(el) && initial.get(el) !== now;
+  });
+  const isDirty = () => dirtyControls().length > 0;
+  const providerDirty = () => dirtyControls().some((el) => providerFields.some((name) => el.name.endsWith(`[${name}]`)));
+
+  const syncSavebar = () => {
+    if (!savebar || !savebarNote) return;
+    const dirty = isDirty();
+    savebar.classList.toggle('is-dirty', dirty);
+    savebarNote.textContent = dirty ? 'You have unsaved changes.' : savedNote;
+  };
+  if (form) {
+    form.addEventListener('input', syncSavebar);
+    form.addEventListener('change', syncSavebar);
+    // A real submit is not an abandoned change.
+    form.addEventListener('submit', () => { controls.forEach((el) => initial.set(el, el.type === 'checkbox' || el.type === 'radio' ? String(el.checked) : el.value)); });
+    syncSavebar();
+  }
+
+  /* API key ----------------------------------------------------------------- */
+
+  const keyInput = document.getElementById('nika-key');
+  const keyReveal = document.getElementById('nika-key-reveal');
+  const keyCopy = document.getElementById('nika-key-copy');
+  const keyStatus = document.getElementById('nika-key-status');
+  let revealed = null;
+
+  const setKeyStatus = (message, type) => {
+    if (!keyStatus) return;
+    keyStatus.textContent = message || '';
+    keyStatus.className = `nika-key-status${type ? ` is-${type}` : ''}`;
+  };
+
+  const fetchKey = async () => {
+    if (revealed) return revealed;
+    const response = await request(window.NikaAdmin.keyEndpoint, { method: 'GET' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || 'The saved key could not be read.');
+    revealed = data;
+    return data;
+  };
+
+  if (keyInput && keyReveal) {
+    const keyFieldName = keyInput.getAttribute('name');
+    keyReveal.addEventListener('click', async () => {
+      if (keyReveal.getAttribute('aria-pressed') === 'true') {
+        keyInput.type = 'password';
+        keyInput.value = '';
+        keyInput.readOnly = false;
+        keyInput.setAttribute('name', keyFieldName);
+        keyReveal.setAttribute('aria-pressed', 'false');
+        setKeyStatus('');
+        return;
+      }
+      try {
+        const data = await fetchKey();
+        keyInput.type = 'text';
+        keyInput.value = data.key;
+        keyReveal.setAttribute('aria-pressed', 'true');
+        if (data.source === 'wp-config') {
+          // Defined in wp-config.php on purpose, so never let it post into the database.
+          keyInput.readOnly = true;
+          keyInput.removeAttribute('name');
+          setKeyStatus('Read-only: this key lives in wp-config.php.', 'note');
+        } else {
+          setKeyStatus('');
+        }
+      } catch (error) {
+        setKeyStatus(error.message || 'The saved key could not be read.', 'error');
+      }
+    });
+  }
+
+  if (keyCopy) {
+    keyCopy.addEventListener('click', async () => {
+      try {
+        const data = await fetchKey();
+        await navigator.clipboard.writeText(data.key);
+        setKeyStatus('API key copied to the clipboard.', 'success');
+      } catch (error) {
+        setKeyStatus(error.message || 'The key could not be copied.', 'error');
+      }
+    });
+  }
+
+  /* Model list -------------------------------------------------------------- */
 
   const modelSelect = document.getElementById('nika-model');
   const modelCustom = document.getElementById('nika-model-custom');
@@ -49,7 +161,6 @@
       if (syncCustomMode()) modelCustom.focus();
     });
 
-    // A compatible endpoint may start with no known model at all.
     if (!modelSelect.querySelector(`option:not([value="${CUSTOM}"])`)) modelSelect.value = CUSTOM;
     syncCustomMode();
 
@@ -75,15 +186,21 @@
     };
 
     modelRefresh.addEventListener('click', async () => {
+      // The list is fetched with the saved provider and key, not what is on screen.
+      if (providerDirty()) {
+        setModelStatus('Save your provider changes first. The model list uses the saved provider and key.', 'error');
+        return;
+      }
       modelRefresh.disabled = true;
       modelRefresh.setAttribute('aria-busy', 'true');
       setModelStatus('Loading models from your provider.', 'loading');
       try {
-        const response = await request(window.NikaAdmin.modelsEndpoint, { method: 'GET' });
+        const response = await request(`${window.NikaAdmin.modelsEndpoint}?refresh=1`, { method: 'GET' });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || 'Models could not be loaded.');
         const count = fillModels(Array.isArray(data.models) ? data.models : []);
         setModelStatus(`${count} models loaded. Pick one, then save changes.`, 'success');
+        syncSavebar();
       } catch (error) {
         setModelStatus(error.message || 'Models could not be loaded.', 'error');
       } finally {
@@ -93,8 +210,10 @@
     });
   }
 
-  /* Starter suggestions --------------------------------------------------- */
+  /* Starter suggestions ----------------------------------------------------- */
 
+  const button = document.getElementById('nika-generate-suggestions');
+  const status = document.getElementById('nika-generator-status');
   if (!button || !status) return;
 
   const setStatus = (message, type) => {
@@ -143,6 +262,7 @@
       if (!response.ok) throw new Error(data.message || 'Suggestions could not be generated.');
       await applySuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
       setStatus('New suggestions are ready. Review them, then save changes.', 'success');
+      syncSavebar();
     } catch (error) {
       setStatus(error.message || 'Suggestions could not be generated.', 'error');
     } finally {

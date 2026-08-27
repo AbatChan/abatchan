@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.4.4
+Stable tag: 0.4.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,13 @@ No. Version 0.2.0 is read-only and does not submit forms, access user accounts, 
 The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 0.4.5 =
+* Remember the provider model list so it is ready without asking again.
+* Explain the reload control and warn when provider changes are unsaved.
+* Show unsaved changes on the save bar.
+* Mask the saved API key and let an administrator reveal or copy it.
+* Hide the compatible endpoint and dictation language until they apply.
 
 = 0.4.4 =
 * Keep the Generate button compact and the model controls aligned on every screen.

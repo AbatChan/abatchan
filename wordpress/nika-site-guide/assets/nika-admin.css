@@ -133,6 +133,46 @@
 .nika-model-status.is-error { color: #9f2d34; }
 .nika-model-status.is-success { color: #116b49; }
 input.is-typing { border-color: var(--nika-indigo); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+.nika-key { display: flex; align-items: stretch; gap: 8px; }
+.nika-key__input { flex: 1 1 auto; min-width: 0; letter-spacing: .04em; }
+.nika-key-status { display: none; }
+.nika-key-status:not(:empty) { display: block; }
+.nika-key-status.is-error { color: #9f2d34; }
+.nika-key-status.is-success { color: #116b49; }
+.nika-key-status.is-note { color: #7a5a12; }
+.nika-iconbutton[aria-pressed="true"] { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); }
+
+.nika-tip { position: relative; }
+.nika-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: 240px;
+  padding: 7px 10px;
+  color: #fff;
+  background: #23243a;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(20,21,38,.22);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(3px);
+  transition: opacity .12s ease, transform .12s ease, visibility .12s;
+  pointer-events: none;
+}
+.nika-tip:hover::after, .nika-tip:focus-visible::after { opacity: 1; visibility: visible; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .nika-tip::after { transition: none; } }
+
+.nika-savebar.is-dirty { border-color: var(--nika-indigo); }
+.nika-savebar.is-dirty span { color: #ffd9a8; font-weight: 650; }
+
 @media (prefers-reduced-motion: reduce) { .nika-iconbutton[aria-busy="true"] svg { animation: none; } }
 
 
