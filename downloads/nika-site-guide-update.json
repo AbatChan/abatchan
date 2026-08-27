@@ -1,12 +1,12 @@
 {
-  "version": "0.4.3",
-  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.3.zip",
+  "version": "0.4.4",
+  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.4.zip",
   "homepage": "https://abatchan.com/nika",
   "requires": "6.2",
   "requires_php": "7.4",
   "tested": "7.0.4",
   "sections": {
     "description": "A self-hosted, context-aware website guide with customer-owned AI billing and WordPress data.",
-    "changelog": "<h4>0.4.3</h4><ul><li>Choose the model from a list loaded from your AI provider, or type a custom one.</li><li>Type generated starter suggestions into the form instead of replacing it instantly.</li><li>Use a compact Generate button and give provider errors room from the form.</li></ul>"
+    "changelog": "<h4>0.4.4</h4><ul><li>Keep the Generate button compact and the model controls aligned on every screen.</li><li>Actually apply the spacing between provider errors and the suggestion form.</li></ul>"
   }
 }

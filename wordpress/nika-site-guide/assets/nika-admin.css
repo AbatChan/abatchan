@@ -77,7 +77,7 @@
 .nika-card h2 { margin-bottom: 7px; color: var(--nika-ink); font-size: 21px; line-height: 1.2; letter-spacing: -.025em; }
 .nika-card h2 + p, .nika-card__head p, .nika-launch-card p { max-width: 700px; margin-bottom: 0; color: var(--nika-muted); }
 .nika-card__head { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 25px; }
-.nika-generate { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 30px; padding: 0 10px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 8px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; }
+.nika-generate { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; flex: 0 0 auto; min-height: 30px; padding: 0 10px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 8px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; }
 .nika-generate__icon { flex: 0 0 auto; }
 .nika-generate:hover, .nika-generate:focus-visible { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); outline: 0; }
 .nika-generate:disabled { cursor: wait; opacity: .62; }
@@ -116,14 +116,14 @@
 .nika-suggestion { min-width: 0; margin: 0; padding: 17px; background: var(--nika-soft); border: 0; border-radius: 14px; }
 .nika-suggestion legend { padding: 0 6px; color: #686b78; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .nika-suggestion .nika-field + .nika-field { margin-top: 14px; }
-.nika-generator-status { display: none; margin: 26px 0 0; padding: 12px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+.nika-admin .nika-generator-status { display: none; margin: 26px 0 0; padding: 12px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
 .nika-generator-status:not(:empty) { display: block; }
 .nika-generator-status.is-loading { color: #555968; background: #f4f4f8; }
 .nika-generator-status.is-success { color: #116b49; background: #e9f8f1; }
 .nika-generator-status.is-error { color: #9f2d34; background: #fff0f1; }
-.nika-model { display: flex; align-items: center; gap: 8px; }
+.nika-model { display: flex; align-items: stretch; gap: 8px; }
 .nika-model > select { flex: 1 1 auto; min-width: 0; }
-.nika-iconbutton { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; padding: 0; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 8px; cursor: pointer; }
+.nika-iconbutton { display: grid; place-items: center; flex: 0 0 auto; width: 44px; min-height: 44px; padding: 0; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 8px; cursor: pointer; }
 .nika-iconbutton:hover, .nika-iconbutton:focus-visible { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); outline: 0; }
 .nika-iconbutton:disabled { cursor: wait; opacity: .62; }
 .nika-iconbutton[aria-busy="true"] svg { animation: nika-spin .8s linear infinite; }
