@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.5.0
+ * Version:           0.5.1
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.5.0';
+const NIKA_VERSION = '0.5.1';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -702,7 +702,7 @@ add_action( 'wp_enqueue_scripts', function () {
 	$current_path = untrailingslashit( wp_parse_url( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ?? '/' ) ), PHP_URL_PATH ) ?: '/' ) ?: '/';
 	if ( in_array( $current_path, nika_excluded_paths(), true ) ) return;
 	wp_enqueue_script( 'nika-widget', plugin_dir_url( __FILE__ ) . 'assets/nika-widget.js', array(), NIKA_VERSION, true );
-	$config = array( 'endpoint' => untrailingslashit( rest_url( 'nika/v1' ) ), 'stylesheet' => plugin_dir_url( __FILE__ ) . 'assets/nika-widget.css', 'siteId' => home_url() );
+	$config = array( 'endpoint' => untrailingslashit( rest_url( 'nika/v1' ) ), 'stylesheet' => add_query_arg( 'ver', NIKA_VERSION, plugin_dir_url( __FILE__ ) . 'assets/nika-widget.css' ), 'siteId' => home_url() );
 	wp_add_inline_script( 'nika-widget', 'window.NikaConfig=' . wp_json_encode( $config ) . ';', 'before' );
 } );
 

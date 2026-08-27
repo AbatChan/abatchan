@@ -225,7 +225,15 @@
     const root = host.attachShadow({ mode: 'open' });
     const css = document.createElement('link');
     css.rel = 'stylesheet';
-    css.href = settings.stylesheet || new URL('nika-widget.css', document.currentScript && document.currentScript.src || location.href).href;
+    // Carry the script's own cache-busting query onto the stylesheet, otherwise an
+    // upgraded site keeps serving the previous CSS from cache.
+    css.href = settings.stylesheet || (() => {
+      const from = (document.currentScript && document.currentScript.src) || location.href;
+      const url = new URL('nika-widget.css', from);
+      const search = new URL(from, location.href).search;
+      if (search && !url.search) url.search = search;
+      return url.href;
+    })();
     const shell = document.createElement('div');
     const suggestions = normalizeSuggestions(settings.suggestions);
     shell.innerHTML = template(clean(settings.name) || DEFAULTS.name, suggestions.length ? suggestions : DEFAULTS.suggestions, clean(settings.placeholder) || DEFAULTS.placeholder);

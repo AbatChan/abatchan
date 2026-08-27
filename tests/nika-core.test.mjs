@@ -7,6 +7,7 @@ let failed=false;
 const check=(label,value)=>{const pass=Boolean(value);console.log(`${pass?'PASS':'FAIL'}  ${label}`);if(!pass)failed=true;};
 
 console.log('=== shared self-hosted widget ===');
+check('a derived stylesheet URL keeps the script cache-busting query',widget.includes("if (search && !url.search) url.search = search;"));
 check('the guide hugs its content before a conversation starts',widget.includes('syncEmptyState')&&widget.includes("classList.toggle('is-empty', !log.firstChild)")&&css.includes('.nika-panel.is-empty{height:auto')&&css.includes('.nika-panel.is-empty .nika-log{display:none}'));
 check('uses same-origin credentials',widget.includes("credentials: 'same-origin'"));
 check('never reads an AI key in the browser',!/(api[_-]?key|authorization)/i.test(widget));
