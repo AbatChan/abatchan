@@ -4,8 +4,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const version = '0.3.4';
+const version = '0.3.10';
 const core = join(root, 'products', 'nika-core');
+const brandAssets = join(root, 'assets');
 const wordpress = join(root, 'wordpress', 'nika-site-guide');
 const universal = join(root, 'universal', 'nika-universal');
 const downloads = join(root, 'downloads');
@@ -17,6 +18,7 @@ for (const name of ['nika-widget.js', 'nika-widget.css']) {
   cpSync(join(core, name), join(wordpress, 'assets', name));
   cpSync(join(core, name), join(universal, 'public', name));
 }
+cpSync(join(brandAssets, 'abatchan-symbol-white-tight-504x308.png'), join(wordpress, 'assets', 'nika-admin-icon.png'));
 
 const plugin = readFileSync(join(wordpress, 'nika-site-guide.php'), 'utf8');
 const pkg = JSON.parse(readFileSync(join(universal, 'package.json'), 'utf8'));

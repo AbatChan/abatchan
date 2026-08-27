@@ -1,4 +1,4 @@
-# Nika Universal 0.3.4
+# Nika Universal 0.3.10
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go
@@ -58,7 +58,7 @@ content changes, or replace it with your own CMS/export workflow.
 `nika.config.json` controls identity, the three pre-chat starter suggestions, owner instructions, excluded
 paths, navigation/highlighting, microphone dictation and language, accent,
 left/right position, context size, session-history length, visitor hourly budget,
-whole-site daily budget, response temperature, and response-token budget (400–4000; 900 by default). Nika is instructed to finish each point cleanly and omit lower-priority detail rather than end mid-answer.
+whole-site daily budget, response temperature, and response-token budget (400 to 4000; 900 by default). Nika is instructed to finish each point cleanly and omit lower-priority detail rather than end mid-answer.
 
 Nika captures the live route, title, main heading, visible section and rendered
 page text again for every question. This works for newly deployed pages before
@@ -66,6 +66,12 @@ the next static index refresh, SPA route changes, open dialogs, tabs and expande
 details. Query parameters are never included in page context. Excluded paths are
 also a runtime privacy boundary: the widget does not mount there and the server
 rejects chat requests carrying one of those paths.
+
+The supplied limits are starting examples. `hourlyLimit: 20` lets one visitor
+make 20 requests before the hourly reset. `dailyLimit: 500` allows at most
+15,000 requests in a 30-day month. `contextCharacters: 12000` is
+roughly 2,000 words from the current screen, while `historyTurns: 10` keeps
+about 10 recent question-and-answer exchanges.
 
 Microphone dictation includes a live audio waveform, preserves text already in
 the composer, inserts speech at the selected cursor position, and reconnects

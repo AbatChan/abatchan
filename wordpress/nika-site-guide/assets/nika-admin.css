@@ -1,0 +1,182 @@
+.toplevel_page_nika-site-guide #wpcontent { padding-left: 0; }
+.toplevel_page_nika-site-guide #wpbody-content { padding-bottom: 0; }
+.toplevel_page_nika-site-guide #wpbody-content > .notice:not(.notice-error),
+.toplevel_page_nika-site-guide #wpbody-content > .updated,
+.toplevel_page_nika-site-guide #wpbody-content > .update-nag,
+.toplevel_page_nika-site-guide #wpbody-content > div[id*="notice"]:not(.notice-error),
+.toplevel_page_nika-site-guide #wpbody-content > .pms-cross-promo,
+.toplevel_page_nika-site-guide #setting-error-settings_updated,
+.toplevel_page_nika-site-guide .nika-hero__copy > .notice,
+.toplevel_page_nika-site-guide .nika-hero__copy > .updated,
+.toplevel_page_nika-site-guide .nika-hero__copy > .wpnotice-wrapper { display: none !important; }
+.nika-admin {
+  --nika-ink: #171827;
+  --nika-muted: #666a7b;
+  --nika-line: #e3e4eb;
+  --nika-soft: #f4f4f8;
+  --nika-indigo: #5f5ff3;
+  --nika-indigo-dark: #4848d8;
+  --nika-green: #1b9b68;
+  max-width: none;
+  margin: 0;
+  color: var(--nika-ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.nika-admin *, .nika-admin *::before, .nika-admin *::after { box-sizing: border-box; }
+.nika-admin h1, .nika-admin h2, .nika-admin h3, .nika-admin p { margin-top: 0; }
+.nika-feedback { position: fixed; z-index: 100100; top: 46px; right: 22px; width: min(360px, calc(100vw - 44px)); margin: 0; padding: 0; }
+.nika-feedback:empty { display: none; }
+.nika-feedback__message { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 48px; padding: 12px 14px 12px 16px; color: #fff; background: #176b4b; border: 0; border-radius: 10px; box-shadow: 0 10px 28px rgba(15,25,21,.24); }
+.nika-feedback__dismiss { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; color: rgba(255,255,255,.78); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: 22px; line-height: 1; }
+.nika-feedback__dismiss:hover, .nika-feedback__dismiss:focus-visible { color: #fff; background: rgba(255,255,255,.12); outline: 0; }
+
+.nika-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 310px;
+  padding: 34px clamp(28px, 4vw, 64px) 44px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 82% 20%, rgba(126,126,255,.35), transparent 28%),
+    linear-gradient(135deg, #11111c 0%, #17162a 52%, #292262 100%);
+}
+.nika-hero::after {
+  content: "";
+  position: absolute;
+  right: clamp(28px, 6vw, 100px);
+  bottom: -126px;
+  width: 330px;
+  height: 330px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 46px rgba(255,255,255,.035), 0 0 0 92px rgba(255,255,255,.02);
+  pointer-events: none;
+}
+.nika-hero__brand { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+.nika-hero__brand img { width: 40px; height: 34px; padding: 7px 6px; object-fit: contain; border: 1px solid rgba(255,255,255,.16); border-radius: 10px; background: rgba(255,255,255,.08); }
+.nika-hero__copy { position: relative; z-index: 1; max-width: 780px; margin-top: 54px; }
+.nika-kicker, .nika-card__eyebrow { margin-bottom: 8px; color: #7474ff; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.nika-hero .nika-kicker { color: #a7a7ff; }
+.nika-hero h1 { max-width: 760px; margin-bottom: 13px; color: #fff; font-size: clamp(30px, 3.4vw, 48px); line-height: 1.05; letter-spacing: -.045em; font-weight: 700; }
+.nika-hero__copy > p:last-child { max-width: 680px; margin-bottom: 0; color: rgba(255,255,255,.67); font-size: 16px; }
+.nika-hero__meta { position: absolute; z-index: 2; top: 34px; right: clamp(28px, 4vw, 64px); display: flex; align-items: center; gap: 12px; }
+.nika-status, .nika-button { display: inline-flex; align-items: center; min-height: 38px; border-radius: 12px; font-weight: 650; text-decoration: none; }
+.nika-status { gap: 8px; padding: 0 13px; color: rgba(255,255,255,.82); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.13); }
+.nika-status i { width: 8px; height: 8px; border-radius: 50%; background: #8a8d9e; }
+.nika-status.is-live i { background: #2fd18d; box-shadow: 0 0 0 5px rgba(47,209,141,.14); }
+.nika-button--ghost { padding: 0 15px; color: #fff; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); }
+.nika-button--ghost:hover, .nika-button--ghost:focus { color: #fff; border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.12); }
+
+.nika-shell { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; max-width: 1360px; margin: -18px auto 0; padding: 0 30px 64px; position: relative; z-index: 3; }
+.nika-main { min-width: 0; display: grid; gap: 18px; }
+.nika-sidebar { display: grid; align-content: start; gap: 18px; }
+.nika-card, .nika-sidecard { background: #fff; border: 1px solid var(--nika-line); border-radius: 18px; box-shadow: 0 8px 30px rgba(23,24,39,.045); }
+.nika-card { padding: 30px; scroll-margin-top: 46px; }
+.nika-sidecard { padding: 23px; }
+.nika-card h2 { margin-bottom: 7px; color: var(--nika-ink); font-size: 21px; line-height: 1.2; letter-spacing: -.025em; }
+.nika-card h2 + p, .nika-card__head p, .nika-launch-card p { max-width: 700px; margin-bottom: 0; color: var(--nika-muted); }
+.nika-card__head { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 25px; }
+.nika-generate { flex: 0 0 auto; min-height: 40px; padding: 0 15px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700; }
+.nika-generate:hover, .nika-generate:focus-visible { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); outline: 0; }
+.nika-generate:disabled { cursor: wait; opacity: .62; }
+.nika-launch-card { display: flex; align-items: center; justify-content: space-between; gap: 28px; border-color: #d8d8f8; }
+.nika-launch-card h2 { font-size: 24px; }
+.nika-lock { align-self: flex-start; white-space: nowrap; padding: 7px 10px; color: #5555d8; background: #f1f1ff; border-radius: 999px; font-size: 12px; font-weight: 700; }
+
+.nika-grid { display: grid; gap: 20px; }
+.nika-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nika-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 23px; }
+.nika-grid__wide { grid-column: 1 / -1; }
+.nika-field { display: grid; align-content: start; gap: 7px; color: var(--nika-ink); font-weight: 650; }
+.nika-field > span:first-child { font-size: 13px; }
+.nika-field input:not([type="color"]), .nika-field select, .nika-field textarea {
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+  margin: 0;
+  padding: 9px 12px;
+  color: var(--nika-ink);
+  background: #fbfbfd;
+  border: 1px solid #d8d9e2;
+  border-radius: 10px;
+  box-shadow: none;
+  font-size: 14px;
+}
+.nika-field textarea { min-height: 112px; resize: vertical; }
+.nika-field input:focus, .nika-field select:focus, .nika-field textarea:focus { border-color: var(--nika-indigo); box-shadow: 0 0 0 3px rgba(95,95,243,.13); outline: 0; }
+.nika-field small { color: #777b89; font-weight: 400; line-height: 1.45; }
+.nika-field--compact { max-width: 260px; margin-top: 20px; }
+.nika-colour { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 10px; background: #fbfbfd; border: 1px solid #d8d9e2; border-radius: 10px; }
+.nika-colour input { width: 34px; height: 30px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.nika-colour code { padding: 0; color: #555968; background: transparent; }
+
+.nika-suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.nika-suggestion { min-width: 0; margin: 0; padding: 17px; background: var(--nika-soft); border: 0; border-radius: 14px; }
+.nika-suggestion legend { padding: 0 6px; color: #686b78; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.nika-suggestion .nika-field + .nika-field { margin-top: 14px; }
+.nika-generator-status { display: none; margin: 15px 0 0; padding: 11px 13px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+.nika-generator-status:not(:empty) { display: block; }
+.nika-generator-status.is-loading { color: #555968; background: #f4f4f8; }
+.nika-generator-status.is-success { color: #116b49; background: #e9f8f1; }
+.nika-generator-status.is-error { color: #9f2d34; background: #fff0f1; }
+
+.nika-toggle-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.nika-toggle-list > label { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; min-height: 102px; padding: 18px; border: 1px solid var(--nika-line); border-radius: 14px; cursor: pointer; }
+.nika-toggle-list span { display: grid; gap: 5px; }
+.nika-toggle-list b { font-size: 14px; }
+.nika-toggle-list small { color: var(--nika-muted); font-weight: 400; }
+.nika-toggle-list input { width: 19px; height: 19px; margin: 2px 0 0; accent-color: var(--nika-indigo); }
+
+.nika-switch { display: flex; align-items: center; gap: 11px; white-space: nowrap; cursor: pointer; }
+.nika-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.nika-switch > span { position: relative; width: 46px; height: 26px; background: #c7c9d3; border-radius: 999px; transition: background .2s ease; }
+.nika-switch > span::after { content: ""; position: absolute; top: 4px; left: 4px; width: 18px; height: 18px; background: #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.22); transition: transform .2s ease; }
+.nika-switch input:checked + span { background: var(--nika-green); }
+.nika-switch input:checked + span::after { transform: translateX(20px); }
+.nika-switch input:focus-visible + span { outline: 3px solid rgba(95,95,243,.25); outline-offset: 2px; }
+
+.nika-savebar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 2px; padding: 17px 19px; color: #fff; background: rgba(23,24,39,.96); border: 1px solid rgba(255,255,255,.09); border-radius: 16px; box-shadow: 0 16px 36px rgba(10,10,20,.22); backdrop-filter: blur(14px); }
+.nika-savebar > div { display: grid; gap: 2px; }
+.nika-savebar span { color: rgba(255,255,255,.6); font-size: 12px; }
+.nika-savebar .button-primary { min-height: 42px; margin: 0; padding: 0 20px; background: var(--nika-indigo); border-color: var(--nika-indigo); border-radius: 10px; font-weight: 700; }
+.nika-savebar .button-primary:hover, .nika-savebar .button-primary:focus { background: #7474ff; border-color: #7474ff; }
+
+.nika-score { display: flex; align-items: baseline; gap: 9px; margin: 4px 0 20px; }
+.nika-score strong { font-size: 31px; line-height: 1; letter-spacing: -.05em; }
+.nika-score span { color: var(--nika-muted); font-size: 12px; }
+.nika-checks { display: grid; gap: 17px; margin: 0; }
+.nika-checks li { display: flex; gap: 11px; margin: 0; }
+.nika-checks i { flex: 0 0 27px; display: grid; place-items: center; width: 27px; height: 27px; color: #777a88; background: #eeeff3; border-radius: 50%; font-size: 11px; font-style: normal; font-weight: 800; }
+.nika-checks .is-ready i { color: #fff; background: var(--nika-green); }
+.nika-checks span { display: grid; gap: 2px; }
+.nika-checks b { font-size: 13px; }
+.nika-checks small { color: var(--nika-muted); font-size: 11px; }
+.nika-jump { position: sticky; top: 46px; display: grid; gap: 4px; }
+.nika-jump a { padding: 9px 11px; color: #4f5362; border-radius: 8px; text-decoration: none; font-weight: 600; }
+.nika-jump a:hover, .nika-jump a:focus { color: var(--nika-indigo-dark); background: #f1f1ff; outline: 0; }
+.nika-data h3 { margin: 0 0 8px; font-size: 17px; line-height: 1.25; letter-spacing: -.02em; }
+.nika-data p { color: var(--nika-muted); font-size: 12px; }
+.nika-data > span { display: inline-flex; padding: 6px 9px; color: #5555d8; background: #f1f1ff; border-radius: 999px; font-size: 11px; font-weight: 700; }
+
+@media (max-width: 1100px) {
+  .nika-shell { grid-template-columns: 1fr; }
+  .nika-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nika-jump { position: static; }
+  .nika-data { display: none; }
+  .nika-suggestions { grid-template-columns: 1fr; }
+}
+@media (max-width: 782px) {
+  .toplevel_page_nika-site-guide #wpcontent { padding-left: 0; }
+  .nika-hero { min-height: 370px; padding: 26px 20px 38px; }
+  .nika-hero__meta { position: relative; top: auto; right: auto; margin-top: 28px; flex-wrap: wrap; }
+  .nika-hero__copy { margin-top: 42px; }
+  .nika-shell { margin-top: -14px; padding: 0 14px 44px; }
+  .nika-card { padding: 22px; border-radius: 15px; }
+  .nika-launch-card, .nika-card__head { align-items: flex-start; flex-direction: column; }
+  .nika-grid--2, .nika-grid--4, .nika-toggle-list, .nika-sidebar { grid-template-columns: 1fr; }
+  .nika-switch { white-space: normal; }
+  .nika-savebar { flex-direction: column; align-items: stretch; }
+  .nika-savebar .button-primary { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .nika-admin *, .nika-admin *::before, .nika-admin *::after { scroll-behavior: auto !important; transition: none !important; } }

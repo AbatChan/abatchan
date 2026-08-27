@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.3.4
+Stable tag: 0.3.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -39,7 +39,7 @@ Site owners should update their own privacy notice before enabling Nika.
 
 1. Upload the ZIP in Plugins > Add New > Upload Plugin.
 2. Activate Nika Site Guide.
-3. Open Settings > Nika Site Guide.
+3. Open the dedicated Nika menu in WordPress Admin.
 4. Select a provider and model, then add your API key.
 5. Add website-specific instructions, customize the three starter suggestions, and review the hourly limit.
 6. Choose navigation, microphone, appearance, context/history, daily budget, and any excluded paths.
@@ -72,6 +72,36 @@ No. Version 0.2.0 is read-only and does not submit forms, access user accounts, 
 The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 0.3.10 =
+* Match the Nika menu icon spacing to other WordPress menu items.
+* Use a clear borderless save confirmation that stays above the page.
+* Explain usage defaults with practical examples.
+* Include the starter-suggestion generator and its success and error states.
+
+= 0.3.9 =
+* Generate fresh starter suggestions from published WordPress content.
+* Show clear loading, success, missing-key, and provider-error states.
+* Require review and saving before generated suggestions reach visitors.
+
+= 0.3.8 =
+* Keep the Nika menu logo correctly sized on every WordPress admin screen.
+* Reduce the Nika settings header logo.
+
+= 0.3.7 =
+* Use the canonical transparent Abatchan symbol and size it to match other WordPress menu icons.
+* Replace decorative labels and promotional copy with direct WordPress settings language.
+* Remove decorative punctuation from the Nika admin interface.
+
+= 0.3.6 =
+* Redirect the legacy Settings URL to Nika's dedicated top-level admin workspace.
+* Prevent unrelated plugin promotions and notices from breaking Nika's hero and spacing.
+* Keep Nika's own save feedback visible in a dedicated status area.
+
+= 0.3.5 =
+* Add a dedicated Nika admin menu with a branded icon and a polished, responsive settings workspace.
+* Add readiness checks and clearer grouping for identity, AI, guidance, budgets, and content boundaries.
+* Add automatic WordPress update discovery for future Nika releases distributed by Abatchan.
 
 = 0.3.4 =
 * Reveal verified same-page highlights automatically on phones instead of leaving the full-height guide over the target.
