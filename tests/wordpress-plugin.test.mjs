@@ -22,6 +22,7 @@ check('excluded paths suppress the widget and reject chat context',php.includes(
 check('current-location answers use the live browser snapshot',php.includes('function nika_location_answer')&&php.includes('$direct_location = nika_location_answer'));
 check('stale cross-page assistant replies are marked historical',php.includes('Historical reply from another page'));
 check('visibility limitations and heading anchors reach the provider',php.includes('Visibility limitations:')&&php.includes('Available heading anchors:'));
+check('responses finish cleanly instead of relying on token clipping',php.includes('finish every sentence and point cleanly')&&php.includes("'max_tokens' => 900"));
 check('foreign browser origins are rejected',php.includes('function nika_origin_allowed')&&php.includes("'nika_origin'")&&php.includes("'status' => 403"));
 check('published WordPress content is locally indexed',php.includes('function nika_site_index()')&&php.includes('$post->post_content'));
 check('content index is bounded and cached',php.includes('> 24000')&&php.includes("set_transient( 'nika_site_index_v1'"));

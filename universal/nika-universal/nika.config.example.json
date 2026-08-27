@@ -18,6 +18,6 @@
   "hourlyLimit": 20,
   "dailyLimit": 500,
   "temperature": 0.2,
-  "maxTokens": 700,
+  "maxTokens": 900,
   "excludedPaths": ["/privacy", "/account"]
 }

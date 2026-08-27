@@ -58,7 +58,7 @@ content changes, or replace it with your own CMS/export workflow.
 `nika.config.json` controls identity, the three pre-chat starter suggestions, owner instructions, excluded
 paths, navigation/highlighting, microphone dictation and language, accent,
 left/right position, context size, session-history length, visitor hourly budget,
-whole-site daily budget, response temperature, and response-token budget.
+whole-site daily budget, response temperature, and response-token budget (400–4000; 900 by default). Nika is instructed to finish each point cleanly and omit lower-priority detail rather than end mid-answer.
 
 Nika captures the live route, title, main heading, visible section and rendered
 page text again for every question. This works for newly deployed pages before

@@ -25,6 +25,7 @@ const checks = [
   ['current-location answers do not depend on model obedience', server.includes('currentLocationAnswer(message, current)')],
   ['stale replies are marked historical after a page change', server.includes('historicalContext(')],
   ['visibility limitations and heading anchors reach the model', server.includes('Visibility limitations:') && server.includes('Available heading anchors:')],
+  ['responses finish cleanly with a safe configurable budget', server.includes('finish every sentence and point cleanly') && server.includes('numberBetween(config.maxTokens, 400, 4000, 900)')],
   ['can automatically discover new static pages and content', server.includes('process.env.NIKA_SITE_ROOT') && server.includes('indexStaticSite(SITE_ROOT') && readme.includes('without restarting Nika')],
   ['does not store raw visitor addresses', !server.includes('remote_addr') && !server.includes('remoteAddress TEXT')],
   ['caps request bodies', server.includes('size > 32_768')],
