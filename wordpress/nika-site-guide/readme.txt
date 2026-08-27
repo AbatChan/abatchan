@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.4.8
+Stable tag: 0.4.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,13 @@ No. Version 0.2.0 is read-only and does not submit forms, access user accounts, 
 The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 0.4.9 =
+* Never accept placeholder text such as ellipses as a generated suggestion.
+* Fill generated fields in one quick pass instead of one at a time.
+* Show progress while generating and while saving.
+* Draft website instructions from your published content.
+* Let the visitor guide hug its content before a conversation starts.
 
 = 0.4.8 =
 * Accept the JSON shapes AI providers actually return when generating suggestions, and retry once.

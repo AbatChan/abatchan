@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.4.8
+ * Version:           0.4.9
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.4.8';
+const NIKA_VERSION = '0.4.9';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -126,6 +126,7 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 		'suggestionsEndpoint' => rest_url( 'nika/v1/admin/suggestions' ),
 		'modelsEndpoint' => rest_url( 'nika/v1/admin/models' ),
 		'keyEndpoint' => rest_url( 'nika/v1/admin/key' ),
+		'instructionsEndpoint' => rest_url( 'nika/v1/admin/instructions' ),
 		'defaultModels' => array( 'openai' => nika_default_model( 'openai' ), 'deepseek' => nika_default_model( 'deepseek' ), 'compatible' => nika_default_model( 'compatible' ) ),
 		'nonce' => wp_create_nonce( 'wp_rest' ),
 	) );
@@ -188,7 +189,7 @@ function nika_settings_page() {
 						</label>
 						<label class="nika-field nika-grid__wide"><span><?php esc_html_e( 'API key', 'nika-site-guide' ); ?></span><span class="nika-key"><input class="code nika-key__input" id="nika-key" name="<?php echo esc_attr( NIKA_OPTION ); ?>[api_key]" type="password" value="" autocomplete="new-password" placeholder="<?php echo esc_attr( $key_saved ? str_repeat( "\xe2\x80\xa2", 28 ) : __( 'Required before enabling Nika', 'nika-site-guide' ) ); ?>"><?php if ( $key_saved ) : ?><button type="button" class="nika-iconbutton nika-tip" id="nika-key-reveal" data-tip="<?php esc_attr_e( 'Show the saved key', 'nika-site-guide' ); ?>" aria-label="<?php esc_attr_e( 'Show the saved key', 'nika-site-guide' ); ?>" aria-pressed="false"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false"><path d="M1.8 10S4.9 4.6 10 4.6 18.2 10 18.2 10 15.1 15.4 10 15.4 1.8 10 1.8 10Z" fill="none" stroke="currentColor" stroke-width="1.6"></path><circle cx="10" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"></circle></svg></button><button type="button" class="nika-iconbutton nika-tip" id="nika-key-copy" data-tip="<?php esc_attr_e( 'Copy the saved key', 'nika-site-guide' ); ?>" aria-label="<?php esc_attr_e( 'Copy the saved key', 'nika-site-guide' ); ?>"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false"><rect x="7" y="7" width="9.5" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"></rect><path d="M13 4.6a2 2 0 0 0-2-2H5.5a2 2 0 0 0-2 2V11a2 2 0 0 0 2 2" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button><?php endif; ?></span><small><?php echo esc_html( defined( 'NIKA_AI_API_KEY' ) ? __( 'Defined by NIKA_AI_API_KEY in wp-config.php. The key is never sent to visitors.', 'nika-site-guide' ) : __( 'Leave blank to keep the saved key. For stronger protection, define NIKA_AI_API_KEY in wp-config.php. The key is never sent to visitors.', 'nika-site-guide' ) ); ?></small><small class="nika-key-status" id="nika-key-status"></small></label>
 						<label class="nika-field nika-grid__wide" data-nika-when="provider" data-nika-equals="compatible"<?php echo 'compatible' === $s['provider'] ? '' : ' hidden'; ?>><span><?php esc_html_e( 'Compatible endpoint', 'nika-site-guide' ); ?></span><input class="code" id="nika-endpoint" name="<?php echo esc_attr( NIKA_OPTION ); ?>[endpoint]" type="url" value="<?php echo esc_attr( $s['endpoint'] ); ?>" placeholder="https://provider.example/v1/chat/completions"><small><?php esc_html_e( 'Only required for an OpenAI-compatible provider.', 'nika-site-guide' ); ?></small></label>
-						<label class="nika-field nika-grid__wide"><span><?php esc_html_e( 'Website instructions', 'nika-site-guide' ); ?></span><textarea rows="8" id="nika-instructions" name="<?php echo esc_attr( NIKA_OPTION ); ?>[instructions]" placeholder="Describe what Nika should know, prioritize, recommend, and refuse."><?php echo esc_textarea( $s['instructions'] ); ?></textarea><small><?php esc_html_e( 'Write for this site: services, audience, tone, important facts, and hard boundaries.', 'nika-site-guide' ); ?></small></label>
+						<label class="nika-field nika-grid__wide"><span class="nika-field__head"><span><?php esc_html_e( 'Website instructions', 'nika-site-guide' ); ?></span><button type="button" class="nika-generate nika-tip" id="nika-generate-instructions" data-tip="<?php esc_attr_e( 'Draft instructions from your published pages and posts', 'nika-site-guide' ); ?>"><svg class="nika-generate__icon" viewBox="0 0 20 20" width="13" height="13" aria-hidden="true" focusable="false"><path d="M10 2.2l1.5 4.3 4.3 1.5-4.3 1.5L10 13.8 8.5 9.5 4.2 8l4.3-1.5z" fill="currentColor"></path></svg><span><?php esc_html_e( 'Draft', 'nika-site-guide' ); ?></span></button></span><textarea rows="8" id="nika-instructions" name="<?php echo esc_attr( NIKA_OPTION ); ?>[instructions]" placeholder="Describe what Nika should know, prioritize, recommend, and refuse."><?php echo esc_textarea( $s['instructions'] ); ?></textarea><small><?php esc_html_e( 'Write for this site: services, audience, tone, important facts, and hard boundaries.', 'nika-site-guide' ); ?></small><small class="nika-generator-status" id="nika-instructions-status" aria-live="polite"></small></label>
 					</div>
 				</section>
 
@@ -270,6 +271,7 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'nika/v1', '/admin/suggestions', array( 'methods' => 'POST', 'callback' => 'nika_generate_suggestions_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 	register_rest_route( 'nika/v1', '/admin/models', array( 'methods' => 'GET', 'callback' => 'nika_models_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 	register_rest_route( 'nika/v1', '/admin/key', array( 'methods' => 'GET', 'callback' => 'nika_reveal_key_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
+	register_rest_route( 'nika/v1', '/admin/instructions', array( 'methods' => 'POST', 'callback' => 'nika_generate_instructions_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 } );
 
 function nika_config_response() {
@@ -416,6 +418,19 @@ function nika_json_slice( $text ) {
  * Models answer in several shapes. Accept the ones that carry the same meaning
  * rather than insisting on one exact envelope.
  */
+/**
+ * Reject template echoes such as "...", "label", or a bare ellipsis, which some
+ * models return instead of writing anything.
+ */
+function nika_is_placeholder_text( $text ) {
+	$text = trim( (string) $text );
+	if ( '' === $text ) return true;
+	$stripped = preg_replace( '/[\s\.\x{2026}\-_\*"\x{2018}\x{2019}\x{201C}\x{201D}]+/u', '', $text );
+	if ( '' === $stripped ) return true;
+	if ( preg_match( '/^(label|description|title|question|text|string|example|placeholder|todo|n\/a)$/i', $text ) ) return true;
+	return preg_match_all( '/\p{L}/u', $text ) < 6;
+}
+
 function nika_extract_suggestions( $raw ) {
 	$raw = trim( (string) $raw );
 	if ( '' === $raw ) return array();
@@ -458,7 +473,7 @@ function nika_extract_suggestions( $raw ) {
 		}
 		$label = sanitize_text_field( $label );
 		$description = sanitize_text_field( $description );
-		if ( '' === $label || '' === $description ) continue;
+		if ( nika_is_placeholder_text( $label ) || nika_is_placeholder_text( $description ) ) continue;
 		$clean[] = array( 'label' => nika_clip( $label, 90 ), 'description' => nika_clip( $description, 120 ) );
 		if ( 3 === count( $clean ) ) break;
 	}
@@ -468,7 +483,7 @@ function nika_extract_suggestions( $raw ) {
 function nika_request_suggestions( $s, $provider, $key, $content, $strict ) {
 	$angles = array( 'services and choices', 'visitor goals and next steps', 'common questions and useful pages', 'trust, process, and practical details' );
 	$angle = $angles[ wp_rand( 0, count( $angles ) - 1 ) ];
-	$shape = 'Return JSON only, with no prose and no code fence, in exactly this shape: {"suggestions":[{"label":"...","description":"..."},{"label":"...","description":"..."},{"label":"...","description":"..."}]}';
+	$shape = 'Return JSON only, with no prose and no code fence: an object with a "suggestions" array holding exactly three objects, each with a "label" string and a "description" string. Write real sentences drawn from the content. Never return placeholder text, ellipses, or the words label or description as values.';
 	$prompt = "Create exactly three distinct starter questions for this website. Base them only on the published content below. Focus this variation on {$angle}. Each item needs a short label under 90 characters that works as the visitor's full question, and a supporting description under 120 characters. Avoid generic filler, repeated ideas, sales hype, and facts not present in the content. {$shape}";
 	if ( $strict ) $prompt = "All three items are required and every item needs both a label and a description. {$prompt}";
 	$prompt .= "\n\nPUBLISHED WEBSITE CONTENT:\n{$content}";
@@ -492,6 +507,38 @@ function nika_request_suggestions( $s, $provider, $key, $content, $strict ) {
 		if ( ! empty( $message[ $field ] ) && is_string( $message[ $field ] ) ) { $generated = $message[ $field ]; break; }
 	}
 	return nika_extract_suggestions( $generated );
+}
+
+function nika_generate_instructions_response() {
+	$s = nika_settings();
+	$key = defined( 'NIKA_AI_API_KEY' ) ? trim( (string) NIKA_AI_API_KEY ) : trim( (string) $s['api_key'] );
+	if ( ! $key ) return new WP_Error( 'nika_not_configured', __( 'Add an AI API key before drafting instructions.', 'nika-site-guide' ), array( 'status' => 503 ) );
+	$content = trim( nika_site_index() );
+	if ( ! $content ) return new WP_Error( 'nika_no_content', __( 'Publish some website content before drafting instructions.', 'nika-site-guide' ), array( 'status' => 422 ) );
+	$provider = nika_provider_details( $s );
+	if ( empty( $provider['url'] ) || empty( $provider['model'] ) ) return new WP_Error( 'nika_provider', __( 'Complete the AI provider settings before drafting instructions.', 'nika-site-guide' ), array( 'status' => 503 ) );
+	$prompt = "Write website instructions for an assistant that guides visitors on this website. Base every statement only on the published content below. Cover, in plain prose and short paragraphs: what this organisation does, who it serves, the tone to use, the facts worth repeating, and what the assistant must refuse or defer to a human. Do not invent services, prices, guarantees, or contact details. Do not use headings, bullet characters, or markdown. Keep it under 220 words.\n\nPUBLISHED WEBSITE CONTENT:\n{$content}";
+	$payload = array(
+		'model' => $provider['model'],
+		'messages' => array(
+			array( 'role' => 'system', 'content' => 'You write factual configuration notes for a website assistant. Return plain prose only.' ),
+			array( 'role' => 'user', 'content' => $prompt ),
+		),
+		'temperature' => 0.5,
+		'max_tokens' => 700,
+	);
+	$response = wp_remote_post( $provider['url'], array( 'timeout' => 45, 'headers' => array( 'Authorization' => 'Bearer ' . $key, 'Content-Type' => 'application/json' ), 'body' => wp_json_encode( $payload ) ) );
+	if ( is_wp_error( $response ) ) return new WP_Error( 'nika_upstream', __( 'Nika could not reach the configured AI provider.', 'nika-site-guide' ), array( 'status' => 502 ) );
+	if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'nika_upstream', __( 'The configured AI provider rejected the request. Check the API key, model, and provider settings.', 'nika-site-guide' ), array( 'status' => 502 ) );
+	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	$message = $data['choices'][0]['message'] ?? array();
+	$text = '';
+	foreach ( array( 'content', 'text' ) as $field ) {
+		if ( ! empty( $message[ $field ] ) && is_string( $message[ $field ] ) ) { $text = $message[ $field ]; break; }
+	}
+	$text = sanitize_textarea_field( trim( preg_replace( '/```[a-z]*/i', '', $text ) ) );
+	if ( nika_is_placeholder_text( $text ) ) return new WP_Error( 'nika_generation', sprintf( __( '%s did not return usable instructions. Try again, or pick a different model.', 'nika-site-guide' ), $provider['model'] ), array( 'status' => 502 ) );
+	return rest_ensure_response( array( 'instructions' => nika_clip( $text, 4000 ) ) );
 }
 
 function nika_generate_suggestions_response() {

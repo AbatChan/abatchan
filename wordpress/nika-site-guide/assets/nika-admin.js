@@ -57,7 +57,16 @@
     form.addEventListener('input', syncSavebar);
     form.addEventListener('change', syncSavebar);
     // A real submit is not an abandoned change.
-    form.addEventListener('submit', () => { controls.forEach((el) => initial.set(el, el.type === 'checkbox' || el.type === 'radio' ? String(el.checked) : el.value)); });
+    form.addEventListener('submit', () => {
+      controls.forEach((el) => initial.set(el, el.type === 'checkbox' || el.type === 'radio' ? String(el.checked) : el.value));
+      const submit = form.querySelector('#submit, [type="submit"]');
+      if (submit) {
+        submit.value = 'Saving...';
+        // Disabling now would drop the button from the post, so wait a tick.
+        window.setTimeout(() => { submit.disabled = true; }, 0);
+      }
+      if (savebar && savebarNote) { savebar.classList.remove('is-dirty'); savebarNote.textContent = 'Saving your changes.'; }
+    });
     syncSavebar();
   }
 
@@ -271,24 +280,26 @@
     status.setAttribute('role', type === 'error' ? 'alert' : 'status');
   };
 
-  const typeInto = (input, text, delay) => new Promise((resolve) => {
+  // All fields fill together over one short beat, rather than one after another.
+  const TYPE_MS = 420;
+  const typeInto = (input, text) => new Promise((resolve) => {
     const finish = () => {
       input.value = text;
       input.classList.remove('is-typing');
       input.dispatchEvent(new Event('input', { bubbles: true }));
       resolve();
     };
-    if (reducedMotion) { finish(); return; }
+    if (reducedMotion || !text) { finish(); return; }
     input.value = '';
     input.classList.add('is-typing');
-    let index = 0;
-    const step = () => {
-      index += 1;
-      if (index >= text.length) { finish(); return; }
-      input.value = text.slice(0, index);
-      window.setTimeout(step, 10);
+    const started = performance.now();
+    const tick = (now) => {
+      const progress = Math.min(1, (now - started) / TYPE_MS);
+      if (progress >= 1) { finish(); return; }
+      input.value = text.slice(0, Math.max(1, Math.round(text.length * progress)));
+      window.requestAnimationFrame(tick);
     };
-    window.setTimeout(step, delay);
+    window.requestAnimationFrame(tick);
   });
 
   const applySuggestions = (suggestions) => {
@@ -296,10 +307,49 @@
     const descriptions = document.querySelectorAll('input[name*="[suggestions]"][name$="[description]"]');
     if (suggestions.length !== 3 || labels.length < 3 || descriptions.length < 3) throw new Error('The generated suggestions could not be applied.');
     return Promise.all(suggestions.flatMap((item, index) => [
-      typeInto(labels[index], item.label, index * 130),
-      typeInto(descriptions[index], item.description, index * 130 + 65)
+      typeInto(labels[index], item.label),
+      typeInto(descriptions[index], item.description)
     ]));
   };
+
+  /* Website instructions ---------------------------------------------------- */
+
+  const draftButton = document.getElementById('nika-generate-instructions');
+  const draftStatus = document.getElementById('nika-instructions-status');
+  const instructions = byName('instructions');
+  if (draftButton && draftStatus && instructions) {
+    const setDraftStatus = (message, type) => {
+      draftStatus.textContent = message;
+      draftStatus.className = `nika-generator-status${type ? ` is-${type}` : ''}`;
+    };
+    // Two-step confirm rather than a modal, which would block the whole page.
+    let armed = false;
+    draftButton.addEventListener('click', async () => {
+      if (instructions.value.trim() && !armed) {
+        armed = true;
+        setDraftStatus('This replaces the instructions already written here. Click Draft again to continue.', 'note');
+        window.setTimeout(() => { armed = false; }, 8000);
+        return;
+      }
+      armed = false;
+      draftButton.disabled = true;
+      draftButton.setAttribute('aria-busy', 'true');
+      setDraftStatus('Reading published content and drafting instructions.', 'loading');
+      try {
+        const response = await request(window.NikaAdmin.instructionsEndpoint, { method: 'POST', body: '{}' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'Instructions could not be drafted.');
+        await typeInto(instructions, String(data.instructions || ''));
+        setDraftStatus('Draft ready. Edit it to taste, then save changes.', 'success');
+        syncSavebar();
+      } catch (error) {
+        setDraftStatus(error.message || 'Instructions could not be drafted.', 'error');
+      } finally {
+        draftButton.disabled = false;
+        draftButton.removeAttribute('aria-busy');
+      }
+    });
+  }
 
   button.addEventListener('click', async () => {
     button.disabled = true;

@@ -1,12 +1,12 @@
 {
-  "version": "0.4.8",
-  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.8.zip",
+  "version": "0.4.9",
+  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.9.zip",
   "homepage": "https://abatchan.com/nika",
   "requires": "6.2",
   "requires_php": "7.4",
   "tested": "7.0.4",
   "sections": {
     "description": "A self-hosted, context-aware website guide with customer-owned AI billing and WordPress data.",
-    "changelog": "<h4>0.4.8</h4><ul><li>Accept the JSON shapes AI providers actually return when generating suggestions, and retry once before failing.</li><li>Give every settings control the same height.</li></ul>"
+    "changelog": "<h4>0.4.9</h4><ul><li>Never accept placeholder text such as ellipses as a generated suggestion.</li><li>Fill generated fields in one quick pass instead of one at a time.</li><li>Show progress while generating and while saving.</li><li>Draft website instructions from your published content.</li><li>Let the visitor guide hug its content before a conversation starts.</li></ul>"
   }
 }

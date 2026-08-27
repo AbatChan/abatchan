@@ -1,4 +1,4 @@
-# Nika Universal 0.4.8
+# Nika Universal 0.4.9
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go

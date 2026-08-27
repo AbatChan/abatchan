@@ -264,12 +264,18 @@
     launch.addEventListener('click', () => setOpen(true));
     close.addEventListener('click', () => setOpen(false));
 
+    // Before a conversation exists there is nothing to scroll, so the panel
+    // should hug its content instead of reserving a tall empty log.
+    const syncEmptyState = () => panel.classList.toggle('is-empty', !log.firstChild);
+    syncEmptyState();
+
     const message = (role, text) => {
       if (starters) starters.hidden = true;
       const node = document.createElement('div');
       node.className = `nika-message ${role}`;
       node.textContent = clean(text);
       log.append(node);
+      syncEmptyState();
       log.scrollTop = log.scrollHeight;
       return node;
     };
