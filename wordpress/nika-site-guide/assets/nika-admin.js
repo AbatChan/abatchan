@@ -116,13 +116,36 @@
   }
 
   if (keyCopy) {
+    // The clipboard is refused in insecure contexts, without focus, or by policy,
+    // so fall back to handing the administrator a selected key to copy themselves.
+    const offerManualCopy = (key) => {
+      if (!keyInput) return false;
+      const restore = keyInput.type;
+      keyInput.type = 'text';
+      keyInput.value = key;
+      keyInput.focus();
+      keyInput.setSelectionRange(0, key.length);
+      let copied = false;
+      try { copied = document.execCommand('copy'); } catch (error) { copied = false; }
+      if (copied) keyInput.type = restore === 'password' ? 'password' : 'text';
+      if (copied && restore === 'password') keyInput.value = '';
+      return copied;
+    };
+
     keyCopy.addEventListener('click', async () => {
+      let data;
       try {
-        const data = await fetchKey();
+        data = await fetchKey();
+      } catch (error) {
+        setKeyStatus(error.message || 'The saved key could not be read.', 'error');
+        return;
+      }
+      try {
         await navigator.clipboard.writeText(data.key);
         setKeyStatus('API key copied to the clipboard.', 'success');
       } catch (error) {
-        setKeyStatus(error.message || 'The key could not be copied.', 'error');
+        if (offerManualCopy(data.key)) setKeyStatus('API key copied to the clipboard.', 'success');
+        else setKeyStatus('This browser blocked the clipboard. The key is selected, so copy it with Ctrl or Cmd and C.', 'note');
       }
     });
   }

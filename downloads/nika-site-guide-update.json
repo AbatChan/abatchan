@@ -1,12 +1,12 @@
 {
-  "version": "0.4.5",
-  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.5.zip",
+  "version": "0.4.6",
+  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.6.zip",
   "homepage": "https://abatchan.com/nika",
   "requires": "6.2",
   "requires_php": "7.4",
   "tested": "7.0.4",
   "sections": {
     "description": "A self-hosted, context-aware website guide with customer-owned AI billing and WordPress data.",
-    "changelog": "<h4>0.4.5</h4><ul><li>Remember the provider model list so it is ready without asking again.</li><li>Explain the reload control and warn when provider changes are unsaved.</li><li>Show unsaved changes on the save bar.</li><li>Mask the saved API key and let an administrator reveal or copy it.</li><li>Hide the compatible endpoint and dictation language until they apply.</li></ul>"
+    "changelog": "<h4>0.4.6</h4><ul><li>Explain a blocked clipboard and select the key instead of showing a browser error.</li></ul>"
   }
 }
