@@ -1,12 +1,12 @@
 {
-  "version": "0.5.5",
-  "package": "https://abatchan.com/downloads/nika-site-guide-0.5.5.zip",
+  "version": "0.5.6",
+  "package": "https://abatchan.com/downloads/nika-site-guide-0.5.6.zip",
   "homepage": "https://abatchan.com/nika",
   "requires": "6.2",
   "requires_php": "7.4",
   "tested": "7.0.4",
   "sections": {
     "description": "A self-hosted, context-aware website guide with customer-owned AI billing and WordPress data.",
-    "changelog": "<h4>0.5.5</h4><ul><li>Fade the highlight on filled fields instead of leaving it stuck.</li></ul>"
+    "changelog": "<h4>0.5.6</h4><ul><li>Ask for shorter starter suggestions and shorten them at a readable boundary instead of mid-word.</li></ul>"
   }
 }

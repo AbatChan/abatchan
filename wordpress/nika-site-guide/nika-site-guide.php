@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.5.5
+ * Version:           0.5.6
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.5.5';
+const NIKA_VERSION = '0.5.6';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -381,6 +381,28 @@ function nika_clip( $text, $length ) {
 	return function_exists( 'mb_substr' ) ? mb_substr( $text, 0, $length ) : substr( $text, 0, $length );
 }
 
+function nika_strlen( $text ) {
+	return function_exists( 'mb_strlen' ) ? mb_strlen( $text ) : strlen( $text );
+}
+
+/**
+ * Shorten to a readable boundary rather than mid-word. Prefers the end of a
+ * sentence, then a clause, then a word, so a clipped line still reads.
+ */
+function nika_clip_phrase( $text, $length ) {
+	$text = trim( (string) $text );
+	if ( nika_strlen( $text ) <= $length ) return $text;
+	$cut = nika_clip( $text, $length );
+	$half = (int) floor( $length / 2 );
+	$sentence = max( strrpos( $cut, '.' ), strrpos( $cut, '!' ), strrpos( $cut, '?' ) );
+	if ( false !== $sentence && $sentence >= $half ) return trim( substr( $cut, 0, $sentence + 1 ) );
+	$clause = strrpos( $cut, ',' );
+	if ( false !== $clause && $clause >= $half ) return rtrim( substr( $cut, 0, $clause ), " ,;:-" );
+	$word = strrpos( $cut, ' ' );
+	if ( false !== $word ) return rtrim( substr( $cut, 0, $word ), " ,;:-" );
+	return $cut;
+}
+
 /**
  * Pull the first balanced JSON object or array out of a model reply, so a
  * sentence of preamble or a trailing note does not lose the whole response.
@@ -474,7 +496,7 @@ function nika_extract_suggestions( $raw ) {
 		$label = sanitize_text_field( $label );
 		$description = sanitize_text_field( $description );
 		if ( nika_is_placeholder_text( $label ) || nika_is_placeholder_text( $description ) ) continue;
-		$clean[] = array( 'label' => nika_clip( $label, 90 ), 'description' => nika_clip( $description, 120 ) );
+		$clean[] = array( 'label' => nika_clip_phrase( $label, 90 ), 'description' => nika_clip_phrase( $description, 120 ) );
 		if ( 3 === count( $clean ) ) break;
 	}
 	return $clean;
@@ -484,7 +506,7 @@ function nika_request_suggestions( $s, $provider, $key, $content, $strict ) {
 	$angles = array( 'services and choices', 'visitor goals and next steps', 'common questions and useful pages', 'trust, process, and practical details' );
 	$angle = $angles[ wp_rand( 0, count( $angles ) - 1 ) ];
 	$shape = 'Return JSON only, with no prose and no code fence: an object with a "suggestions" array holding exactly three objects, each with a "label" string and a "description" string. Write real sentences drawn from the content. Never return placeholder text, ellipses, or the words label or description as values.';
-	$prompt = "Create exactly three distinct starter questions for this website. Base them only on the published content below. Focus this variation on {$angle}. Each item needs a short label under 90 characters that works as the visitor's full question, and a supporting description under 120 characters. Avoid generic filler, repeated ideas, sales hype, and facts not present in the content. {$shape}";
+	$prompt = "Create exactly three distinct starter questions for this website. Base them only on the published content below. Focus this variation on {$angle}. Each item needs a short label of at most 70 characters that works as the visitor's full question, and one supporting sentence of at most 95 characters. Both must be complete, never trailing off. Avoid generic filler, repeated ideas, sales hype, and facts not present in the content. {$shape}";
 	if ( $strict ) $prompt = "All three items are required and every item needs both a label and a description. {$prompt}";
 	$prompt .= "\n\nPUBLISHED WEBSITE CONTENT:\n{$content}";
 	$messages = array(
