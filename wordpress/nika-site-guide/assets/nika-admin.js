@@ -286,6 +286,9 @@
     const finish = () => {
       input.value = text;
       input.classList.remove('is-typing');
+      // Hold the highlight briefly so it is obvious which fields just changed.
+      input.classList.add('is-filled');
+      window.setTimeout(() => input.classList.remove('is-filled'), 2600);
       input.dispatchEvent(new Event('input', { bubbles: true }));
       resolve();
     };
