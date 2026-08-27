@@ -184,6 +184,32 @@
       if (syncCustomMode()) modelCustom.focus();
     });
 
+    // A model list belongs to one provider, so switching provider resets it to
+    // that provider's default rather than leaving another provider's model behind.
+    const provider = byName('provider');
+    if (provider) {
+      provider.addEventListener('change', () => {
+        const fallback = (window.NikaAdmin.defaultModels || {})[provider.value] || '';
+        modelSelect.textContent = '';
+        if (fallback) {
+          const option = document.createElement('option');
+          option.value = fallback;
+          option.textContent = fallback;
+          modelSelect.appendChild(option);
+        }
+        const custom = document.createElement('option');
+        custom.value = CUSTOM;
+        custom.textContent = modelCustom.getAttribute('placeholder') || 'Custom model...';
+        modelSelect.appendChild(custom);
+        modelSelect.value = fallback || CUSTOM;
+        if (!fallback) modelCustom.value = '';
+        syncCustomMode();
+        setModelStatus(fallback
+          ? `Model reset to ${fallback} for this provider. Save, then reload the list.`
+          : 'Enter the model this endpoint expects, then save.', 'note');
+      });
+    }
+
     if (!modelSelect.querySelector(`option:not([value="${CUSTOM}"])`)) modelSelect.value = CUSTOM;
     syncCustomMode();
 

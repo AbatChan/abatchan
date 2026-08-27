@@ -1,12 +1,12 @@
 {
-  "version": "0.4.6",
-  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.6.zip",
+  "version": "0.4.7",
+  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.7.zip",
   "homepage": "https://abatchan.com/nika",
   "requires": "6.2",
   "requires_php": "7.4",
   "tested": "7.0.4",
   "sections": {
     "description": "A self-hosted, context-aware website guide with customer-owned AI billing and WordPress data.",
-    "changelog": "<h4>0.4.6</h4><ul><li>Explain a blocked clipboard and select the key instead of showing a browser error.</li></ul>"
+    "changelog": "<h4>0.4.7</h4><ul><li>Actually hide fields that do not apply to the selected provider.</li><li>Reset the model to the provider default when the provider changes.</li></ul>"
   }
 }

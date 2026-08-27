@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.4.6
+ * Version:           0.4.7
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.4.6';
+const NIKA_VERSION = '0.4.7';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -126,6 +126,7 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 		'suggestionsEndpoint' => rest_url( 'nika/v1/admin/suggestions' ),
 		'modelsEndpoint' => rest_url( 'nika/v1/admin/models' ),
 		'keyEndpoint' => rest_url( 'nika/v1/admin/key' ),
+		'defaultModels' => array( 'openai' => nika_default_model( 'openai' ), 'deepseek' => nika_default_model( 'deepseek' ), 'compatible' => nika_default_model( 'compatible' ) ),
 		'nonce' => wp_create_nonce( 'wp_rest' ),
 	) );
 } );
