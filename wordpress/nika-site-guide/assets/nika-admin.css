@@ -151,8 +151,14 @@
 .nika-model-status.is-error { color: #9f2d34; }
 .nika-model-status.is-success { color: #116b49; }
 .nika-model-status.is-note { color: #7a5a12; }
-input.is-typing, textarea.is-typing, input.is-filled, textarea.is-filled { border-color: var(--nika-indigo); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
-.nika-field input.is-filled, .nika-field textarea.is-filled { transition: border-color .5s ease, box-shadow .5s ease; }
+/* .nika-field input:not([type="color"]) is 0,2,1, so a bare input.is-filled loses.
+   Keep these at least as specific or the highlight silently does nothing. */
+.nika-admin .nika-field input.is-typing, .nika-admin .nika-field textarea.is-typing,
+.nika-admin .nika-field input.is-filled, .nika-admin .nika-field textarea.is-filled {
+  border-color: var(--nika-indigo);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.18);
+}
+.nika-admin .nika-field input.is-filled, .nika-admin .nika-field textarea.is-filled { transition: border-color .5s ease, box-shadow .5s ease; }
 .nika-admin [hidden] { display: none !important; }
 .nika-key { display: flex; align-items: stretch; gap: 8px; }
 .nika-key__input { flex: 1 1 auto; min-width: 0; letter-spacing: .04em; }

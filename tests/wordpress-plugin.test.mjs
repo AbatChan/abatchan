@@ -22,7 +22,7 @@ check('ships the canonical transparent white Abatchan admin icon',adminIcon.equa
 check('ships a responsive branded settings workspace',adminCss.includes('.nika-hero')&&adminCss.includes('.nika-shell')&&adminCss.includes('@media (max-width: 782px)'));
 check('offers automatic future WordPress update notices',php.includes('pre_set_site_transient_update_plugins')&&php.includes('NIKA_UPDATE_MANIFEST')&&php.includes("'plugins_api'"));
 check('update downloads are restricted to the trusted HTTPS host',php.includes("'https' !== ( $parts['scheme']")&&php.includes("'abatchan.com' !== strtolower"));
-check('published update manifest matches the plugin version',updateManifest.version==='0.5.3'&&updateManifest.package.endsWith('/nika-site-guide-0.5.3.zip')&&php.includes("const NIKA_VERSION = '0.5.3'"));
+check('published update manifest matches the plugin version',updateManifest.version==='0.5.4'&&updateManifest.package.endsWith('/nika-site-guide-0.5.4.zip')&&php.includes("const NIKA_VERSION = '0.5.4'"));
 check('a forced WordPress update check refetches the release manifest',php.includes("add_action( 'load-update-core.php'")&&php.includes("nika_forget_update_manifest")&&php.includes("delete_site_transient( 'nika_update_manifest_v1' )")&&php.includes("upgrader_process_complete"));
 check('model is a select that can be filled from the provider model list',php.includes("'/admin/models'")&&php.includes('nika_models_response')&&php.includes('nika_provider_models_url')&&php.includes('<select class="code" id="nika-model"')&&adminJs.includes('modelsEndpoint')&&adminJs.includes('fillModels'));
 check('a custom model can still be typed for compatible providers',php.includes('id="nika-model-custom"')&&php.includes('__custom__')&&adminJs.includes('syncCustomMode')&&adminJs.includes("modelCustom.setAttribute('name', fieldName)"));
@@ -50,7 +50,7 @@ check('placeholder echoes are never accepted as suggestions',php.includes('nika_
 check('suggestion fields fill together instead of one after another',adminJs.includes('const TYPE_MS = 420')&&adminJs.includes('requestAnimationFrame')&&!adminJs.includes('index * 130'));
 check('generating and saving both show they are working',adminJs.includes("submit.value = 'Saving...'")&&adminJs.includes('Saving your changes.')&&adminCss.includes('nika-sweep'));
 check('the generate icon does not spin, the status strip carries the motion',!adminCss.includes('.nika-generate[aria-busy="true"] .nika-generate__icon')&&adminCss.includes('.nika-iconbutton[aria-busy="true"] svg'));
-check('filled fields keep their highlight briefly',adminJs.includes("input.classList.add('is-filled')")&&adminJs.includes('2600')&&adminCss.includes('input.is-filled'));
+check('filled fields keep their highlight briefly',adminJs.includes("input.classList.add('is-filled')")&&adminJs.includes('2600')&&adminCss.includes('.nika-admin .nika-field input.is-filled'));
 check('website instructions can be drafted from published content',php.includes("'/admin/instructions'")&&php.includes('nika_generate_instructions_response')&&php.includes('id="nika-generate-instructions"')&&adminJs.includes('instructionsEndpoint'));
 check('replacing written instructions asks twice without a blocking dialog',adminJs.includes('Click Draft again to continue.')&&!adminJs.includes('window.confirm'));
 check('the widget stylesheet is versioned so upgrades are not served from cache',php.includes("add_query_arg( 'ver', NIKA_VERSION, plugin_dir_url( __FILE__ ) . 'assets/nika-widget.css' )"));
