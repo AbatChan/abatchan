@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.4.7
+ * Version:           0.4.8
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.4.7';
+const NIKA_VERSION = '0.4.8';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -375,6 +375,125 @@ function nika_models_response( $request ) {
 	return rest_ensure_response( array( 'models' => $models, 'cached' => false ) );
 }
 
+function nika_clip( $text, $length ) {
+	return function_exists( 'mb_substr' ) ? mb_substr( $text, 0, $length ) : substr( $text, 0, $length );
+}
+
+/**
+ * Pull the first balanced JSON object or array out of a model reply, so a
+ * sentence of preamble or a trailing note does not lose the whole response.
+ */
+function nika_json_slice( $text ) {
+	$length = strlen( $text );
+	for ( $start = 0; $start < $length; $start++ ) {
+		$opener = $text[ $start ];
+		if ( '{' !== $opener && '[' !== $opener ) continue;
+		$closer = '{' === $opener ? '}' : ']';
+		$depth = 0;
+		$in_string = false;
+		$escaped = false;
+		for ( $i = $start; $i < $length; $i++ ) {
+			$char = $text[ $i ];
+			if ( $in_string ) {
+				if ( $escaped ) { $escaped = false; continue; }
+				if ( '\\' === $char ) { $escaped = true; continue; }
+				if ( '"' === $char ) $in_string = false;
+				continue;
+			}
+			if ( '"' === $char ) { $in_string = true; continue; }
+			if ( $char === $opener ) $depth++;
+			elseif ( $char === $closer ) {
+				$depth--;
+				if ( 0 === $depth ) return substr( $text, $start, $i - $start + 1 );
+			}
+		}
+		break;
+	}
+	return '';
+}
+
+/**
+ * Models answer in several shapes. Accept the ones that carry the same meaning
+ * rather than insisting on one exact envelope.
+ */
+function nika_extract_suggestions( $raw ) {
+	$raw = trim( (string) $raw );
+	if ( '' === $raw ) return array();
+	$raw = preg_replace( '/```(?:json)?/i', '', $raw );
+	$decoded = json_decode( $raw, true );
+	if ( ! is_array( $decoded ) ) {
+		$slice = nika_json_slice( $raw );
+		if ( '' === $slice ) return array();
+		$decoded = json_decode( $slice, true );
+	}
+	if ( ! is_array( $decoded ) ) return array();
+
+	$items = array();
+	if ( isset( $decoded[0] ) && is_array( $decoded[0] ) ) {
+		$items = $decoded;
+	} else {
+		foreach ( array( 'suggestions', 'items', 'questions', 'starters', 'data', 'results' ) as $wrapper ) {
+			if ( isset( $decoded[ $wrapper ] ) && is_array( $decoded[ $wrapper ] ) ) { $items = $decoded[ $wrapper ]; break; }
+		}
+		if ( ! $items ) {
+			foreach ( $decoded as $value ) {
+				if ( is_array( $value ) && isset( $value[0] ) && is_array( $value[0] ) ) { $items = $value; break; }
+			}
+		}
+	}
+	if ( ! is_array( $items ) ) return array();
+
+	$label_keys = array( 'label', 'title', 'question', 'name', 'heading' );
+	$description_keys = array( 'description', 'supporting', 'supporting_text', 'subtitle', 'detail', 'details', 'summary' );
+	$clean = array();
+	foreach ( $items as $item ) {
+		if ( ! is_array( $item ) ) continue;
+		$label = '';
+		foreach ( $label_keys as $candidate ) {
+			if ( ! empty( $item[ $candidate ] ) && is_string( $item[ $candidate ] ) ) { $label = $item[ $candidate ]; break; }
+		}
+		$description = '';
+		foreach ( $description_keys as $candidate ) {
+			if ( ! empty( $item[ $candidate ] ) && is_string( $item[ $candidate ] ) ) { $description = $item[ $candidate ]; break; }
+		}
+		$label = sanitize_text_field( $label );
+		$description = sanitize_text_field( $description );
+		if ( '' === $label || '' === $description ) continue;
+		$clean[] = array( 'label' => nika_clip( $label, 90 ), 'description' => nika_clip( $description, 120 ) );
+		if ( 3 === count( $clean ) ) break;
+	}
+	return $clean;
+}
+
+function nika_request_suggestions( $s, $provider, $key, $content, $strict ) {
+	$angles = array( 'services and choices', 'visitor goals and next steps', 'common questions and useful pages', 'trust, process, and practical details' );
+	$angle = $angles[ wp_rand( 0, count( $angles ) - 1 ) ];
+	$shape = 'Return JSON only, with no prose and no code fence, in exactly this shape: {"suggestions":[{"label":"...","description":"..."},{"label":"...","description":"..."},{"label":"...","description":"..."}]}';
+	$prompt = "Create exactly three distinct starter questions for this website. Base them only on the published content below. Focus this variation on {$angle}. Each item needs a short label under 90 characters that works as the visitor's full question, and a supporting description under 120 characters. Avoid generic filler, repeated ideas, sales hype, and facts not present in the content. {$shape}";
+	if ( $strict ) $prompt = "All three items are required and every item needs both a label and a description. {$prompt}";
+	$prompt .= "\n\nPUBLISHED WEBSITE CONTENT:\n{$content}";
+	$payload = array(
+		'model' => $provider['model'],
+		'messages' => array(
+			array( 'role' => 'system', 'content' => 'You write concise, factual website starter questions. Return valid JSON only.' ),
+			array( 'role' => 'user', 'content' => $prompt ),
+		),
+		'temperature' => $strict ? 0.4 : 0.9,
+		'max_tokens' => 900,
+	);
+	if ( 'compatible' !== $s['provider'] ) $payload['response_format'] = array( 'type' => 'json_object' );
+	$response = wp_remote_post( $provider['url'], array( 'timeout' => 45, 'headers' => array( 'Authorization' => 'Bearer ' . $key, 'Content-Type' => 'application/json' ), 'body' => wp_json_encode( $payload ) ) );
+	if ( is_wp_error( $response ) ) return new WP_Error( 'nika_upstream', __( 'Nika could not reach the configured AI provider.', 'nika-site-guide' ), array( 'status' => 502 ) );
+	if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'nika_upstream', __( 'The configured AI provider rejected the request. Check the API key, model, and provider settings.', 'nika-site-guide' ), array( 'status' => 502 ) );
+	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	$message = $data['choices'][0]['message'] ?? array();
+	$generated = '';
+	foreach ( array( 'content', 'reasoning_content', 'text' ) as $field ) {
+		if ( ! empty( $message[ $field ] ) && is_string( $message[ $field ] ) ) { $generated = $message[ $field ]; break; }
+	}
+	return nika_extract_suggestions( $generated );
+}
+
 function nika_generate_suggestions_response() {
 	$s = nika_settings();
 	$key = defined( 'NIKA_AI_API_KEY' ) ? trim( (string) NIKA_AI_API_KEY ) : trim( (string) $s['api_key'] );
@@ -383,35 +502,27 @@ function nika_generate_suggestions_response() {
 	if ( ! $content ) return new WP_Error( 'nika_no_content', __( 'Publish some website content before generating suggestions.', 'nika-site-guide' ), array( 'status' => 422 ) );
 	$provider = nika_provider_details( $s );
 	if ( empty( $provider['url'] ) || empty( $provider['model'] ) ) return new WP_Error( 'nika_provider', __( 'Complete the AI provider settings before generating suggestions.', 'nika-site-guide' ), array( 'status' => 503 ) );
-	$angles = array( 'services and choices', 'visitor goals and next steps', 'common questions and useful pages', 'trust, process, and practical details' );
-	$angle = $angles[ wp_rand( 0, count( $angles ) - 1 ) ];
-	$prompt = "Create exactly three distinct starter questions for this website. Base them only on the published content below. Focus this variation on {$angle}. Each item needs a short label that works as the visitor's full question and a supporting description. Avoid generic filler, repeated ideas, sales hype, and facts not present in the content. Return JSON only in this shape: {\"suggestions\":[{\"label\":\"...\",\"description\":\"...\"}]}\n\nPUBLISHED WEBSITE CONTENT:\n{$content}";
-	$payload = array(
-		'model' => $provider['model'],
-		'messages' => array(
-			array( 'role' => 'system', 'content' => 'You write concise, factual website starter questions. Return valid JSON only.' ),
-			array( 'role' => 'user', 'content' => $prompt ),
-		),
-		'temperature' => 0.9,
-		'max_tokens' => 420,
-	);
-	if ( 'compatible' !== $s['provider'] ) $payload['response_format'] = array( 'type' => 'json_object' );
-	$response = wp_remote_post( $provider['url'], array( 'timeout' => 45, 'headers' => array( 'Authorization' => 'Bearer ' . $key, 'Content-Type' => 'application/json' ), 'body' => wp_json_encode( $payload ) ) );
-	if ( is_wp_error( $response ) ) return new WP_Error( 'nika_upstream', __( 'Nika could not reach the configured AI provider.', 'nika-site-guide' ), array( 'status' => 502 ) );
-	if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return new WP_Error( 'nika_upstream', __( 'The configured AI provider rejected the request. Check the API key, model, and provider settings.', 'nika-site-guide' ), array( 'status' => 502 ) );
-	$data = json_decode( wp_remote_retrieve_body( $response ), true );
-	$generated = trim( $data['choices'][0]['message']['content'] ?? '' );
-	$generated = preg_replace( '/^```(?:json)?\s*|\s*```$/i', '', $generated );
-	$result = json_decode( $generated, true );
-	$items = is_array( $result['suggestions'] ?? null ) ? array_slice( $result['suggestions'], 0, 3 ) : array();
-	$clean = array();
-	foreach ( $items as $item ) {
-		$label = sanitize_text_field( $item['label'] ?? '' );
-		$description = sanitize_text_field( $item['description'] ?? '' );
-		if ( ! $label || ! $description ) continue;
-		$clean[] = array( 'label' => substr( $label, 0, 90 ), 'description' => substr( $description, 0, 120 ) );
+
+	$clean = nika_request_suggestions( $s, $provider, $key, $content, false );
+	if ( is_wp_error( $clean ) ) return $clean;
+	if ( 3 !== count( $clean ) ) {
+		// One tighter retry before giving up, since a short reply is usually a stray shape.
+		$retry = nika_request_suggestions( $s, $provider, $key, $content, true );
+		if ( is_wp_error( $retry ) ) return $retry;
+		if ( count( $retry ) > count( $clean ) ) $clean = $retry;
 	}
-	if ( 3 !== count( $clean ) ) return new WP_Error( 'nika_generation', __( 'The AI provider returned incomplete suggestions. Try again.', 'nika-site-guide' ), array( 'status' => 502 ) );
+	if ( 3 !== count( $clean ) ) {
+		return new WP_Error(
+			'nika_generation',
+			sprintf(
+				/* translators: %1$s: model name, %2$d: number of usable suggestions returned. */
+				__( '%1$s returned %2$d usable suggestions instead of three. Try again, or pick a different model.', 'nika-site-guide' ),
+				$provider['model'],
+				count( $clean )
+			),
+			array( 'status' => 502 )
+		);
+	}
 	return rest_ensure_response( array( 'suggestions' => $clean ) );
 }
 

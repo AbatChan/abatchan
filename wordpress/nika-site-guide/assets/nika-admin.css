@@ -103,6 +103,9 @@
   border-radius: 10px;
   box-shadow: none;
   font-size: 14px;
+  /* WordPress gives admin selects a 38px line-height, which made them 58px tall
+     next to 44px inputs. One line-height keeps every control the same height. */
+  line-height: 1.4;
 }
 .nika-field textarea { min-height: 112px; resize: vertical; }
 .nika-field input:focus, .nika-field select:focus, .nika-field textarea:focus { border-color: var(--nika-indigo); box-shadow: 0 0 0 3px rgba(95,95,243,.13); outline: 0; }

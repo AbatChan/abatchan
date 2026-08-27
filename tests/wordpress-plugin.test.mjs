@@ -22,7 +22,7 @@ check('ships the canonical transparent white Abatchan admin icon',adminIcon.equa
 check('ships a responsive branded settings workspace',adminCss.includes('.nika-hero')&&adminCss.includes('.nika-shell')&&adminCss.includes('@media (max-width: 782px)'));
 check('offers automatic future WordPress update notices',php.includes('pre_set_site_transient_update_plugins')&&php.includes('NIKA_UPDATE_MANIFEST')&&php.includes("'plugins_api'"));
 check('update downloads are restricted to the trusted HTTPS host',php.includes("'https' !== ( $parts['scheme']")&&php.includes("'abatchan.com' !== strtolower"));
-check('published update manifest matches the plugin version',updateManifest.version==='0.4.7'&&updateManifest.package.endsWith('/nika-site-guide-0.4.7.zip')&&php.includes("const NIKA_VERSION = '0.4.7'"));
+check('published update manifest matches the plugin version',updateManifest.version==='0.4.8'&&updateManifest.package.endsWith('/nika-site-guide-0.4.8.zip')&&php.includes("const NIKA_VERSION = '0.4.8'"));
 check('a forced WordPress update check refetches the release manifest',php.includes("add_action( 'load-update-core.php'")&&php.includes("nika_forget_update_manifest")&&php.includes("delete_site_transient( 'nika_update_manifest_v1' )")&&php.includes("upgrader_process_complete"));
 check('model is a select that can be filled from the provider model list',php.includes("'/admin/models'")&&php.includes('nika_models_response')&&php.includes('nika_provider_models_url')&&php.includes('<select class="code" id="nika-model"')&&adminJs.includes('modelsEndpoint')&&adminJs.includes('fillModels'));
 check('a custom model can still be typed for compatible providers',php.includes('id="nika-model-custom"')&&php.includes('__custom__')&&adminJs.includes('syncCustomMode')&&adminJs.includes("modelCustom.setAttribute('name', fieldName)"));
@@ -41,6 +41,10 @@ check('the key is still never exposed to visitors',!php.match(/nika_config_respo
 check('a hidden conditional field is really hidden, not just flagged',adminCss.includes('.nika-admin [hidden] { display: none !important; }'));
 check('switching provider resets the model to that provider default',php.includes("'defaultModels' => array(")&&adminJs.includes('defaultModels')&&adminJs.includes('Model reset to'));
 check('fields that depend on another choice are hidden until it is made',php.includes('data-nika-when="provider" data-nika-equals="compatible"')&&php.includes('data-nika-when="dictation"')&&adminJs.includes('syncConditionals'));
+check('suggestion parsing accepts the shapes models actually return',php.includes('nika_extract_suggestions')&&php.includes('nika_json_slice')&&php.includes("'suggestions', 'items', 'questions', 'starters', 'data', 'results'")&&php.includes("'label', 'title', 'question', 'name', 'heading'"));
+check('a short suggestion reply is retried once before failing',php.includes('nika_request_suggestions( $s, $provider, $key, $content, true )')&&php.includes("'max_tokens' => 900"));
+check('an incomplete generation says how many came back and from which model',php.includes('returned %2$d usable suggestions instead of three')&&php.includes("\$provider['model']"));
+check('form controls share one height instead of selects standing taller',adminCss.includes('line-height: 1.4;')&&adminCss.includes('WordPress gives admin selects a 38px line-height'));
 check('menu icon stays bounded with a WordPress-sized label gap',php.includes("wp_add_inline_style(")&&php.includes("width:20px;height:20px")&&php.includes("margin:7px 0 0;")&&php.includes("object-fit:contain"));
 check('save confirmation clears the header actions and dismisses itself',adminCss.includes('--wp-admin--admin-bar--height')&&adminCss.includes('.nika-feedback {')&&!adminCss.includes('.nika-feedback { position: fixed; z-index: 100100; top: 46px')&&adminJs.includes('setTimeout')&&adminJs.includes('feedback.remove()'));
 check('admin copy avoids decorative AI-style punctuation',!adminPage.includes('—')&&!adminPage.match(/\b0[1-9]\s*[·:]/)&&!adminPage.includes('◈')&&!adminPage.includes('↗'));
@@ -52,7 +56,7 @@ check('visitor IP is hashed before storage',php.includes("hash_hmac( 'sha256', $
 check('customer controls visitor and site budgets',php.includes("'hourly_limit'")&&php.includes("'daily_limit'")&&php.includes("'site_daily'"));
 check('customer controls features and appearance',php.includes("'navigation'")&&php.includes("'dictation'")&&php.includes("'accent'")&&php.includes("'position'"));
 check('customer controls pre-chat starter suggestions',php.includes('nika_sanitize_suggestions')&&php.includes("'suggestions' => $s['suggestions']")&&!php.includes("'greeting' =>"));
-check('admin can generate fresh suggestions from published content',php.includes("'/admin/suggestions'")&&php.includes('nika_generate_suggestions_response')&&php.includes('nika_site_index()')&&php.includes("'temperature' => 0.9"));
+check('admin can generate fresh suggestions from published content',php.includes("'/admin/suggestions'")&&php.includes('nika_generate_suggestions_response')&&php.includes('nika_site_index()')&&php.includes("'temperature' => $strict ? 0.4 : 0.9"));
 check('suggestion generation requires administrator permission',php.includes("current_user_can( 'manage_options' )"));
 check('suggestion generation reports missing keys and provider failures',php.includes('Add an AI API key before generating suggestions.')&&php.includes('Check the API key, model, and provider settings.'));
 check('generated suggestions require review before saving',adminJs.includes('Review them, then save changes.')&&adminJs.includes("X-WP-Nonce")&&adminJs.includes("role', type === 'error' ? 'alert' : 'status'"));
