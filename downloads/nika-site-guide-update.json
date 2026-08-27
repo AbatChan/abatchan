@@ -1,12 +1,12 @@
 {
-  "version": "0.4.0",
-  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.0.zip",
+  "version": "0.4.1",
+  "package": "https://abatchan.com/downloads/nika-site-guide-0.4.1.zip",
   "homepage": "https://abatchan.com/nika",
   "requires": "6.2",
   "requires_php": "7.4",
   "tested": "7.0.4",
   "sections": {
     "description": "A self-hosted, context-aware website guide with customer-owned AI billing and WordPress data.",
-    "changelog": "<h4>0.4.0</h4><ul><li>Centre the Nika menu icon so it matches the spacing of every other WordPress menu item.</li><li>Keep the save confirmation clear of the header buttons and dismiss it automatically.</li></ul>"
+    "changelog": "<h4>0.4.1</h4><ul><li>Check for a new Nika release immediately when WordPress is asked to check again, instead of waiting up to six hours.</li></ul><h4>0.4.0</h4><ul><li>Centre the Nika menu icon so it matches the spacing of every other WordPress menu item.</li><li>Keep the save confirmation clear of the header buttons and dismiss it automatically.</li></ul>"
   }
 }
