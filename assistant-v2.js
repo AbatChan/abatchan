@@ -1378,6 +1378,10 @@
         };
         revealResult=revealTarget(url,journey.label,journey.section_requested===true);
         formResult=prepareProjectForm(journey);
+        // On phones the sheet fills the viewport. Minimize it after a verified
+        // same-page action as well, otherwise the visitor cannot see the exact
+        // section or card Nika just scrolled to and highlighted.
+        if(matchMedia('(max-width:640px)').matches&&panel.classList.contains('is-open'))launch.click();
         whenScrollSettled(arrive);
         // Hard ceiling only, for a scroll that never settles.
         ceiling=setTimeout(arrive,900);

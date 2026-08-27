@@ -59,6 +59,7 @@ check('one timer clears the complete guidance state',assistant.includes('guidanc
 
 console.log('\n=== mobile cross-page arrival keeps the target visible ===');
 check('phone handoff stays minimized',assistant.includes("const keepPageVisible=matchMedia('(max-width:640px)').matches")&&assistant.includes("if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click()"));
+check('phone same-page guidance minimizes the full-height sheet',assistant.includes("if(matchMedia('(max-width:640px)').matches&&panel.classList.contains('is-open'))launch.click()"));
 
 console.log('\n=== viewport context includes automatic hero targets ===');
 check('top-level hero headings can win the active-section resolver',assistant.includes('main h1[id],main h2[id],main h3[id],main [data-assist-target][id]'));

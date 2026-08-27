@@ -319,6 +319,10 @@
           status.textContent = clean(result.action.departure) || `Opening ${clean(result.action.label) || 'that section'}...`;
           setTimeout(() => {
             const outcome = navigate(result.action, pages, accent);
+            // The mobile panel fills nearly the whole viewport. Once a
+            // same-page action is verified, reveal the highlighted target and
+            // keep the completed reply in history for when the visitor reopens.
+            if (outcome.ok && outcome.samePage && matchMedia('(max-width:520px)').matches) setOpen(false);
             if (!outcome.ok && outcome.samePage) status.textContent = 'I found more than one matching section, so I did not guess. Use the page links or ask for a more specific heading.';
           }, 550);
         } else status.textContent = '';

@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const version = '0.3.3';
+const version = '0.3.4';
 const core = join(root, 'products', 'nika-core');
 const wordpress = join(root, 'wordpress', 'nika-site-guide');
 const universal = join(root, 'universal', 'nika-universal');

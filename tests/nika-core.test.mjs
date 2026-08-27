@@ -39,6 +39,7 @@ check('the viewport focus band outranks a merely large visible section',widget.i
 check('customer can choose accent and side',widget.includes("style.setProperty('--nika', accent)")&&widget.includes("settings.position === 'left'"));
 check('isolates its interface with Shadow DOM',widget.includes("attachShadow({ mode: 'open' })"));
 check('includes responsive styling',css.includes('@media(max-width:520px)'));
+check('mobile navigation reveals the highlighted page target',widget.includes("outcome.ok && outcome.samePage && matchMedia('(max-width:520px)').matches")&&widget.includes('setOpen(false)'));
 
 if(failed)process.exit(1);
 console.log('\nall passed');
