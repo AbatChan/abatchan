@@ -6,6 +6,7 @@
   const feedback = document.querySelector('.nika-feedback');
   const dismissFeedback = document.querySelector('.nika-feedback__dismiss');
   if (dismissFeedback && feedback) dismissFeedback.addEventListener('click', () => feedback.remove());
+  if (feedback) window.setTimeout(() => feedback.remove(), 6000);
   if (!button || !status || !window.NikaAdmin) return;
 
   const setStatus = (message, type) => {

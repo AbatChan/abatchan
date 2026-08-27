@@ -22,8 +22,9 @@ check('ships the canonical transparent white Abatchan admin icon',adminIcon.equa
 check('ships a responsive branded settings workspace',adminCss.includes('.nika-hero')&&adminCss.includes('.nika-shell')&&adminCss.includes('@media (max-width: 782px)'));
 check('offers automatic future WordPress update notices',php.includes('pre_set_site_transient_update_plugins')&&php.includes('NIKA_UPDATE_MANIFEST')&&php.includes("'plugins_api'"));
 check('update downloads are restricted to the trusted HTTPS host',php.includes("'https' !== ( $parts['scheme']")&&php.includes("'abatchan.com' !== strtolower"));
-check('published update manifest matches the plugin version',updateManifest.version==='0.3.10'&&updateManifest.package.endsWith('/nika-site-guide-0.3.10.zip')&&php.includes("const NIKA_VERSION = '0.3.10'"));
-check('menu icon stays bounded with a WordPress-sized label gap',php.includes("wp_add_inline_style(")&&php.includes("width:20px;height:20px")&&php.includes("margin:6px 0 0 8px")&&php.includes("object-fit:contain"));
+check('published update manifest matches the plugin version',updateManifest.version==='0.4.0'&&updateManifest.package.endsWith('/nika-site-guide-0.4.0.zip')&&php.includes("const NIKA_VERSION = '0.4.0'"));
+check('menu icon stays bounded with a WordPress-sized label gap',php.includes("wp_add_inline_style(")&&php.includes("width:20px;height:20px")&&php.includes("margin:7px 0 0;")&&php.includes("object-fit:contain"));
+check('save confirmation clears the header actions and dismisses itself',adminCss.includes('--wp-admin--admin-bar--height')&&adminCss.includes('.nika-feedback {')&&!adminCss.includes('.nika-feedback { position: fixed; z-index: 100100; top: 46px')&&adminJs.includes('setTimeout')&&adminJs.includes('feedback.remove()'));
 check('admin copy avoids decorative AI-style punctuation',!adminPage.includes('—')&&!adminPage.match(/\b0[1-9]\s*[·:]/)&&!adminPage.includes('◈')&&!adminPage.includes('↗'));
 check('legacy Settings links redirect to the standalone Nika workspace',php.includes("'options-general.php' !== $pagenow")&&php.includes("admin_url( 'admin.php?page=nika-site-guide' )"));
 check('third-party notices cannot break the branded hero',adminCss.includes('.nika-hero__copy > .notice')&&adminCss.includes('#wpbody-content > .pms-cross-promo'));

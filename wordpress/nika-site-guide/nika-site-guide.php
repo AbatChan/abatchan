@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           0.3.10
+ * Version:           0.4.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '0.3.10';
+const NIKA_VERSION = '0.4.0';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -112,7 +112,7 @@ add_action( 'admin_menu', function () {
 add_action( 'admin_enqueue_scripts', function ( $hook ) {
 	wp_add_inline_style(
 		'dashicons',
-		'#adminmenu .toplevel_page_nika-site-guide .wp-menu-image img{box-sizing:border-box;width:20px;height:20px;object-fit:contain;margin:6px 0 0 8px;padding:0;opacity:.9}#adminmenu .toplevel_page_nika-site-guide.current .wp-menu-image img,#adminmenu .toplevel_page_nika-site-guide:hover .wp-menu-image img{opacity:1}'
+		'#adminmenu .toplevel_page_nika-site-guide .wp-menu-image img{box-sizing:border-box;width:20px;height:20px;object-fit:contain;margin:7px 0 0;padding:0;opacity:.9}#adminmenu .toplevel_page_nika-site-guide.current .wp-menu-image img,#adminmenu .toplevel_page_nika-site-guide:hover .wp-menu-image img{opacity:1}'
 	);
 	if ( 'toplevel_page_nika-site-guide' !== $hook ) return;
 	wp_enqueue_style( 'nika-admin', plugin_dir_url( __FILE__ ) . 'assets/nika-admin.css', array(), NIKA_VERSION );

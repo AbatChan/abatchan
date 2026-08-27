@@ -4,7 +4,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const version = '0.3.10';
+const version = '0.4.0';
+
+// Versions iterate in .9s: the patch digit runs 0-9, then the minor rolls over.
+// 0.3.9 is followed by 0.4.0, never 0.3.10.
+const parts = version.split('.').map(Number);
+if (parts.length !== 3 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 9)) {
+  throw new Error(`Version ${version} must be three digits, each 0-9. After x.y.9 comes x.(y+1).0.`);
+}
 const core = join(root, 'products', 'nika-core');
 const brandAssets = join(root, 'assets');
 const wordpress = join(root, 'wordpress', 'nika-site-guide');

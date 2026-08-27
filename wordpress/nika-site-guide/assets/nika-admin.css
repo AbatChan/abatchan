@@ -25,7 +25,7 @@
 }
 .nika-admin *, .nika-admin *::before, .nika-admin *::after { box-sizing: border-box; }
 .nika-admin h1, .nika-admin h2, .nika-admin h3, .nika-admin p { margin-top: 0; }
-.nika-feedback { position: fixed; z-index: 100100; top: 46px; right: 22px; width: min(360px, calc(100vw - 44px)); margin: 0; padding: 0; }
+.nika-feedback { position: fixed; z-index: 100100; top: calc(var(--wp-admin--admin-bar--height, 32px) + 84px); right: 22px; width: min(360px, calc(100vw - 44px)); margin: 0; padding: 0; }
 .nika-feedback:empty { display: none; }
 .nika-feedback__message { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 48px; padding: 12px 14px 12px 16px; color: #fff; background: #176b4b; border: 0; border-radius: 10px; box-shadow: 0 10px 28px rgba(15,25,21,.24); }
 .nika-feedback__dismiss { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; color: rgba(255,255,255,.78); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: 22px; line-height: 1; }
