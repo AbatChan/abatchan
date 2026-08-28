@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.5.7
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,68 @@ No. Version 0.2.0 is read-only and does not submit forms, access user accounts, 
 The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 1.0.2 =
+* Add a Custom CSS section for anything the settings do not cover. Your rules load inside the guide only.
+* Collapse settings sections you are not using; the page remembers which.
+* The IP check moved onto its field, with a shorter label and a tooltip.
+* Your colour choices are used exactly as you set them. A hard-to-read combination is flagged with a one-click fix rather than being changed for you.
+* Whatever colours you choose, the guide stays readable: text, icons, borders, menus and code blocks all follow your panel.
+* A colour adjusted for contrast is shown back in the field that set it, so the box and the widget always agree.
+* The composer icons now take the colour you choose, and the guide stays readable if you set a light panel.
+* Answers reveal at a readable pace even when the provider sends them in bursts.
+* Match the guide to your theme in one click, using the colour palette your theme already defines.
+* Text and icon colours are editable, alongside the scrollbar and bubble shadow.
+* Set the scrollbar and bubble shadow colours, and reset the whole appearance to a fresh install's look in one click.
+* Answers now stream in as the provider writes them, instead of appearing whole and then retyping themselves.
+* Fix the send and stop icons, which looked broken because the guide was loading them from the site root rather than from the plugin.
+
+= 0.8.9 =
+* Every appearance setting applies to the guide as you type it, including position and the bubble icon size.
+* All settings controls line up at one height, and the opacity slider fills to its value.
+* Set the panel colour and opacity, both bubble gradient colours, the header logo and bubble icon sizes, and the note under the message box.
+* Preview each mark on the surface it lands on: the panel header, or the accent bubble itself.
+* The preview now answers as the assistant you are configuring, before you save.
+
+= 0.8.2 =
+* Ship the guide from abatchan.com itself: the same shell, widget, stylesheet and icons the designed-for site runs, rather than a smaller copy of it.
+* Adds attachments, streamed answers with a typing indicator, formatted replies, per-message feedback, and the site's own suggestion icons.
+* The guide is isolated from the theme it lands in, so it renders the same on any site.
+* Answers describe the page the visitor is actually on.
+
+= 0.7.0 =
+* Try Nika on the settings page itself: the real widget floats there and answers for administrators while the site stays hidden from visitors.
+* Every setting applies to it as you type, with no save and no reload: name, placeholder, colour, position, logo, bubble icon and starter suggestions.
+* Keep the accent hex beside the swatch in step with the picker.
+* Show a transparency checkerboard behind the image previews so a white mark stays visible.
+
+= 0.6.4 =
+* Make the image picker button visible on the settings card.
+
+= 0.6.3 =
+* Choose your own header logo and bubble icon from the media library, or leave them empty to keep the bundled mark.
+
+= 0.6.2 =
+* Keep answering after the first question: a past reply is now replayed to the provider in the same JSON envelope it must produce, instead of leaving the second question unanswered.
+
+= 0.6.1 =
+* Recover the answer when a provider replies in an unexpected JSON shape or stops at the token ceiling, instead of dead-ending Detailed answers.
+* Offer the navigation the model proposed even when it returned no prose with it.
+
+= 0.6.0 =
+* Send with Enter and start a new line with Shift+Enter, matching the canonical composer.
+* Highlight the requested section after arrival when the server adds a trailing slash to the address.
+
+= 0.5.9 =
+* Match the canonical visitor composer across WordPress and Universal installs.
+* Add Ask first, Allow actions, Concise, and Detailed modes.
+* Keep conversations through approved cross-page navigation and retry late page-builder targets.
+* Preserve compound current-page questions instead of dropping the second request.
+
+= 0.5.8 =
+* Match the polished Nika visitor design across WordPress and Universal installs.
+* Let administrators exempt testing and demo connections from request limits.
+* Keep permanent WordPress exemptions in NIKA_EXEMPT_IPS and generate Universal drafts without exposing the server key.
 
 = 0.5.7 =
 * Clear Nika's release cache before WordPress runs a forced plugin update check.

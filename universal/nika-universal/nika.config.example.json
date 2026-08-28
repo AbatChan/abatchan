@@ -17,6 +17,7 @@
   "historyTurns": 10,
   "hourlyLimit": 20,
   "dailyLimit": 500,
+  "exemptIps": [],
   "temperature": 0.2,
   "maxTokens": 900,
   "excludedPaths": ["/privacy", "/account"]

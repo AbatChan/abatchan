@@ -12,10 +12,10 @@ const suites = [
   'prompt.test.mjs',
   'tenant-store.test.mjs',
   'wordpress-plugin.test.mjs',
-  'nika-core.test.mjs',
   'context-awareness.test.mjs',
   'site-index.test.mjs',
-  'nika-universal.test.mjs'
+  'nika-universal.test.mjs',
+  'answer-extraction.test.mjs'
 ];
 
 let failed = false;

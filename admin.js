@@ -997,6 +997,40 @@
     }
   });
 
+  async function generateAssistantDraft(kind, button, status) {
+    pending(button, true, kind === 'suggestions' ? 'generating' : 'drafting');
+    status.textContent = kind === 'suggestions'
+      ? 'Reading official Abatchan content and creating three suggestions.'
+      : 'Reading official Abatchan content and drafting instructions.';
+    try {
+      const response = await fetch('/api/admin-assistant-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sb.session.token || ''}` },
+        body: JSON.stringify({ kind, model: q('#a-model').value.trim() })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error?.message || 'The draft could not be generated.');
+      if (kind === 'suggestions') {
+        paintSuggestions(data.suggestions);
+        status.textContent = 'New suggestions are ready. Review them, then save changes.';
+      } else {
+        q('#a-system').value = String(data.instructions || '');
+        q('#a-system').dispatchEvent(new Event('input', { bubbles: true }));
+        status.textContent = 'Draft ready. Review it, then save changes.';
+      }
+      dirty.add('assistant');
+      saveState(q('#saveAssistant'), true);
+    } catch (err) {
+      status.textContent = err.message;
+      toast(err.message, true);
+    } finally {
+      pending(button, false);
+    }
+  }
+
+  q('#generateAssistantSuggestions').addEventListener('click', event => generateAssistantDraft('suggestions', event.currentTarget, q('#a-suggestions-status')));
+  q('#draftAssistantInstructions').addEventListener('click', event => generateAssistantDraft('instructions', event.currentTarget, q('#a-instructions-status')));
+
   q('#testAssistant').addEventListener('click', async () => {
     const message = q('#a-test').value.trim();
     if (!message) return q('#a-test').focus();

@@ -1,4 +1,4 @@
-# Nika Universal 0.5.7
+# Nika Universal 0.5.8
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go
@@ -17,16 +17,17 @@ the API key, prompts, or visitor conversations.
    `npm start`.
 6. Reverse-proxy `/nika/*` on your website to local port 8787.
 
+Then open `/nika/admin` on the website and enter `NIKA_ADMIN_TOKEN`. This clean
+settings page edits `nika.config.json`, so that file must be writable by the
+Nika process. Provider, model, endpoint, and API key remain server-managed in
+`.env`; the admin page reports their status but never receives the key. The
+Generate and Draft buttons call the configured provider from the server and
+return a clear setup error when the provider, key, model, or indexed content is missing.
+
 Add this before the closing `</body>` tag:
 
 ```html
-<script>
-  window.NikaConfig = {
-    endpoint: "/nika",
-    stylesheet: "/nika/nika-widget.css"
-  };
-</script>
-<script src="/nika/nika-widget.js" defer></script>
+<script src="/nika/nika.js" defer></script>
 ```
 
 The API key must stay in `.env`; never place it in HTML or `NikaConfig`.
@@ -59,6 +60,10 @@ content changes, or replace it with your own CMS/export workflow.
 paths, navigation/highlighting, microphone dictation and language, accent,
 left/right position, context size, session-history length, visitor hourly budget,
 whole-site daily budget, response temperature, and response-token budget (400 to 4000; 900 by default). Nika is instructed to finish each point cleanly and omit lower-priority detail rather than end mid-answer.
+
+Testing and demo connections may be added under **Connections not counted** in the
+admin page. They skip both request limits. `NIKA_EXEMPT_IPS` can set permanent
+server-managed exemptions that the browser admin cannot remove.
 
 Nika captures the live route, title, main heading, visible section and rendered
 page text again for every question. This works for newly deployed pages before

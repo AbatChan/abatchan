@@ -1,10 +1,10 @@
-import { cpSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const version = '0.5.7';
+const version = '1.0.2';
 
 // Versions iterate in .9s: the patch digit runs 0-9, then the minor rolls over.
 // 0.3.9 is followed by 0.4.0, never 0.3.10.
@@ -12,7 +12,6 @@ const parts = version.split('.').map(Number);
 if (parts.length !== 3 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 9)) {
   throw new Error(`Version ${version} must be three digits, each 0-9. After x.y.9 comes x.(y+1).0.`);
 }
-const core = join(root, 'products', 'nika-core');
 const brandAssets = join(root, 'assets');
 const wordpress = join(root, 'wordpress', 'nika-site-guide');
 const universal = join(root, 'universal', 'nika-universal');
@@ -21,11 +20,28 @@ const downloads = join(root, 'downloads');
 mkdirSync(join(wordpress, 'assets'), { recursive: true });
 mkdirSync(join(universal, 'public'), { recursive: true });
 mkdirSync(downloads, { recursive: true });
-for (const name of ['nika-widget.js', 'nika-widget.css']) {
-  cpSync(join(core, name), join(wordpress, 'assets', name));
-  cpSync(join(core, name), join(universal, 'public', name));
+// The guide a customer installs is the guide this site runs. These files are
+// copied, never rewritten, so the packaged experience cannot drift from the one
+// the design was made for; tests assert the copies stay byte-identical.
+const guideFiles = ['guide-shell.js', 'assistant-v2.js', 'assistant.css'];
+const guideIcons = [
+  'alert-circle.svg', 'arrow-up.svg', 'chevron-down.svg', 'file-description.svg', 'microphone.svg',
+  'photo.svg', 'plus.svg', 'shield-check.svg', 'square.svg',
+  'suggestion-capabilities.svg', 'suggestion-process.svg', 'suggestion-work.svg', 'x.svg'
+];
+// Pinned bytes, served from the customer's own domain rather than a CDN, for
+// the same reason this site pins them: they render model output.
+const guideVendor = ['marked-15.0.12.min.js', 'purify-3.4.7.min.js'];
+
+for (const target of [join(wordpress, 'assets'), join(universal, 'public')]) {
+  mkdirSync(join(target, 'assets', 'icons'), { recursive: true });
+  mkdirSync(join(target, 'assets', 'vendor'), { recursive: true });
+  for (const name of guideFiles) cpSync(join(root, name), join(target, name));
+  for (const name of guideIcons) cpSync(join(root, 'assets', 'icons', name), join(target, 'assets', 'icons', name));
+  for (const name of guideVendor) cpSync(join(root, 'assets', 'vendor', name), join(target, 'assets', 'vendor', name));
 }
 cpSync(join(brandAssets, 'abatchan-symbol-white-tight-504x308.png'), join(wordpress, 'assets', 'nika-admin-icon.png'));
+cpSync(join(brandAssets, 'abatchan-symbol-white-tight-504x308.png'), join(universal, 'public', 'nika-logo.png'));
 
 const plugin = readFileSync(join(wordpress, 'nika-site-guide.php'), 'utf8');
 const pkg = JSON.parse(readFileSync(join(universal, 'package.json'), 'utf8'));
@@ -42,7 +58,7 @@ const artifacts = [
 ];
 for (const artifact of artifacts) {
   const destination = join(downloads, artifact.output);
-  rmSync(destination, { force: true });
+  if (existsSync(destination)) throw new Error(`Refusing to overwrite immutable release ${artifact.output}. Bump the version first.`);
   const zip = spawnSync('zip', ['-q', '-r', destination, artifact.source, '-x', '*/data/*', '*/.env', '*.DS_Store'], { cwd: artifact.cwd, stdio: 'inherit' });
   if (zip.status !== 0) throw new Error(`Could not build ${artifact.output}. Install the zip command and retry.`);
   console.log(`built downloads/${artifact.output}`);

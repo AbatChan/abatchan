@@ -137,45 +137,15 @@
     </section>
 
     <!-- assistant -->
-    <section id="view-assistant" class="adm-hide">
-      <div class="adm-head"><h2>Assistant</h2><button class="btn primary sm" id="saveAssistant" type="button">save <span class="arrow">↗</span></button></div>
-      <p class="adm-sub">The chat bubble on the site. Behaviour and starter suggestions are editable here.</p>
-      <form class="adm-form" id="assistantForm">
-        <label class="adm-switch"><input type="checkbox" id="a-enabled"><span class="adm-switch-track" aria-hidden="true"></span><span>show the assistant on the site</span></label>
-        <fieldset class="adm-suggestions">
-          <legend>starter suggestions</legend>
-          <p class="adm-field-help">Shown only before the visitor sends their first message. The title is also the question Nika receives.</p>
-          <div class="adm-suggestion-row"><span>1</span><div><label for="a-suggestion-1-label">title</label><input id="a-suggestion-1-label" type="text" maxlength="90" placeholder="Find the right service"></div><div><label for="a-suggestion-1-description">supporting text</label><input id="a-suggestion-1-description" type="text" maxlength="120" placeholder="See what fits your needs"></div></div>
-          <div class="adm-suggestion-row"><span>2</span><div><label for="a-suggestion-2-label">title</label><input id="a-suggestion-2-label" type="text" maxlength="90" placeholder="How does it work?"></div><div><label for="a-suggestion-2-description">supporting text</label><input id="a-suggestion-2-description" type="text" maxlength="120" placeholder="Review the process"></div></div>
-          <div class="adm-suggestion-row"><span>3</span><div><label for="a-suggestion-3-label">title</label><input id="a-suggestion-3-label" type="text" maxlength="90" placeholder="Compare the options"></div><div><label for="a-suggestion-3-description">supporting text</label><input id="a-suggestion-3-description" type="text" maxlength="120" placeholder="See plans or packages"></div></div>
-        </fieldset>
-        <div><label for="a-system">system prompt</label><textarea id="a-system" style="min-height:180px"></textarea></div>
-        <div><label for="a-model">model</label><input type="text" id="a-model" placeholder="deepseek-v4-flash"></div>
-        <div>
-          <label for="a-exempt">connections that do not count</label>
-          <textarea id="a-exempt" style="min-height:80px" placeholder="102.89.82.178"></textarea>
-          <p class="adm-field-help">One IP address per line, or separated by commas. These skip the daily limit entirely, so your own testing and demos do not spend what visitors need. Addresses set in Vercel are always exempt and cannot be removed here. Changes take effect within a minute.</p>
-          <div class="adm-ip-checker">
-            <div class="adm-ip-actions">
-              <button class="btn sm" id="checkAssistantIp" type="button">check my current IP</button>
-              <button class="btn sm" id="addAssistantIp" type="button" hidden>add to list</button>
-            </div>
-            <p class="adm-field-help" id="a-ip-status" role="status" aria-live="polite">Check the public IP this browser is using before adding an exemption.</p>
-          </div>
-        </div>
-        <div class="adm-note">
-          <b>What the guide does, and does not do.</b><br>
-          It knows the visitor’s current page, visible section, published work, pricing, process and how to contact Abat. It can offer verified same-site buttons, carry the conversation across pages, scroll to the exact section and briefly highlight it. It never submits a form or takes an external action for the visitor. Page text is treated as untrusted context, never as instructions. It cannot access accounts, take payments, send messages, reveal private settings, provide code or hacking help, or make binding promises. Those boundaries are fixed in the server and cannot be weakened by this prompt. Rate limits and model failures automatically show visitors a retry action and a contact-support button.
-        </div>
-        <div class="adm-note">
-          <b>The API key is not set here, on purpose.</b><br>
-          Public settings are readable with the publishable key, while the system prompt stays behind row-level security. The DeepSeek key lives as <code>DEEPSEEK_API_KEY</code> in Vercel → Settings → Environment Variables, where only <code>/api/chat-stream</code> can read it. Never paste a secret into this dashboard.
-        </div>
-        <div class="adm-assistant-test">
-          <label for="a-test">test one message</label>
-          <div class="adm-test"><input type="text" id="a-test" placeholder="What do you build?"><button class="btn sm" id="testAssistant" type="button">send</button></div>
-          <div class="adm-note adm-test-output" id="a-test-output">The reply will appear here.</div>
-        </div>
+    <section id="view-assistant" class="adm-hide nika-local-admin">
+      <header class="nika-local-hero"><div class="nika-local-brand"><img src="/assets/abatchan-symbol-white-tight-504x308.png" alt=""><span>Nika</span></div><p>Abatchan settings</p><h2>Set up Nika for this website.</h2><span>Choose what Nika knows, how it appears, and which connections use the visitor budget.</span></header>
+      <form class="adm-form nika-local-shell" id="assistantForm">
+        <section class="nika-local-card nika-local-launch"><div><small>Visibility</small><h3>Show Nika on the website</h3><p>Keep it hidden while you configure and test.</p></div><label class="adm-switch"><input type="checkbox" id="a-enabled"><span class="adm-switch-track" aria-hidden="true"></span><span>visible</span></label></section>
+        <section class="nika-local-card"><div class="nika-local-card-head"><div><small>New conversations</small><h3>Starter suggestions</h3><p>Visitors see these before their first message. Each title becomes the question.</p></div><button class="btn sm" id="generateAssistantSuggestions" type="button">generate with AI</button></div><fieldset class="adm-suggestions"><div class="adm-suggestion-row"><span>1</span><div><label for="a-suggestion-1-label">title</label><input id="a-suggestion-1-label" type="text" maxlength="90" placeholder="Find the right service"></div><div><label for="a-suggestion-1-description">supporting text</label><input id="a-suggestion-1-description" type="text" maxlength="120" placeholder="See what fits your needs"></div></div><div class="adm-suggestion-row"><span>2</span><div><label for="a-suggestion-2-label">title</label><input id="a-suggestion-2-label" type="text" maxlength="90" placeholder="How does it work?"></div><div><label for="a-suggestion-2-description">supporting text</label><input id="a-suggestion-2-description" type="text" maxlength="120" placeholder="Review the process"></div></div><div class="adm-suggestion-row"><span>3</span><div><label for="a-suggestion-3-label">title</label><input id="a-suggestion-3-label" type="text" maxlength="90" placeholder="Compare the options"></div><div><label for="a-suggestion-3-description">supporting text</label><input id="a-suggestion-3-description" type="text" maxlength="120" placeholder="See plans or packages"></div></div></fieldset><p class="adm-field-help" id="a-suggestions-status" role="status" aria-live="polite">Each click creates a new set from published Abatchan content.</p></section>
+        <section class="nika-local-card"><div class="nika-local-card-head"><div><small>Answers</small><h3>Server-managed AI and instructions</h3></div><b>API key stays in Vercel</b></div><div class="nika-local-provider"><span><small>Provider</small><strong>DeepSeek</strong></span><label for="a-model">Model<input type="text" id="a-model" placeholder="deepseek-v4-flash"></label></div><div class="nika-local-field-head"><label for="a-system">Website instructions</label><button class="btn sm" id="draftAssistantInstructions" type="button">draft with AI</button></div><textarea id="a-system" style="min-height:180px"></textarea><p class="adm-field-help" id="a-instructions-status" role="status" aria-live="polite">The secret stays in <code>DEEPSEEK_API_KEY</code>. This dashboard never reads or exposes it.</p></section>
+        <section class="nika-local-card"><small>Limits</small><h3>Connections not counted</h3><p>Testing and demo IPs skip visitor limits. Addresses in Vercel always stay exempt.</p><label for="a-exempt">IP addresses</label><textarea id="a-exempt" style="min-height:104px" placeholder="203.0.113.24"></textarea><p class="adm-field-help">One per line or comma-separated. Changes take effect within a minute.</p><div class="adm-ip-checker"><div class="adm-ip-actions"><button class="btn sm" id="checkAssistantIp" type="button">check current IP</button><button class="btn sm" id="addAssistantIp" type="button" hidden>add to list</button></div><p class="adm-field-help" id="a-ip-status" role="status" aria-live="polite">Check this browser’s public IP before adding it.</p></div></section>
+        <section class="nika-local-card"><small>Live check</small><h3>Test one message</h3><div class="adm-test"><input type="text" id="a-test" placeholder="What do you build?"><button class="btn sm" id="testAssistant" type="button">send</button></div><div class="adm-note adm-test-output" id="a-test-output">The reply will appear here.</div></section>
+        <footer class="nika-local-save"><div><b>Nika settings</b><span>Save to apply your changes.</span></div><button class="btn primary sm" id="saveAssistant" type="button">save changes</button></footer>
       </form>
     </section>
 

@@ -14,6 +14,8 @@
     headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.NikaAdmin.nonce }
   }, options || {}));
   const byName = (suffix) => form && form.querySelector(`[name$="[${suffix}]"]`);
+  const escapeText = (text) => String(text == null ? '' : text).replace(/[&<>]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character]);
+  const escapeAttribute = (text) => escapeText(text).replace(/"/g, '&quot;');
 
   /* Fields that only matter for one choice ---------------------------------- */
 
@@ -29,6 +31,353 @@
   if (form && conditionals.length) {
     form.addEventListener('change', syncConditionals);
     syncConditionals();
+  }
+
+  /* Header logo and bubble icon --------------------------------------------- */
+
+  document.querySelectorAll('[data-nika-image]').forEach((field) => {
+    const input = field.querySelector('.nika-image__input');
+    const preview = field.querySelector('.nika-image__preview');
+    const image = preview && preview.querySelector('img');
+    const clear = field.querySelector('.nika-image__clear');
+    const choose = field.querySelector('.nika-image__choose');
+    if (!input || !preview || !image || !clear || !choose) return;
+    const fallback = image.getAttribute('src');
+
+    const size = field.querySelector('.nika-image__size input');
+    const sync = () => {
+      const value = input.value.trim();
+      const shown = value || fallback;
+      // The preview shows what a visitor gets, which is the bundled mark when
+      // the field is empty and nothing at all when there is no default.
+      const isLauncher = preview.classList.contains('nika-image__preview--launch');
+      image.src = shown;
+      image.hidden = !shown;
+      preview.hidden = !shown && !isLauncher;
+      preview.classList.toggle('is-default-glyph', isLauncher && !shown);
+      clear.hidden = !value;
+      if (size && size.value) {
+        // Scale the tile's contents the way the guide will.
+        const px = Math.min(Number(size.max) || 44, Math.max(Number(size.min) || 14, Number(size.value)));
+        image.style.width = `${px}px`;
+        image.style.height = preview.classList.contains('nika-image__preview--launch') ? `${px}px` : 'auto';
+      }
+      if (preview.classList.contains('nika-image__preview--launch')) {
+        const from = (byName('gradient_from') || {}).value || '#8184ff';
+        const to = (byName('gradient_to') || {}).value || '#4338ca';
+        const accent = (byName('accent') || {}).value || '#6366f1';
+        preview.style.background = `linear-gradient(150deg, ${from}, ${accent} 55%, ${to})`;
+      } else {
+        const colour = (byName('panel_colour') || {}).value || '#0f0f12';
+        preview.style.background = colour;
+      }
+    };
+    if (size) size.addEventListener('input', sync);
+    if (form) form.addEventListener('input', (event) => { if (event.target !== input) sync(); });
+    input.addEventListener('input', sync);
+    clear.addEventListener('click', () => {
+      input.value = '';
+      sync();
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    let picker;
+    choose.addEventListener('click', () => {
+      if (!window.wp || !window.wp.media) return input.focus();
+      if (!picker) {
+        picker = window.wp.media({ title: choose.textContent, library: { type: 'image' }, button: { text: choose.textContent }, multiple: false });
+        picker.on('select', () => {
+          const chosen = picker.state().get('selection').first();
+          const sizes = chosen && chosen.get('sizes');
+          const url = (sizes && (sizes.medium || sizes.full) || {}).url || (chosen && chosen.get('url'));
+          if (!url) return;
+          input.value = url;
+          sync();
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      }
+      picker.open();
+    });
+  });
+
+  /* Collapsible sections ----------------------------------------------------- */
+
+  // Long pages are easier to work through a section at a time. Visibility is a
+  // per-administrator convenience, so it is remembered locally and every section
+  // is open again if that memory is unavailable.
+  const collapsible = [...document.querySelectorAll('.nika-card[id]')].filter((card) => card.querySelector('.nika-card__head h2'));
+  if (collapsible.length) {
+    let closed = [];
+    try { closed = JSON.parse(window.localStorage.getItem('nika.admin.closed') || '[]'); } catch {}
+    if (!Array.isArray(closed)) closed = [];
+    const remember = () => {
+      try { window.localStorage.setItem('nika.admin.closed', JSON.stringify(closed)); } catch {}
+    };
+    collapsible.forEach((card) => {
+      const head = card.querySelector('.nika-card__head');
+      const heading = head.querySelector('h2');
+      const body = [...card.children].filter((child) => child !== head);
+      if (!body.length) return;
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'nika-card__toggle';
+      toggle.innerHTML = '<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" focusable="false"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+      const id = card.id;
+      const apply = (open) => {
+        card.classList.toggle('is-collapsed', !open);
+        body.forEach((child) => { child.hidden = !open; });
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${heading.textContent.trim()}`);
+      };
+      apply(!closed.includes(id));
+      toggle.addEventListener('click', () => {
+        const open = toggle.getAttribute('aria-expanded') !== 'true';
+        apply(open);
+        closed = closed.filter((entry) => entry !== id);
+        if (!open) closed.push(id);
+        remember();
+      });
+      // A jump from the section list must reveal what it lands on.
+      const jump = document.querySelector(`.nika-jump a[href="#${id}"]`);
+      jump?.addEventListener('click', () => apply(true));
+      head.append(toggle);
+    });
+  }
+
+  /* Match the site's own palette -------------------------------------------- */
+
+  // The theme's designer already chose these colours, so an owner starts from
+  // their own site rather than from hex codes, then adjusts. Nothing is written
+  // until they save, and the guide shows the result immediately.
+  const matchTheme = document.querySelector('#nika-match-theme');
+  const palette = window.NikaAdmin.themePalette || {};
+  const paletteEntries = Object.entries(palette);
+  if (form && matchTheme && paletteEntries.length) {
+    matchTheme.hidden = false;
+    const luminance = (hex) => {
+      const value = hex.replace('#', '');
+      const full = value.length === 3 ? value.split('').map((part) => part + part).join('') : value;
+      const [r, g, b] = [0, 2, 4].map((index) => parseInt(full.slice(index, index + 2), 16) / 255);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const saturation = (hex) => {
+      const value = hex.replace('#', '');
+      const full = value.length === 3 ? value.split('').map((part) => part + part).join('') : value;
+      const [r, g, b] = [0, 2, 4].map((index) => parseInt(full.slice(index, index + 2), 16) / 255);
+      const high = Math.max(r, g, b);
+      const low = Math.min(r, g, b);
+      return high === 0 ? 0 : (high - low) / high;
+    };
+    const pick = (...wanted) => {
+      for (const want of wanted) {
+        const hit = paletteEntries.find(([slug, entry]) => slug.includes(want) || (entry.name || '').toLowerCase().includes(want));
+        if (hit) return hit[1].color;
+      }
+      return '';
+    };
+    const pickAccent = () => {
+      const colourful = paletteEntries
+        .map(([slug, entry]) => ({ slug, name: (entry.name || '').toLowerCase(), color: entry.color }))
+        .filter((entry) => saturation(entry.color) > 0.18 && luminance(entry.color) > 0.12 && luminance(entry.color) < 0.88);
+      if (!colourful.length) return '';
+      for (const want of ['primary', 'accent', 'brand', 'link', 'secondary']) {
+        const hit = colourful.find((entry) => entry.slug.includes(want) || entry.name.includes(want));
+        if (hit) return hit.color;
+      }
+      return colourful.sort((a, b) => saturation(b.color) - saturation(a.color))[0].color;
+    };
+    const darkest = () => paletteEntries.map(([, entry]) => entry.color).sort((a, b) => luminance(a) - luminance(b))[0] || '';
+    const lightest = () => paletteEntries.map(([, entry]) => entry.color).sort((a, b) => luminance(b) - luminance(a))[0] || '';
+
+    matchTheme.addEventListener('click', () => {
+      const accent = pickAccent() || pick('primary', 'accent', 'brand', 'link') || paletteEntries[0][1].color;
+      const surface = pick('background', 'base', 'dark', 'contrast') || darkest();
+      const ink = pick('foreground', 'text', 'contrast') || lightest();
+      // A dark panel needs light text on it, whatever the theme calls its pair.
+      const readable = luminance(ink) > luminance(surface) ? ink : lightest();
+      const apply = { accent, panel_colour: surface, gradient_from: accent, gradient_to: accent, scrollbar_colour: accent, shadow_colour: accent, text_colour: readable, icon_colour: readable };
+      Object.entries(apply).forEach(([name, value]) => {
+        if (!value) return;
+        const field = byName(name);
+        if (!field) return;
+        field.value = value;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+  }
+
+  /* Reset appearance --------------------------------------------------------- */
+
+  // Restores the look a fresh install has. It only touches appearance, so a
+  // provider, key, instructions and limits are never lost to a stray click, and
+  // nothing is written until the owner saves.
+  const resetAppearance = document.querySelector('#nika-reset-appearance');
+  if (form && resetAppearance) {
+    let defaults = {};
+    try { defaults = JSON.parse(resetAppearance.dataset.nikaDefaults || '{}'); } catch {}
+    const resetLabel = resetAppearance.querySelector('span');
+    const resetText = resetLabel ? resetLabel.textContent : '';
+    resetAppearance.addEventListener('click', () => {
+      Object.entries(defaults).forEach(([name, value]) => {
+        const field = byName(name);
+        if (!field) return;
+        field.value = value === null || value === undefined ? '' : String(value);
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      if (resetLabel) {
+        resetLabel.textContent = 'Appearance reset. Save to apply.';
+        window.setTimeout(() => { resetLabel.textContent = resetText; }, 4000);
+      }
+    });
+  }
+
+  /* Opacity readout --------------------------------------------------------- */
+
+  const opacity = byName('panel_opacity');
+  const opacityOut = opacity && opacity.parentElement.querySelector('output');
+  if (opacity && opacityOut) {
+    const syncOpacity = () => {
+      opacityOut.textContent = `${opacity.value}%`;
+      const min = Number(opacity.min) || 0;
+      const span = (Number(opacity.max) || 100) - min;
+      opacity.style.setProperty('--nika-fill', `${span ? ((Number(opacity.value) - min) / span) * 100 : 0}%`);
+    };
+    opacity.addEventListener('input', syncOpacity);
+    syncOpacity();
+  }
+
+  /* Accent readout ---------------------------------------------------------- */
+
+  // The hex beside the swatch is rendered server-side, so it has to follow the
+  // picker or it keeps naming the saved colour while the widget shows the new one.
+  ['accent', 'panel_colour', 'gradient_from', 'gradient_to', 'scrollbar_colour', 'shadow_colour', 'text_colour', 'icon_colour'].forEach((name) => {
+    const picker = byName(name);
+    const label = picker && picker.parentElement.querySelector('code');
+    if (!picker || !label) return;
+    const syncSwatch = () => { label.textContent = picker.value.toUpperCase(); };
+    picker.addEventListener('input', syncSwatch);
+    picker.addEventListener('change', syncSwatch);
+  });
+
+  /* Live preview ------------------------------------------------------------ */
+
+  // The guide floats on this page exactly as it does on the site, from the same
+  // files a visitor gets, and every edit is applied to it as it is typed.
+  if (form && window.NikaAdmin.shell) {
+    const value = (suffix) => {
+      const el = byName(suffix);
+      return el ? el.value.trim() : '';
+    };
+    const previewSettings = () => ({
+      name: value('name') || 'Nika',
+      siteName: document.title,
+      subtitle: 'website guide',
+      avatar: value('avatar') || window.NikaAdmin.bundledAvatar,
+      launcherIcon: value('launcher_icon'),
+      accent: value('accent') || '#6366f1',
+      position: value('position'),
+      panelColour: value('panel_colour'),
+      panelOpacity: value('panel_opacity'),
+      gradientFrom: value('gradient_from'),
+      gradientTo: value('gradient_to'),
+      scrollbarColour: value('scrollbar_colour'),
+      shadowColour: value('shadow_colour'),
+      textColour: value('text_colour'),
+      iconColour: value('icon_colour'),
+      customCss: value('custom_css'),
+      logoSize: value('logo_size'),
+      markSize: value('mark_size'),
+      disclaimer: value('disclaimer') || "Answers use this website's configured content. Review important information.",
+      placeholder: value('placeholder'),
+      chips: [0, 1, 2].map((index) => ({
+        label: (form.querySelector(`[name$="[suggestions][${index}][label]"]`) || {}).value || '',
+        description: (form.querySelector(`[name$="[suggestions][${index}][description]"]`) || {}).value || ''
+      })).filter((item) => item.label)
+    });
+
+    let guide;
+    // A low-contrast choice is flagged, never overruled: the owner may have a
+    // reason, and a settings box that rewrites what was typed is worse than an
+    // unusual colour. The readable value is offered as one click instead.
+    const contrastHint = (field, suggestion) => {
+      if (!field) return;
+      const wrap = field.closest('.nika-field');
+      if (!wrap) return;
+      let note = wrap.querySelector('.nika-field__contrast');
+      if (!suggestion) { note?.remove(); return; }
+      if (!note) {
+        note = document.createElement('small');
+        note.className = 'nika-field__contrast';
+        wrap.append(note);
+      }
+      if (note.dataset.suggestion === suggestion) return;
+      note.dataset.suggestion = suggestion;
+      note.replaceChildren();
+      note.append('This may be hard to read on your panel colour. ');
+      const fix = document.createElement('button');
+      fix.type = 'button';
+      fix.className = 'nika-field__contrast-fix';
+      fix.textContent = `Use ${suggestion.toUpperCase()}`;
+      fix.addEventListener('click', () => {
+        field.value = suggestion;
+        const label = field.parentElement.querySelector('code');
+        if (label) label.textContent = suggestion.toUpperCase();
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      note.append(fix);
+    };
+    const showResolved = () => {
+      if (!guide || !guide.resolved) return;
+      contrastHint(byName('text_colour'), guide.resolved.suggestedText);
+      contrastHint(byName('icon_colour'), guide.resolved.suggestedIcon);
+    };
+    const render = () => {
+      if (guide) { guide.update(previewSettings()); return showResolved(); }
+      // Settings come from the form, not the database, so unsaved edits show.
+      window.__guideEmbed = {
+        apiBase: '',
+        assetBase: window.NikaAdmin.assetBase,
+        routes: {
+          chat: `${window.NikaAdmin.chatEndpoint}/chat-stream`,
+          feedback: `${window.NikaAdmin.chatEndpoint}/guide-feedback`
+        },
+        headers: { 'X-WP-Nonce': window.NikaAdmin.nonce },
+        preview: { name: value('name'), instructions: value('instructions') }
+      };
+      import(window.NikaAdmin.shell)
+        .then((module) => module.mountGuideShell({
+          ...previewSettings(),
+          assetBase: window.NikaAdmin.assetBase,
+          apiBase: '',
+          stylesheet: window.NikaAdmin.stylesheet,
+          isolate: true,
+          loadSettings: async () => null
+        }))
+        .then((handle) => {
+          guide = handle;
+          showResolved();
+          const widget = document.createElement('script');
+          widget.src = window.NikaAdmin.widget;
+          document.head.append(widget);
+        });
+    };
+    let previewName = value('name');
+    const syncPreviewIdentity = () => {
+      if (window.__guideEmbed) window.__guideEmbed.preview = { name: value('name'), instructions: value('instructions') };
+      if (value('name') === previewName) return;
+      previewName = value('name');
+      const control = document.querySelector('[data-assist-host]')?.shadowRoot?.querySelector('.assist-clear');
+      if (!control) return;
+      control.click();
+      if (control.classList.contains('is-confirming')) control.click();
+    };
+    form.addEventListener('input', syncPreviewIdentity);
+    form.addEventListener('input', render);
+    form.addEventListener('change', render);
+    render();
   }
 
   /* Unsaved changes --------------------------------------------------------- */
@@ -266,6 +615,47 @@
         modelRefresh.removeAttribute('aria-busy');
       }
     });
+  }
+
+  /* Rate-limit exemptions -------------------------------------------------- */
+
+  const exemptField = document.getElementById('nika-exempt-ips');
+  const checkIp = document.getElementById('nika-check-ip');
+  const addIp = document.getElementById('nika-add-ip');
+  const ipStatus = document.getElementById('nika-ip-status');
+  let currentIp = '';
+  const ipItems = () => (exemptField ? exemptField.value.split(/[\s,]+/).map((value) => value.trim()).filter(Boolean) : []);
+  const syncIp = () => {
+    if (!addIp || !ipStatus || !currentIp) return;
+    const listed = ipItems().includes(currentIp);
+    addIp.hidden = listed;
+    ipStatus.textContent = listed ? `${currentIp} is already exempt.` : `${currentIp} is using this browser connection.`;
+  };
+  if (checkIp && exemptField && addIp && ipStatus) {
+    checkIp.addEventListener('click', async () => {
+      checkIp.disabled = true;
+      ipStatus.textContent = 'Checking this connection.';
+      try {
+        const response = await request(window.NikaAdmin.ipEndpoint, { method: 'GET' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ip) throw new Error(data.message || 'The current IP could not be detected.');
+        currentIp = String(data.ip);
+        syncIp();
+      } catch (error) {
+        currentIp = '';
+        addIp.hidden = true;
+        ipStatus.textContent = error.message || 'The current IP could not be detected.';
+      } finally {
+        checkIp.disabled = false;
+      }
+    });
+    addIp.addEventListener('click', () => {
+      if (!currentIp || ipItems().includes(currentIp)) return;
+      exemptField.value = [...ipItems(), currentIp].join('\n');
+      exemptField.dispatchEvent(new Event('input', { bubbles: true }));
+      syncIp();
+    });
+    exemptField.addEventListener('input', syncIp);
   }
 
   /* Starter suggestions ----------------------------------------------------- */
