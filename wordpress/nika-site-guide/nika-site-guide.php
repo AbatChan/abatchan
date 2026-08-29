@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.1.1
+ * Version:           1.1.2
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.1.1';
+const NIKA_VERSION = '1.1.2';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -919,10 +919,10 @@ function nika_chat_prepare( WP_REST_Request $request, $mode = 'json' ) {
 	if ( $direct_location ) return array( 'direct' => $direct_location );
 	$messages = array( array( 'role' => 'system', 'content' => nika_system_prompt( $s, $pages, $page, $answer_depth, $mode ) ) );
 	$history = is_array( $body['history'] ?? null ) ? array_slice( $body['history'], -2 * (int) $s['history_turns'] ) : array();
-	// JSON mode requires every assistant turn to be JSON. Replaying a past reply
-	// as prose makes the provider answer with nothing at all, so historical
-	// replies go back in the same envelope the model must produce.
-	$json_mode = 'compatible' !== $s['provider'];
+	// JSON mode requires every assistant turn to be JSON. A streamed turn,
+	// however, is explicitly prose: replaying its history as JSON teaches the
+	// provider to leak that envelope back into the visitor-facing stream.
+	$json_mode = 'json' === $mode && 'compatible' !== $s['provider'];
 	foreach ( $history as $turn ) {
 		$role = ( $turn['role'] ?? '' ) === 'assistant' ? 'assistant' : 'user';
 		$content = sanitize_textarea_field( $turn['content'] ?? '' );

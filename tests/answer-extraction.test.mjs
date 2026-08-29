@@ -35,7 +35,7 @@ check('WordPress and Universal accept the same answer keys',Boolean(jsKeys)&&jsK
 console.log('=== conversation history in JSON mode ===');
 // A past assistant reply replayed as prose makes a JSON-mode provider answer
 // with nothing at all, which surfaced as a dead-end on the second question.
-check('WordPress re-wraps historical assistant turns when JSON mode is on',php.includes("$json_mode = 'compatible' !== $s['provider'];")&&php.includes("if ( 'assistant' === $role && $json_mode ) $content = wp_json_encode( array( 'message' => $content, 'action' => null ) );"));
+check('WordPress re-wraps historical assistant turns only when JSON mode is on',php.includes("$json_mode = 'json' === $mode && 'compatible' !== $s['provider'];")&&php.includes("if ( 'assistant' === $role && $json_mode ) $content = wp_json_encode( array( 'message' => $content, 'action' => null ) );"));
 check('Universal re-wraps historical assistant turns when JSON mode is on',server.includes("const jsonMode = PROVIDER !== 'compatible';")&&server.includes("role === 'assistant' && jsonMode ? JSON.stringify({ message: content, action: null })"));
 check('the visitor question is never re-wrapped',!php.includes("'user' === $role && $json_mode")&&!server.includes("role === 'user' && jsonMode"));
 check('the live path is not overwritten while walking history',!php.includes("$current_path = sanitize_text_field( $page['path'] ?? '/' );\n\t\tif ( 'assistant'"));

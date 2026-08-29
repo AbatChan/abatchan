@@ -162,6 +162,8 @@ check('no control is shown for something the adapter cannot do',shell.includes('
 check('attachment-free installs still initialize the chat',widget.includes('if(addFile&&fileInput){')&&widget.includes('addFile.addEventListener'));
 check('delete chat follows the visible conversation state',widget.includes("const syncClearVisibility=()=>{clear.hidden=panel.classList.contains('is-empty')}")&&widget.includes("panel.classList.remove('is-empty');syncClearVisibility();"));
 check('composer choices survive clicks inside the isolated guide',widget.includes("event.composedPath().some(node=>node?.classList?.contains('assist-composer-menu-wrap'))"));
+check('stream history stays prose so it cannot train the provider to leak JSON',php.includes("$json_mode = 'json' === $mode && 'compatible' !== $s['provider'];"));
+check('a provider JSON envelope is never shown to a visitor',widget.includes('const readAnswerEnvelope=text=>')&&widget.includes('answer=readAnswerEnvelope(rawAnswer);')&&widget.includes('paintedFrames===0||answer!==rawAnswer'));
 check('the listing leads with what an owner gets, not how it is built',readme.includes('Answer visitor questions from your own pages')&&readme.includes('**What your visitors get**')&&readme.includes('**What you control**')&&php.includes('Answers visitor questions from your published pages'));
 check('the listing is findable by what people search for',readme.includes('Tags: ai chatbot, chatbot, ai assistant, customer support, live chat')&&!readme.includes('byok'));
 check('the read-only boundary is still stated plainly',readme.includes('It is read-only. It does not submit forms')&&!readme.includes('Version 0.2.0 is read-only'));

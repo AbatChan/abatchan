@@ -1023,6 +1023,18 @@
       // should see only its departure, never an early status or arrival.
       return {text:action?action.departure:visible,action};
     };
+    // Streaming is requested as prose, but providers can occasionally ignore
+    // that instruction. Accept the documented reply envelope as a last-line
+    // display safeguard rather than ever exposing raw JSON to a visitor.
+    const readAnswerEnvelope=text=>{
+      const visible=String(text||'').trim();
+      if(!visible)return '';
+      try{
+        const parsed=JSON.parse(visible);
+        if(parsed&&typeof parsed.message==='string'&&parsed.message.trim())return parsed.message.trim();
+      }catch{}
+      return visible;
+    };
 
     const messageContent=element=>element?.querySelector(':scope > .assist-message-content')||element;
     const ICONS={
@@ -1635,7 +1647,8 @@
         }
         answer+=decoder.decode();if(frame)cancelAnimationFrame(frame);frame=0;
         const navigation=readNavigation(answer,res.headers.get('X-Abatchan-Action-Token'));
-        answer=navigation.text;
+        const rawAnswer=navigation.text;
+        answer=readAnswerEnvelope(rawAnswer);
         if(!answer)throw new Error('The guide returned an empty response.');
         if(navigation.action){
           // A navigation departure is emitted only after the model's complete
@@ -1645,7 +1658,7 @@
           const content=messageContent(ensureBubble());
           content.replaceChildren();
           await typeBufferedMessage(content,answer);
-        }else if(paintedFrames===0){
+        }else if(paintedFrames===0||answer!==rawAnswer){
           // An answer can arrive as a single final chunk, from a short reply or
           // from a host that buffered the response. Nothing has been shown yet,
           // so reveal it locally rather than flashing the whole reply at once.
