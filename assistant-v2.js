@@ -1035,6 +1035,10 @@
       }catch{}
       return visible;
     };
+    // A streamed tool turn can begin with ordinary prose before its validated
+    // navigation marker arrives. Hold likely navigation requests until that
+    // marker is known so a provisional sentence never flashes then disappears.
+    const isLikelyNavigationRequest=text=>/\b(?:take|go|navigate|open|show|bring|lead|direct|scroll|highlight)\b/i.test(String(text||''));
 
     const messageContent=element=>element?.querySelector(':scope > .assist-message-content')||element;
     const ICONS={
@@ -1586,6 +1590,7 @@
       send.setAttribute('aria-label','Stop response');send.removeAttribute('data-tip');send.querySelector('img').src=assetUrl('/assets/icons/square.svg');log.setAttribute('aria-busy','true');
       const loader=thinking();
       let bubble=null,answer='',frame=0,paintedFrames=0;
+      const likelyNavigationRequest=isLikelyNavigationRequest(text);
       const ensureBubble=()=>{
         if(bubble)return bubble;
         loader.remove();
@@ -1597,6 +1602,7 @@
       const paint=(complete)=>{
         frame=0;
         if(!answer)return;
+        if(likelyNavigationRequest&&!complete)return;
         if(complete)revealed=answer.length;
         else{
           const behind=answer.length-revealed;

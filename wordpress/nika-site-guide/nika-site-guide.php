@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.1.2
+ * Version:           1.1.3
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.1.2';
+const NIKA_VERSION = '1.1.3';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -1081,6 +1081,7 @@ function nika_chat_stream_response( WP_REST_Request $request ) {
 		$marker = array(
 			'href' => $action['href'],
 			'label' => $label,
+			'section_requested' => ! empty( $parsed['section_requested'] ),
 			'departure' => $departure,
 			'status' => sanitize_text_field( $parsed['status'] ?? '' ) ?: sprintf( __( 'Opening %s', 'nika-site-guide' ), $label ),
 			'arrival' => sanitize_text_field( $parsed['arrival'] ?? '' ) ?: sprintf( __( 'Here is %s.', 'nika-site-guide' ), $label ),
@@ -1110,6 +1111,7 @@ function nika_navigation_tool( $pages ) {
 					'departure' => array( 'type' => 'string', 'description' => 'One short sentence telling the visitor where they are being taken.' ),
 					'status' => array( 'type' => 'string', 'description' => 'A short progress line shown while the page changes.' ),
 					'arrival' => array( 'type' => 'string', 'description' => 'A short line for once the visitor has arrived.' ),
+					'section_requested' => array( 'type' => 'boolean', 'description' => 'True only when the visitor explicitly requested a named section, heading, or field rather than just its page.' ),
 				),
 				'required' => array( 'href', 'label', 'departure', 'status', 'arrival' ),
 			),

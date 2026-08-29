@@ -146,6 +146,7 @@ console.log('\n=== the widget can be served from another origin ===');
 check('a burst is revealed at a readable pace, not dropped in one frame',assistant.includes('Math.min(REVEAL_MAX,Math.max(REVEAL_MIN,Math.ceil(behind/24)))')&&assistant.includes('paint(false)')&&assistant.includes('paint(true)'));
 check('this site keeps its attachment control',shell.includes('attachments: true,'));
 check('a reply already on screen is never cleared and retyped unless a leaked JSON envelope must be removed',assistant.includes('}else if(paintedFrames===0||answer!==rawAnswer){')&&assistant.includes('const rawAnswer=navigation.text;')&&!assistant.includes('paintedFrames<2'));
+check('likely navigation requests wait for a validated action marker before they paint',assistant.includes('const isLikelyNavigationRequest=text=>')&&assistant.includes('const likelyNavigationRequest=isLikelyNavigationRequest(text);')&&assistant.includes('if(likelyNavigationRequest&&!complete)return;'));
 check('api calls go through a base',assistant.includes('apiUrl(ROUTES.chat)')&&assistant.includes('apiUrl(ROUTES.feedback)')&&assistant.includes("chat:'/api/chat-stream',feedback:'/api/guide-feedback'"));
 check('no same-origin api calls remain',!assistant.includes("fetch('/api/"));
 check('the site key travels with every call',assistant.includes("'X-Site-Key':SITE_KEY"));

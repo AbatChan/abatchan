@@ -589,7 +589,7 @@ html[data-theme="light"] .assist-text-action:hover{color:#151519}
   display:flex;
   align-items:center;
   gap:9px;
-  min-height:40px;
+  min-height:20px;
   padding:9px 11px;
   border:1px solid color-mix(in srgb,currentColor 12%,transparent);
   border-radius:12px;
