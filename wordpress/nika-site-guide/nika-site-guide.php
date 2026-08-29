@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.1.8
+ * Version:           1.1.9
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.1.8';
+const NIKA_VERSION = '1.1.9';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -914,8 +914,28 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 		if ( strlen( $normalized_candidate ) < 3 || false === strpos( $normalized_message, $normalized_candidate ) ) continue;
 		if ( strlen( $candidate ) > strlen( $label ) ) $label = $candidate;
 	}
-	if ( ! $label ) return null;
 	$path = untrailingslashit( wp_parse_url( sanitize_text_field( $page['path'] ?? '/' ), PHP_URL_PATH ) ?: '/' ) ?: '/';
+	if ( ! $label ) {
+		if ( ! preg_match( '/\bhighlight\b\s+(?:(?:the|this)\s+)?(?:(?:heading|section|card|price|field)\s+)?(.+?)[.!?]*$/iu', (string) $message, $match ) ) return null;
+		$candidate = trim( sanitize_text_field( $match[1] ?? '' ) );
+		if ( strlen( $normalize( $candidate ) ) < 3 || false === strpos( $normalize( nika_site_index() ), $normalize( $candidate ) ) ) return null;
+		$best_path = '';
+		$best_score = 0;
+		foreach ( $pages as $published_page ) {
+			$published_path = untrailingslashit( wp_parse_url( sanitize_text_field( $published_page['path'] ?? '' ), PHP_URL_PATH ) ?: '' ) ?: '/';
+			$title = $normalize( $published_page['title'] ?? '' );
+			$slug = $normalize( basename( $published_path ) );
+			foreach ( array_filter( array( $title, $slug ) ) as $route_name ) {
+				if ( strlen( $route_name ) >= 3 && false !== strpos( $normalized_message, $route_name ) && strlen( $route_name ) > $best_score ) {
+					$best_path = $published_path;
+					$best_score = strlen( $route_name );
+				}
+			}
+		}
+		if ( ! $best_path ) return null;
+		$label = $candidate;
+		$path = $best_path;
+	}
 	$validated = nika_validate_action( array( 'href' => $path, 'label' => $label, 'departure' => sprintf( __( 'Highlighting %s.', 'nika-site-guide' ), $label ) ), $pages );
 	if ( ! $validated ) return null;
 	return array_merge( $validated, array(
