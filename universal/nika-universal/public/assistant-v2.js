@@ -31,8 +31,8 @@
     :{};
   const apiHeaders=(extra={})=>({...extra,...HOST_HEADERS,...(SITE_KEY?{'X-Site-Key':SITE_KEY}:{})});
   const CDN={
-    marked:`${API_BASE}/assets/vendor/marked-15.0.12.min.js`,
-    purify:`${API_BASE}/assets/vendor/purify-3.4.7.min.js`
+    marked:assetUrl('/assets/vendor/marked-15.0.12.min.js'),
+    purify:assetUrl('/assets/vendor/purify-3.4.7.min.js')
   };
   const STORE='abatchanGuideHistoryV1';
   const NAV_STORE='abatchanGuideNavigationV1';

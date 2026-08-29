@@ -76,7 +76,8 @@
 .nika-sidecard { padding: 23px; }
 .nika-card h2 { margin-bottom: 7px; color: var(--nika-ink); font-size: 21px; line-height: 1.2; letter-spacing: -.025em; }
 .nika-card h2 + p, .nika-card__head p, .nika-launch-card p { max-width: 700px; margin-bottom: 0; color: var(--nika-muted); }
-.nika-card__head { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 25px; }
+.nika-card__head { display: flex; justify-content: flex-start; gap: 24px; margin-bottom: 25px; }
+.nika-card__head > div:first-child { margin-right: auto; }
 .nika-generate { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; flex: 0 0 auto; min-height: 30px; padding: 0 10px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 8px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; }
 .nika-generate__icon { flex: 0 0 auto; }
 .nika-field__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -135,15 +136,20 @@
 .nika-field__contrast { color: #8a6100; font-weight: 500; }
 .nika-field__contrast-fix { padding: 2px 8px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 7px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
 .nika-field__contrast-fix:hover, .nika-field__contrast-fix:focus-visible { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); outline: 0; }
-.nika-card__toggle { align-self: flex-start; flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; margin-left: auto; padding: 0; color: #555968; background: #f4f4f8; border: 1px solid #e3e4eb; border-radius: 10px; cursor: pointer; transition: transform .2s ease, background .2s ease; }
+.nika-card__toggle { align-self: flex-start; flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; margin-left: 8px; margin-inline-start: 8px; padding: 0; color: #555968; background: #f4f4f8; border: 1px solid #e3e4eb; border-radius: 10px; cursor: pointer; transition: transform .2s ease, background .2s ease; }
 .nika-card__toggle:hover, .nika-card__toggle:focus-visible { color: var(--nika-indigo-dark); background: #f1f1ff; border-color: #d8d8ff; outline: 0; }
+.nika-card__body { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .32s cubic-bezier(.2,.75,.2,1), opacity .24s ease; }
+.nika-card__body > * { min-height: 0; }
+.nika-card.is-collapsed .nika-card__body { grid-template-rows: 0fr; opacity: 0; overflow: hidden; }
+.nika-card__body.is-instant { transition: none; }
 .nika-card.is-collapsed .nika-card__toggle svg { transform: rotate(-90deg); }
 .nika-card.is-collapsed .nika-card__head { margin-bottom: 0; }
-@media (prefers-reduced-motion: reduce) { .nika-card__toggle { transition: none; } }
+.nika-card { scroll-margin-top: 48px; }
+@media (prefers-reduced-motion: reduce) { .nika-card__toggle, .nika-card__body { transition: none; } }
 .nika-css { min-height: 190px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.6; }
 .nika-field__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .nika-field__actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.nika-card__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; }
+.nika-card__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; margin-left: auto; }
 .nika-image__row { display: flex; align-items: center; gap: 10px; }
 .nika-image__row .nika-image__input { flex: 1 1 auto; min-width: 0; }
 /* The mark is previewed on the surface it actually lands on: the dark panel

@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai assistant, site guide, navigation, byok
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,7 +73,10 @@ The site owner controls the pre-chat starter suggestions, per-visitor hourly and
 
 == Changelog ==
 
-= 1.0.2 =
+= 1.0.3 =
+* Fix formatted answers: the markdown libraries were being loaded from the site root instead of from the plugin, so bold, lists and links were lost.
+* Composer glyphs follow the CSS colour property, so custom rules and hover states tint them.
+* Sections open themselves when a button inside them is used, and ease open with a smooth transition.
 * Add a Custom CSS section for anything the settings do not cover. Your rules load inside the guide only.
 * Collapse settings sections you are not using; the page remembers which.
 * The IP check moved onto its field, with a shorter label and a tooltip.

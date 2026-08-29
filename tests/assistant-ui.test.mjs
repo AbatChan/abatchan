@@ -148,7 +148,7 @@ check('a reply already on screen is never cleared and retyped',assistant.include
 check('api calls go through a base',assistant.includes('apiUrl(ROUTES.chat)')&&assistant.includes('apiUrl(ROUTES.feedback)')&&assistant.includes("chat:'/api/chat-stream',feedback:'/api/guide-feedback'"));
 check('no same-origin api calls remain',!assistant.includes("fetch('/api/"));
 check('the site key travels with every call',assistant.includes("'X-Site-Key':SITE_KEY"));
-check('vendor scripts resolve against the same base',assistant.includes('${API_BASE}/assets/vendor/'));
+check('vendor scripts resolve against the guide\'s own asset base',assistant.includes("assetUrl('/assets/vendor/")&&assistant.includes('const ASSET_BASE=String(EMBED.assetBase??API_BASE)'));
 check('the primary site stays relative',assistant.includes("String(EMBED.apiBase||'')"));
 
 console.log('\n=== the embed asks for nothing the buyer must configure twice ===');

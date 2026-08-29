@@ -116,33 +116,60 @@
     collapsible.forEach((card) => {
       const head = card.querySelector('.nika-card__head');
       const heading = head.querySelector('h2');
-      const body = [...card.children].filter((child) => child !== head);
-      if (!body.length) return;
+      const rest = [...card.children].filter((child) => child !== head);
+      if (!rest.length) return;
+      // The body moves into one wrapper so its height can be animated without
+      // anyone having to know how tall it is.
+      const body = document.createElement('div');
+      body.className = 'nika-card__body';
+      body.append(...rest);
+      card.append(body);
       const toggle = document.createElement('button');
       toggle.type = 'button';
       toggle.className = 'nika-card__toggle';
       toggle.innerHTML = '<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" focusable="false"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
       const id = card.id;
-      const apply = (open) => {
+      const apply = (open, animate) => {
+        if (!animate) body.classList.add('is-instant');
         card.classList.toggle('is-collapsed', !open);
-        body.forEach((child) => { child.hidden = !open; });
         toggle.setAttribute('aria-expanded', String(open));
         toggle.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${heading.textContent.trim()}`);
+        // A collapsed section must leave the tab order as well as the view.
+        body.inert = !open;
+        if (!animate) requestAnimationFrame(() => body.classList.remove('is-instant'));
       };
-      apply(!closed.includes(id));
+      apply(!closed.includes(id), false);
       toggle.addEventListener('click', () => {
         const open = toggle.getAttribute('aria-expanded') !== 'true';
-        apply(open);
+        apply(open, true);
         closed = closed.filter((entry) => entry !== id);
         if (!open) closed.push(id);
         remember();
       });
-      // A jump from the section list must reveal what it lands on.
-      const jump = document.querySelector(`.nika-jump a[href="#${id}"]`);
-      jump?.addEventListener('click', () => apply(true));
       head.append(toggle);
     });
+
+    // A jump from the section list opens what it lands on, then scrolls to it.
+    document.querySelectorAll('.nika-jump a[href^="#"]').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        const card = document.querySelector(link.getAttribute('href'));
+        if (!card) return;
+        event.preventDefault();
+        card.querySelector('.nika-card__toggle[aria-expanded="false"]')?.click();
+        card.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        history.replaceState(null, '', link.getAttribute('href'));
+      });
+    });
   }
+
+  // A button whose result is inside a collapsed section has to open it, or the
+  // owner clicks and sees nothing happen.
+  document.addEventListener('click', (event) => {
+    const trigger = event.target.closest('button');
+    if (!trigger || trigger.classList.contains('nika-card__toggle')) return;
+    const card = trigger.closest('.nika-card.is-collapsed');
+    card?.querySelector('.nika-card__toggle')?.click();
+  }, true);
 
   /* Match the site's own palette -------------------------------------------- */
 
