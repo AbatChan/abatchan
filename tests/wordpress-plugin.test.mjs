@@ -161,6 +161,7 @@ check('the media library is loaded for the picker',php.includes('wp_enqueue_medi
 check('no control is shown for something the adapter cannot do',shell.includes('cfg.attachments===false')&&php.includes("'attachments' => false")&&!readme.slice(0, readme.indexOf('== Changelog ==')).includes('attach'));
 check('attachment-free installs still initialize the chat',widget.includes('if(addFile&&fileInput){')&&widget.includes('addFile.addEventListener'));
 check('delete chat follows the visible conversation state',widget.includes("const syncClearVisibility=()=>{clear.hidden=panel.classList.contains('is-empty')}")&&widget.includes("panel.classList.remove('is-empty');syncClearVisibility();"));
+check('composer choices survive clicks inside the isolated guide',widget.includes("event.composedPath().some(node=>node?.classList?.contains('assist-composer-menu-wrap'))"));
 check('the listing leads with what an owner gets, not how it is built',readme.includes('Answer visitor questions from your own pages')&&readme.includes('**What your visitors get**')&&readme.includes('**What you control**')&&php.includes('Answers visitor questions from your published pages'));
 check('the listing is findable by what people search for',readme.includes('Tags: ai chatbot, chatbot, ai assistant, customer support, live chat')&&!readme.includes('byok'));
 check('the read-only boundary is still stated plainly',readme.includes('It is read-only. It does not submit forms')&&!readme.includes('Version 0.2.0 is read-only'));

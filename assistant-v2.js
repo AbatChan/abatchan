@@ -436,7 +436,10 @@
       answerDepth=button.dataset.answerDepth;try{localStorage.setItem(ANSWER_DEPTH_STORE,answerDepth)}catch{}
       syncChoices();closeComposerMenus();announceStatus(answerDepth==='detailed'?'Detailed answers selected.':'Concise answers selected.',{tone:'success'});input.focus();
     });
-    document.addEventListener('pointerdown',event=>{if(!event.target.closest('.assist-composer-menu-wrap'))closeComposerMenus()});
+    // Events crossing the isolated guide are retargeted to its host. Inspect
+    // the composed path so a click on a menu option is not mistaken for a
+    // click outside and closed before its choice handler runs.
+    document.addEventListener('pointerdown',event=>{if(!event.composedPath().some(node=>node?.classList?.contains('assist-composer-menu-wrap')))closeComposerMenus()});
     form.addEventListener('keydown',event=>{if(event.key==='Escape')closeComposerMenus()});
     syncChoices();
 
