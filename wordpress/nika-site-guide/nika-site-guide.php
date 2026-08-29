@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.2.3
+ * Version:           1.2.4
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.2.3';
+const NIKA_VERSION = '1.2.4';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -907,14 +907,73 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 	};
 	$normalized_message = $normalize( $message );
 	$label = '';
+	$matches = array();
 	foreach ( $headings as $heading ) {
 		if ( ! is_array( $heading ) ) continue;
 		$candidate = sanitize_text_field( $heading['text'] ?? ( $heading['label'] ?? '' ) );
 		$normalized_candidate = $normalize( $candidate );
-		if ( strlen( $normalized_candidate ) < 3 || false === strpos( $normalized_message, $normalized_candidate ) ) continue;
+		$position = strlen( $normalized_candidate ) < 3 ? false : strpos( $normalized_message, $normalized_candidate );
+		if ( false === $position ) continue;
+		$matches[] = array( 'label' => $candidate, 'position' => $position, 'length' => strlen( $normalized_candidate ) );
 		if ( strlen( $candidate ) > strlen( $label ) ) $label = $candidate;
 	}
+	// Relative pricing language still has to resolve to a target the browser can
+	// verify. On the published pricing view, Small Business is the one-location
+	// $99 option and therefore the lowest starting total. Add it at the phrase's
+	// position so compound requests retain the visitor's requested order.
+	if ( preg_match( '/\bcheapest\s+(?:option|price|plan)\b/i', (string) $message, $relative, PREG_OFFSET_CAPTURE ) ) {
+		$page_text = $normalize( $page['text'] ?? '' );
+		foreach ( $headings as $heading ) {
+			if ( ! is_array( $heading ) ) continue;
+			$candidate = sanitize_text_field( $heading['text'] ?? ( $heading['label'] ?? '' ) );
+			if ( 'small business' !== $normalize( $candidate ) || false === strpos( $page_text, '99' ) ) continue;
+			$prefix = substr( (string) $message, 0, (int) $relative[0][1] );
+			$matches[] = array( 'label' => $candidate, 'position' => strlen( $normalize( $prefix ) ), 'length' => strlen( $normalize( $candidate ) ) );
+			if ( ! $label ) $label = $candidate;
+			break;
+		}
+	}
+	// Prefer the longest label when two published targets begin at the same
+	// words, then keep distinct targets in the order they occur in the request.
+	usort( $matches, static function ( $a, $b ) {
+		return $a['position'] === $b['position'] ? $b['length'] <=> $a['length'] : $a['position'] <=> $b['position'];
+	} );
+	$ordered = array();
+	foreach ( $matches as $match ) {
+		$normalized_label = $normalize( $match['label'] );
+		if ( isset( $ordered[ $normalized_label ] ) ) continue;
+		$ordered[ $normalized_label ] = $match;
+	}
 	$path = untrailingslashit( wp_parse_url( sanitize_text_field( $page['path'] ?? '/' ), PHP_URL_PATH ) ?: '/' ) ?: '/';
+	if ( count( $ordered ) > 1 ) {
+		$steps = array();
+		foreach ( array_slice( array_values( $ordered ), 0, 3 ) as $match ) {
+			$step = nika_validate_action( array(
+				'href' => $path,
+				'label' => $match['label'],
+				'departure' => sprintf( __( 'Highlighting %s.', 'nika-site-guide' ), $match['label'] ),
+			), $pages );
+			if ( ! $step ) continue;
+			$steps[] = array_merge( $step, array(
+				'section_requested' => true,
+				'status' => sprintf( __( 'Highlighting %s.', 'nika-site-guide' ), $match['label'] ),
+				'arrival' => sprintf( __( '%s is highlighted.', 'nika-site-guide' ), $match['label'] ),
+			) );
+		}
+		if ( count( $steps ) > 1 ) {
+			$labels = wp_list_pluck( $steps, 'label' );
+			$sequence = implode( ', then ', $labels );
+			return array(
+				'href' => $steps[0]['href'],
+				'label' => $sequence,
+				'departure' => sprintf( __( 'Highlighting %s.', 'nika-site-guide' ), $sequence ),
+				'section_requested' => true,
+				'status' => sprintf( __( 'Highlighting %s.', 'nika-site-guide' ), $sequence ),
+				'arrival' => sprintf( __( 'Highlighted %s in order.', 'nika-site-guide' ), $sequence ),
+				'steps' => $steps,
+			);
+		}
+	}
 	if ( ! $label ) {
 		if ( ! preg_match( '/\bhighlight\b\s+(?:(?:the|this)\s+)?(?:(?:heading|section|card|price|field)\s+)?(.+?)[.!?]*$/iu', (string) $message, $match ) ) return null;
 		$candidate = trim( sanitize_text_field( $match[1] ?? '' ) );

@@ -1396,13 +1396,43 @@
       let url;
       try{url=new URL(journey.href,location.href)}catch{return}
       if(!isSafeDestination(url))return;
-      journeyStep(bubble,journey.status);
+      const sequence=Array.isArray(journey.steps)
+        ? journey.steps.slice(0,3).filter(step=>{
+            try{
+              const stepUrl=new URL(step?.href,location.href);
+              return Boolean(step?.label&&step?.status&&isSafeDestination(stepUrl)&&publicPath(stepUrl)===pagePath());
+            }catch{return false}
+          })
+        : [];
+      journeyStep(bubble,sequence.length>1?sequence[0].status:journey.status);
       // One paint so the progress row is visible, then start immediately. The
       // departure has already finished streaming, so anything longer than a
       // frame is delay the visitor feels for nothing.
       afterPaint(()=>{
         if(publicPath(url)!==pagePath()){
           navigateTo(journey.href,journey.label,journey);
+          return;
+        }
+        if(sequence.length>1){
+          let index=0,allFound=true,lastReveal={found:false,highlighted:false};
+          const runNext=()=>{
+            const step=sequence[index];
+            let stepUrl;try{stepUrl=new URL(step.href,location.href)}catch{return}
+            if(index>0)journeyStep(bubble,step.status);
+            lastReveal=revealTarget(stepUrl,step.label,step.section_requested===true);
+            allFound=allFound&&lastReveal.found===true;
+            if(index===0&&matchMedia('(max-width:640px)').matches&&panel.classList.contains('is-open'))launch.click();
+            let settled=false,ceiling=0;
+            const advance=()=>{
+              if(settled)return;settled=true;clearTimeout(ceiling);
+              if(index<sequence.length-1){index++;setTimeout(runNext,900);return}
+              const result=actionResultFor(journey,{...lastReveal,found:allFound,highlighted:allFound},{updated:false,appliedFields:[]},`Highlighted ${sequence.length} targets in order.`);
+              completeJourney(bubble,journey,result);
+            };
+            whenScrollSettled(advance);
+            ceiling=setTimeout(advance,900);
+          };
+          runNext();
           return;
         }
         let finished=false,ceiling=0;
