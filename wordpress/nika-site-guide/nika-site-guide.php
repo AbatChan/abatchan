@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.1.7
+ * Version:           1.1.8
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.1.7';
+const NIKA_VERSION = '1.1.8';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -865,10 +865,11 @@ function nika_system_prompt( $s, $pages, $page, $answer_depth = 'concise', $mode
 	$visible = function_exists( 'mb_substr' ) ? mb_substr( $visible, 0, $visible_limit ) : substr( $visible, 0, $visible_limit );
 	$active = is_array( $page['activeSection'] ?? null ) ? $page['activeSection'] : array();
 	$limitations = is_array( $page['limitations'] ?? null ) ? array_slice( array_map( 'sanitize_text_field', $page['limitations'] ), 0, 6 ) : array();
-	$headings = is_array( $page['headings'] ?? null ) ? array_slice( $page['headings'], 0, 40 ) : array();
+	$live_targets = is_array( $page['headings'] ?? null ) ? $page['headings'] : ( is_array( $page['sections'] ?? null ) ? $page['sections'] : array() );
+	$headings = array_slice( $live_targets, 0, 60 );
 	$heading_list = implode( '; ', array_filter( array_map( function ( $item ) {
 		if ( ! is_array( $item ) ) return '';
-		$label = sanitize_text_field( $item['text'] ?? '' );
+		$label = sanitize_text_field( $item['text'] ?? ( $item['label'] ?? '' ) );
 		$id = sanitize_title( $item['id'] ?? '' );
 		return $label ? $label . ( $id ? " (#{$id})" : '' ) : '';
 	}, $headings ) ) );
@@ -899,7 +900,7 @@ function nika_validate_action( $action, $pages ) {
 
 function nika_direct_highlight_action( $message, $page, $pages ) {
 	if ( ! preg_match( '/\bhighlight\b/i', (string) $message ) ) return null;
-	$headings = is_array( $page['headings'] ?? null ) ? $page['headings'] : array();
+	$headings = is_array( $page['headings'] ?? null ) ? $page['headings'] : ( is_array( $page['sections'] ?? null ) ? $page['sections'] : array() );
 	$normalize = static function ( $value ) {
 		$value = strtolower( html_entity_decode( sanitize_text_field( $value ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
 		return trim( preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $value ) );
@@ -908,7 +909,7 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 	$label = '';
 	foreach ( $headings as $heading ) {
 		if ( ! is_array( $heading ) ) continue;
-		$candidate = sanitize_text_field( $heading['text'] ?? '' );
+		$candidate = sanitize_text_field( $heading['text'] ?? ( $heading['label'] ?? '' ) );
 		$normalized_candidate = $normalize( $candidate );
 		if ( strlen( $normalized_candidate ) < 3 || false === strpos( $normalized_message, $normalized_candidate ) ) continue;
 		if ( strlen( $candidate ) > strlen( $label ) ) $label = $candidate;
