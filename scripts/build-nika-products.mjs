@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const version = '1.0.7';
+const version = '1.0.8';
 
 // Versions iterate in .9s: the patch digit runs 0-9, then the minor rolls over.
 // 0.3.9 is followed by 0.4.0, never 0.3.10.
@@ -53,13 +53,17 @@ const checks = spawnSync(process.execPath, [join(root, 'tests', 'run.mjs')], { c
 if (checks.status !== 0) process.exit(checks.status || 1);
 
 const artifacts = [
-  { cwd: join(root, 'wordpress'), source: 'nika-site-guide', output: `nika-site-guide-${version}.zip` },
-  { cwd: join(root, 'universal'), source: 'nika-universal', output: `nika-universal-${version}.zip` }
+  { cwd: join(root, 'wordpress'), source: 'nika-site-guide', output: `nika-site-guide-${version}.zip`, latest: 'nika-site-guide-latest.zip' },
+  { cwd: join(root, 'universal'), source: 'nika-universal', output: `nika-universal-${version}.zip`, latest: 'nika-universal-latest.zip' }
 ];
 for (const artifact of artifacts) {
   const destination = join(downloads, artifact.output);
   if (existsSync(destination)) throw new Error(`Refusing to overwrite immutable release ${artifact.output}. Bump the version first.`);
   const zip = spawnSync('zip', ['-q', '-r', destination, artifact.source, '-x', '*/data/*', '*/.env', '*.DS_Store'], { cwd: artifact.cwd, stdio: 'inherit' });
   if (zip.status !== 0) throw new Error(`Could not build ${artifact.output}. Install the zip command and retry.`);
-  console.log(`built downloads/${artifact.output}`);
+  // A buyer is sent one link that has to keep working after the next release, so
+  // the versioned file, which stays immutable, is also published under a stable
+  // name that always points at the current build.
+  cpSync(destination, join(downloads, artifact.latest));
+  console.log(`built downloads/${artifact.output} (and ${artifact.latest})`);
 }

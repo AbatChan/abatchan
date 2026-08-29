@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 
+const build=readFileSync(new URL('../scripts/build-nika-products.mjs',import.meta.url),'utf8');
+const catalog=JSON.parse(readFileSync(new URL('../products/catalog.json',import.meta.url),'utf8'));
 const php=readFileSync(new URL('../wordpress/nika-site-guide/nika-site-guide.php',import.meta.url),'utf8');
 const readme=readFileSync(new URL('../wordpress/nika-site-guide/readme.txt',import.meta.url),'utf8');
 const widget=readFileSync(new URL('../wordpress/nika-site-guide/assets/assistant-v2.js',import.meta.url),'utf8');
@@ -26,6 +28,8 @@ check('uses a dedicated top-level WordPress admin menu',php.includes("add_menu_p
 check('ships the canonical transparent white Abatchan admin icon',adminIcon.equals(canonicalAdminIcon));
 check('ships a responsive branded settings workspace',adminCss.includes('.nika-hero')&&adminCss.includes('.nika-shell')&&adminCss.includes('@media (max-width: 782px)'));
 check('offers automatic future WordPress update notices',php.includes('pre_set_site_transient_update_plugins')&&php.includes('NIKA_UPDATE_MANIFEST')&&php.includes("'plugins_api'"));
+check('every release is also published under a permanent link',build.includes("latest: 'nika-site-guide-latest.zip'")&&build.includes('cpSync(destination, join(downloads, artifact.latest))')&&catalog.platforms.some(entry=>entry.artifact==='/downloads/nika-site-guide-latest.zip'));
+check('the versioned release stays immutable',build.includes('Refusing to overwrite immutable release'));
 check('update downloads are restricted to the trusted HTTPS host',php.includes("'https' !== ( $parts['scheme']")&&php.includes("'abatchan.com' !== strtolower"));
 check('published update manifest matches the plugin version',Boolean(pluginVersion)&&updateManifest.version===pluginVersion&&updateManifest.package.endsWith(`/nika-site-guide-${pluginVersion}.zip`));
 check('a forced WordPress update check clears the release manifest before the scheduled plugin check',php.includes("add_action( 'admin_init'")&&php.includes("}, 1 );")&&php.includes("add_action( 'load-update-core.php'")&&php.includes("nika_forget_update_manifest")&&php.includes("delete_site_transient( 'nika_update_manifest_v1' )")&&php.includes("upgrader_process_complete"));

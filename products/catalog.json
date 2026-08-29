@@ -11,14 +11,14 @@
       "id": "wordpress",
       "name": "WordPress",
       "status": "available",
-      "artifact": "/downloads/nika-site-guide-1.0.7.zip",
+      "artifact": "/downloads/nika-site-guide-latest.zip",
       "runtime": "WordPress 6.2+ and PHP 7.4+"
     },
     {
       "id": "universal",
       "name": "Universal website",
       "status": "available",
-      "artifact": "/downloads/nika-universal-1.0.7.zip",
+      "artifact": "/downloads/nika-universal-latest.zip",
       "runtime": "Node.js 22.5+ or Docker"
     },
     {
@@ -36,7 +36,12 @@
       "price": 99,
       "sites": 1,
       "platformSelection": "one_available_platform",
-      "features": ["context-aware answers", "approved navigation and highlights", "customer-owned data", "bring your own AI key"]
+      "features": [
+        "context-aware answers",
+        "approved navigation and highlights",
+        "customer-owned data",
+        "bring your own AI key"
+      ]
     },
     {
       "id": "business",
@@ -44,7 +49,12 @@
       "price": 199,
       "sites": 5,
       "platformSelection": "all_available_platforms",
-      "features": ["everything in Personal", "WordPress and Universal installers", "remove Nika branding", "priority email support"]
+      "features": [
+        "everything in Personal",
+        "WordPress and Universal installers",
+        "remove Nika branding",
+        "priority email support"
+      ]
     },
     {
       "id": "agency",
@@ -52,7 +62,13 @@
       "price": 399,
       "sites": 25,
       "platformSelection": "all_available_and_future_platforms_during_update_term",
-      "features": ["everything in Business", "client installations", "white-label controls", "agency onboarding"]
+      "features": [
+        "everything in Business",
+        "client installations",
+        "white-label controls",
+        "agency onboarding"
+      ]
     }
-  ]
+  ],
+  "artifactPolicy": "Send buyers the -latest.zip link. It always serves the current release; each version also stays available under its own number."
 }
