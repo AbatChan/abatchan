@@ -159,6 +159,8 @@ check('an edit applies to the live guide rather than rebuilding it',adminJs.incl
 check('the image picker button is legible on a white card',!php.includes('nika-button--ghost nika-image__choose')&&adminCss.includes('.nika-image__choose { flex: 0 0 auto; align-self: stretch; padding: 0 14px; color: var(--nika-indigo-dark); background: #f1f1ff;'));
 check('the media library is loaded for the picker',php.includes('wp_enqueue_media();')&&adminJs.includes('window.wp.media'));
 check('no control is shown for something the adapter cannot do',shell.includes('cfg.attachments===false')&&php.includes("'attachments' => false")&&!readme.slice(0, readme.indexOf('== Changelog ==')).includes('attach'));
+check('attachment-free installs still initialize the chat',widget.includes('if(addFile&&fileInput){')&&widget.includes('addFile.addEventListener'));
+check('delete chat stays hidden until a conversation exists',widget.includes('const syncClearVisibility=()=>{clear.hidden=!transcript.length}')&&widget.includes('syncClearVisibility();'));
 check('the listing leads with what an owner gets, not how it is built',readme.includes('Answer visitor questions from your own pages')&&readme.includes('**What your visitors get**')&&readme.includes('**What you control**')&&php.includes('Answers visitor questions from your published pages'));
 check('the listing is findable by what people search for',readme.includes('Tags: ai chatbot, chatbot, ai assistant, customer support, live chat')&&!readme.includes('byok'));
 check('the read-only boundary is still stated plainly',readme.includes('It is read-only. It does not submit forms')&&!readme.includes('Version 0.2.0 is read-only'));

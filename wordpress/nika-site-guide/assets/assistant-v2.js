@@ -481,6 +481,10 @@
       };
       image.onerror=()=>resolve('');image.src=source;
     });
+    // WordPress intentionally omits attachments until its server can process
+    // them. Keep the optional controls optional here too, otherwise the
+    // missing button aborts the entire guide before Send is wired up.
+    if(addFile&&fileInput){
     addFile.addEventListener('click',()=>fileInput.click());
     fileInput.addEventListener('change',async()=>{
       const incoming=[...fileInput.files];fileInput.value='';
@@ -512,6 +516,7 @@
       if(imageNotice)announceStatus('Image preview added. The guide can use its name and details, but cannot inspect the pixels yet.',{tone:'warning',duration:3200});
       input.focus();
     });
+    }
 
     const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
     let recognition=null,listening=false,dictationWanted=false,dictationCancelled=false,dictationError='';
@@ -1450,6 +1455,8 @@
     const budgetStatus=document.createElement('span');
     budgetStatus.className='assist-sr-only';budgetStatus.setAttribute('role','status');budgetStatus.setAttribute('aria-live','polite');
     budgetIndicator.append(budgetButton,budgetTooltip,budgetStatus);head.append(budgetIndicator,clear);
+    const syncClearVisibility=()=>{clear.hidden=!transcript.length};
+    syncClearVisibility();
     const closeBudgetTip=()=>{budgetIndicator.classList.remove('is-open');budgetButton.setAttribute('aria-expanded','false')};
     budgetButton.addEventListener('click',event=>{
       event.stopPropagation();
@@ -1468,7 +1475,7 @@
       log.querySelectorAll('[data-chat-entry="true"],.assist-error,.assist-typing').forEach(el=>el.remove());
       chips&&(chips.hidden=false);panel.classList.add('is-empty');
       delete panel.dataset.budgetWarned;budgetIndicator.hidden=true;closeBudgetTip();
-      clearUnread();resetClear();
+      clearUnread();resetClear();syncClearVisibility();
       announceStatus('Chat history cleared.',{tone:'success'});
     });
 
@@ -1683,6 +1690,7 @@
       const runtimeAttachments=files.slice(0,MAX_ATTACHMENTS).map(({kind,name,type,size,text,previewUrl,previewData})=>({kind,name,type,size,previewUrl,previewData,...(kind==='text'?{text}:{})}));
       const entry={id:uid(),role:'user',content:clean,createdAt:Date.now(),state:'pending',attachments:runtimeAttachments};
       transcript.push(entry);add(clean,'me',true,entry);writeStored(transcript);
+      syncClearVisibility();
       pendingAttachments=[];renderPendingAttachments();
       if(chips)chips.hidden=true;panel.classList.remove('is-empty');input.value='';grow();meter(false);reply(clean,entry.id,files);
     };
