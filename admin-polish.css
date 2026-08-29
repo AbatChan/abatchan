@@ -461,6 +461,39 @@ html body .adm-form{
 }
 html body #view-copy .adm-form{max-width:960px}
 html body #view-assistant .adm-form{max-width:900px}
+
+/* Nika uses the same quiet settings language as the sold WordPress and
+   Universal packages. This is scoped so the rest of the studio dashboard can
+   keep its own dark workspace without leaking into the product settings. */
+html body #view-assistant.nika-local-admin{margin:calc(-1 * clamp(18px,3vw,38px)) calc(-1 * clamp(18px,3vw,38px)) -90px;background:#f4f4f8;color:#171827;min-height:100vh}
+html body .nika-local-hero{min-height:300px;padding:34px clamp(28px,5vw,64px) 48px;color:#fff;background:radial-gradient(circle at 82% 20%,rgba(126,126,255,.35),transparent 28%),linear-gradient(135deg,#11111c,#17162a 52%,#292262)}
+html body .nika-local-brand{display:flex;align-items:center;gap:12px;font-weight:750}
+html body .nika-local-brand img{width:40px;height:34px;padding:7px 6px;object-fit:contain;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(255,255,255,.08)}
+html body .nika-local-hero>p{margin:48px 0 8px;color:#a7a7ff;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+html body .nika-local-hero h2{max-width:760px;margin:0 0 12px;color:#fff;font-size:clamp(34px,5vw,52px);line-height:1.03;letter-spacing:-.05em}
+html body .nika-local-hero>span{color:rgba(255,255,255,.67);font-size:16px}
+html body #view-assistant .nika-local-shell{width:min(1040px,calc(100% - 32px));max-width:none;margin:-20px auto 70px;position:relative;z-index:2;display:grid;gap:18px}
+html body .nika-local-card{padding:30px;background:#fff;border:1px solid #e3e4eb;border-radius:18px;box-shadow:0 8px 30px rgba(23,24,39,.045);color:#171827}
+html body .nika-local-card>small,html body .nika-local-card-head small{display:block;margin:0 0 8px;color:#7474ff;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+html body .nika-local-card h3{margin:0 0 8px;color:#171827;font-size:22px;letter-spacing:-.03em}
+html body .nika-local-card p{color:#666a7b}
+html body .nika-local-launch,.nika-local-card-head{display:flex;align-items:center;justify-content:space-between;gap:24px}
+html body .nika-local-card-head>b{padding:7px 10px;color:#5555d8;background:#f1f1ff;border-radius:999px;font-size:12px}
+html body .nika-local-card .adm-switch{color:#171827;background:#f4f4f8;border-color:#e3e4eb}
+html body .nika-local-card .adm-suggestions{margin-top:22px;background:#f4f4f8;border:0}
+html body .nika-local-card .adm-suggestions legend{display:none}
+html body .nika-local-card label{color:#5d6070}
+html body .nika-local-card input[type=text],html body .nika-local-card textarea{color:#171827;background:#fbfbfd;border-color:#d8d9e2;box-shadow:none}
+html body .nika-local-card input:focus,html body .nika-local-card textarea:focus{background:#fff;border-color:#5f5ff3;box-shadow:0 0 0 3px rgba(95,95,243,.13)}
+html body .nika-local-provider{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;margin:22px 0}
+html body .nika-local-provider>span{display:grid;align-content:center;gap:4px;padding:13px 15px;background:#f4f4f8;border-radius:12px}
+html body .nika-local-provider small{color:#777b89}
+html body .nika-local-field-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
+html body .nika-local-field-head label{margin:0}
+html body .nika-local-card .adm-note{color:#5d6070;background:#f4f4f8;border-color:#e3e4eb}
+html body .nika-local-save{position:sticky;bottom:14px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:17px 19px;color:#fff;background:rgba(23,24,39,.96);border-radius:16px;box-shadow:0 16px 36px rgba(10,10,20,.22);backdrop-filter:blur(14px)}
+html body .nika-local-save>div{display:grid;gap:2px}html body .nika-local-save span{color:rgba(255,255,255,.6);font-size:12px}
+@media(max-width:820px){html body #view-assistant.nika-local-admin{margin:-24px -18px calc(-116px - env(safe-area-inset-bottom))}html body .nika-local-hero{min-height:350px;padding:28px 20px 48px}html body .nika-local-launch,html body .nika-local-card-head,html body .nika-local-save{align-items:flex-start;flex-direction:column}html body .nika-local-provider{grid-template-columns:1fr}html body .nika-local-save .btn{width:100%}}
 html body .adm-form>div:not(.adm-two):not(.adm-actions):not(.adm-note):not(.adm-assistant-test),
 html body #copyForm>div{
   min-width:0;

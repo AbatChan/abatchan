@@ -11,14 +11,14 @@
       "id": "wordpress",
       "name": "WordPress",
       "status": "available",
-      "artifact": "/downloads/nika-site-guide-0.5.7.zip",
+      "artifact": "/downloads/nika-site-guide-1.0.5.zip",
       "runtime": "WordPress 6.2+ and PHP 7.4+"
     },
     {
       "id": "universal",
       "name": "Universal website",
       "status": "available",
-      "artifact": "/downloads/nika-universal-0.5.7.zip",
+      "artifact": "/downloads/nika-universal-1.0.5.zip",
       "runtime": "Node.js 22.5+ or Docker"
     },
     {

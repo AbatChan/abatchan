@@ -9,6 +9,7 @@ const embed=readFileSync(new URL('../embed.js',import.meta.url),'utf8');
 const admin=readFileSync(new URL('../admin.js',import.meta.url),'utf8');
 const adminHtml=readFileSync(new URL('../admin.html',import.meta.url),'utf8');
 const adminCss=readFileSync(new URL('../admin-polish.css',import.meta.url),'utf8');
+const adminGenerator=readFileSync(new URL('../api/admin-assistant-generate.js',import.meta.url),'utf8');
 const faqAdmin=readFileSync(new URL('../faq-admin.js',import.meta.url),'utf8');
 const reviewsAdmin=readFileSync(new URL('../reviews-admin.js',import.meta.url),'utf8');
 const vercel=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
@@ -125,6 +126,9 @@ check('IPv6 exemptions remain supported',validIp?.('2001:db8::7')===true);
 check('IP lookup is explicit and announced',adminHtml.includes('id="checkAssistantIp"')&&adminHtml.includes('id="a-ip-status" role="status" aria-live="polite"'));
 check('IP lookup errors are visually distinct',admin.includes("classList.add('is-error')")&&adminCss.includes('.adm-field-help.is-error'));
 check('IP add action stays hidden until lookup succeeds',adminCss.includes('.adm-ip-actions [hidden]{display:none!important}'));
+check('connections that do not count explain the permanent Vercel floor',adminHtml.includes('Connections not counted')&&adminHtml.includes('Addresses in Vercel always stay exempt'));
+check('Abatchan admin generation stays server-side and requires a signed-in user',adminHtml.includes('generateAssistantSuggestions')&&adminHtml.includes('draftAssistantInstructions')&&admin.includes('/api/admin-assistant-generate')&&adminGenerator.includes('signedIn(req.headers.authorization)')&&adminGenerator.includes('process.env.DEEPSEEK_API_KEY'));
+check('Abatchan admin never receives the provider key',!admin.includes('DEEPSEEK_API_KEY')&&!adminGenerator.includes('key: process.env.DEEPSEEK_API_KEY'));
 check('mobile keeps the sign-out control',adminCss.includes('.adm-side footer #signOut{display:inline-flex'));
 check('long mobile tab labels have short variants',adminHtml.includes('<span class="adm-nav-narrow">copy</span>')&&adminHtml.includes('<span class="adm-nav-narrow">guide</span>'));
 check('generated FAQ fields have associated labels',faqAdmin.includes('for="faq-question-${index}"')&&faqAdmin.includes('for="faq-answer-${index}"'));
@@ -139,10 +143,12 @@ check('identity is parameterised, not hardcoded',!shell.includes('<b>Nika</b>')&
 check('assets resolve against the guide origin',shell.includes('${cfg.assetBase}/assets/icons/'));
 
 console.log('\n=== the widget can be served from another origin ===');
-check('api calls go through a base',assistant.includes("apiUrl('/api/chat-stream')")&&assistant.includes("apiUrl('/api/guide-feedback')"));
+check('a burst is revealed at a readable pace, not dropped in one frame',assistant.includes('Math.min(REVEAL_MAX,Math.max(REVEAL_MIN,Math.ceil(behind/24)))')&&assistant.includes('paint(false)')&&assistant.includes('paint(true)'));
+check('a reply already on screen is never cleared and retyped',assistant.includes('}else if(paintedFrames===0){')&&!assistant.includes('paintedFrames<2'));
+check('api calls go through a base',assistant.includes('apiUrl(ROUTES.chat)')&&assistant.includes('apiUrl(ROUTES.feedback)')&&assistant.includes("chat:'/api/chat-stream',feedback:'/api/guide-feedback'"));
 check('no same-origin api calls remain',!assistant.includes("fetch('/api/"));
 check('the site key travels with every call',assistant.includes("'X-Site-Key':SITE_KEY"));
-check('vendor scripts resolve against the same base',assistant.includes('${API_BASE}/assets/vendor/'));
+check('vendor scripts resolve against the guide\'s own asset base',assistant.includes("assetUrl('/assets/vendor/")&&assistant.includes('const ASSET_BASE=String(EMBED.assetBase??API_BASE)'));
 check('the primary site stays relative',assistant.includes("String(EMBED.apiBase||'')"));
 
 console.log('\n=== the embed asks for nothing the buyer must configure twice ===');

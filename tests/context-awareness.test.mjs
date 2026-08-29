@@ -15,6 +15,7 @@ const cases = [
   ["what's in view?", true],
   ["what's on the screen rn?", true],
   ['what is currently on screen?', true],
+  ['where am I and what is the main promise?', false],
   ['where is the pricing page?', false],
   ['take me to the page we were on', false],
   ['which page should I open?', false]

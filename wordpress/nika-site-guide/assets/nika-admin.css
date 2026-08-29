@@ -76,7 +76,8 @@
 .nika-sidecard { padding: 23px; }
 .nika-card h2 { margin-bottom: 7px; color: var(--nika-ink); font-size: 21px; line-height: 1.2; letter-spacing: -.025em; }
 .nika-card h2 + p, .nika-card__head p, .nika-launch-card p { max-width: 700px; margin-bottom: 0; color: var(--nika-muted); }
-.nika-card__head { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 25px; }
+.nika-card__head { display: flex; justify-content: flex-start; gap: 10px; margin-bottom: 25px; }
+.nika-card__head > div:first-child { margin-right: auto; }
 .nika-generate { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; flex: 0 0 auto; min-height: 30px; padding: 0 10px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 8px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; }
 .nika-generate__icon { flex: 0 0 auto; }
 .nika-field__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -106,7 +107,7 @@
 .nika-grid__wide { grid-column: 1 / -1; }
 .nika-field { display: grid; align-content: start; gap: 7px; color: var(--nika-ink); font-weight: 650; }
 .nika-field > span:first-child { font-size: 13px; }
-.nika-field input:not([type="color"]), .nika-field select, .nika-field textarea {
+.nika-field input:not([type="color"]):not([type="range"]), .nika-field select, .nika-field textarea {
   width: 100%;
   max-width: none;
   min-height: 44px;
@@ -126,7 +127,58 @@
 .nika-field input:focus, .nika-field select:focus, .nika-field textarea:focus { border-color: var(--nika-indigo); box-shadow: 0 0 0 3px rgba(95,95,243,.13); outline: 0; }
 .nika-field small { color: #777b89; font-weight: 400; line-height: 1.45; }
 .nika-field--compact { max-width: 260px; margin-top: 20px; }
-.nika-colour { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 10px; background: #fbfbfd; border: 1px solid #d8d9e2; border-radius: 10px; }
+.nika-boundary-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.nika-inline-action { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-top: 2px; }
+.nika-inline-action small { flex: 1 1 230px; }
+.nika-button--soft { min-height: 36px; padding: 0 12px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; cursor: pointer; font: inherit; font-size: 12px; }
+.nika-button--soft:hover,.nika-button--soft:focus-visible { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); outline: 0; }
+.nika-button--soft:disabled { opacity: .56; cursor: wait; }
+.nika-field__contrast { color: #8a6100; font-weight: 500; }
+.nika-field__contrast-fix { padding: 2px 8px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 7px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.nika-field__contrast-fix:hover, .nika-field__contrast-fix:focus-visible { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); outline: 0; }
+.nika-card__toggle { align-self: flex-start; flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; padding: 0; color: #555968; background: #f4f4f8; border: 1px solid #e3e4eb; border-radius: 10px; cursor: pointer; transition: transform .2s ease, background .2s ease; }
+.nika-card__toggle:hover, .nika-card__toggle:focus-visible { color: var(--nika-indigo-dark); background: #f1f1ff; border-color: #d8d8ff; outline: 0; }
+.nika-card__body { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .32s cubic-bezier(.2,.75,.2,1), opacity .24s ease; }
+.nika-card__inner { min-height: 0; overflow: hidden; }
+.nika-card.is-collapsed .nika-card__body { grid-template-rows: 0fr; opacity: 0; overflow: hidden; }
+.nika-card__body.is-instant { transition: none; }
+.nika-card.is-collapsed .nika-card__toggle svg { transform: rotate(-90deg); }
+.nika-card.is-collapsed .nika-card__head { margin-bottom: 0; }
+.nika-card { scroll-margin-top: 48px; }
+@media (prefers-reduced-motion: reduce) { .nika-card__toggle, .nika-card__body { transition: none; } }
+.nika-css { min-height: 190px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.6; }
+.nika-field__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.nika-field__actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.nika-card__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; margin-left: auto; }
+.nika-image__row { display: flex; align-items: center; gap: 10px; }
+.nika-image__row .nika-image__input { flex: 1 1 auto; min-width: 0; }
+/* The mark is previewed on the surface it actually lands on: the dark panel
+   header, or the accent bubble. A light tile made a white logo invisible. */
+.nika-image__preview { display: grid; place-items: center; flex: 0 0 auto; box-sizing: border-box; width: 44px; height: 44px; padding: 6px; border-radius: 12px; }
+.nika-image__preview[hidden] { display: none; }
+.nika-image__preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.nika-image__preview--panel { background: #101014; border: 1px solid rgba(255, 255, 255, .14); }
+.nika-image__preview--launch { border: 0; border-radius: 50%; background: linear-gradient(150deg, #8184ff, var(--nika-indigo) 55%, #4338ca); box-shadow: 0 6px 16px rgba(79, 70, 229, .34); }
+.nika-image__preview.is-default-glyph::after { content: ""; width: 20px; height: 20px; background: #fff; -webkit-mask: var(--nika-chat-glyph) center / contain no-repeat; mask: var(--nika-chat-glyph) center / contain no-repeat; }
+.nika-image__preview { --nika-chat-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21.5l1.4-4.2A8.3 8.3 0 0 1 3.5 11.5a8.4 8.4 0 0 1 9-8.4 8.4 8.4 0 0 1 8.5 8.4Z'/%3E%3C/svg%3E"); }
+.nika-image__size { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; margin: 0; font-size: 12px; color: #555968; }
+.nika-image__size input { width: 72px; box-sizing: border-box; height: 44px; text-align: center; }
+.nika-image__size small { color: #777b89; }
+.nika-image__choose { flex: 0 0 auto; align-self: stretch; padding: 0 14px; color: var(--nika-indigo-dark); background: #f1f1ff; border: 1px solid #d8d8ff; border-radius: 10px; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.nika-image__choose:hover, .nika-image__choose:focus-visible { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); outline: 0; }
+.nika-range { display: flex; align-items: center; gap: 12px; box-sizing: border-box; min-height: 44px; height: 44px; padding: 0 12px; background: #fbfbfd; border: 1px solid #d8d9e2; border-radius: 10px; }
+.nika-range input[type="range"] { flex: 1 1 auto; width: auto; min-height: 0; height: 6px; margin: 0; padding: 0; border: 0; border-radius: 99px; background: transparent; -webkit-appearance: none; appearance: none; }
+/* The track is filled to the current value, so 100% reads as full rather than
+   leaving a run of empty track after the thumb. */
+.nika-range input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 99px; background: linear-gradient(to right, var(--nika-indigo) var(--nika-fill, 50%), #dcdde6 var(--nika-fill, 50%)); }
+.nika-range input[type="range"]::-moz-range-track { height: 6px; border-radius: 99px; background: linear-gradient(to right, var(--nika-indigo) var(--nika-fill, 50%), #dcdde6 var(--nika-fill, 50%)); }
+.nika-range input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin-top: -6px; border: 0; border-radius: 50%; background: var(--nika-indigo); box-shadow: 0 1px 4px rgba(23, 24, 39, .3); cursor: pointer; }
+.nika-range input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: var(--nika-indigo); box-shadow: 0 1px 4px rgba(23, 24, 39, .3); cursor: pointer; }
+.nika-range input[type="range"]:focus-visible { outline: 2px solid var(--nika-indigo); outline-offset: 3px; }
+.nika-range output { min-width: 42px; color: #555968; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 720px) { .nika-image__row { flex-wrap: wrap; } .nika-image__row .nika-image__input { flex-basis: 100%; order: -1; } }
+
+.nika-colour { display: flex; align-items: center; gap: 12px; box-sizing: border-box; min-height: 44px; height: 44px; padding: 6px 10px; background: #fbfbfd; border: 1px solid #d8d9e2; border-radius: 10px; }
 .nika-colour input { width: 34px; height: 30px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .nika-colour code { padding: 0; color: #555968; background: transparent; }
 
@@ -258,7 +310,7 @@
   .nika-shell { margin-top: -14px; padding: 0 14px 44px; }
   .nika-card { padding: 22px; border-radius: 15px; }
   .nika-launch-card, .nika-card__head { align-items: flex-start; flex-direction: column; }
-  .nika-grid--2, .nika-grid--4, .nika-toggle-list, .nika-sidebar { grid-template-columns: 1fr; }
+  .nika-grid--2, .nika-grid--4, .nika-toggle-list, .nika-sidebar, .nika-boundary-grid { grid-template-columns: 1fr; }
   .nika-switch { white-space: normal; }
   .nika-savebar { flex-direction: column; align-items: stretch; }
   .nika-savebar .button-primary { width: 100%; }

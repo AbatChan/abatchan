@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nika core visual fixture</title>
+  <style>
+    body{margin:0;min-height:100vh;background:#0b0b0d;color:#f7f7f5;font:16px/1.5 Inter,system-ui,sans-serif}
+    main{max-width:960px;margin:auto;padding:10vh 6vw}h1{max-width:760px;font-size:clamp(52px,8vw,112px);line-height:.92;letter-spacing:-.07em}p{max-width:560px;color:#aaaab1}
+  </style>
+</head>
+<body>
+  <main><h1>A canonical Nika shell.</h1><section id="destination"><h2>Verified destination</h2><p>This fixture makes the distributable visitor interface available for desktop and mobile visual regression checks.</p></section></main>
+  <script>
+    const nativeFetch=window.fetch.bind(window);
+    window.fetch=(input,init)=>{
+      const url=String(input);
+      if(url.endsWith('/missing-nika-api/config'))return Promise.resolve(new Response(JSON.stringify({enabled:true,pages:[{path:'/tests/fixtures/nika-core-visual.html',title:'Fixture'}]}),{status:200,headers:{'content-type':'application/json'}}));
+      if(url.endsWith('/missing-nika-api/chat'))return Promise.resolve(new Response(JSON.stringify({message:'I found the verified destination. I can take you there when you are ready.',action:{href:'/tests/fixtures/nika-core-visual.html#destination',label:'Verified destination',departure:'Open the verified destination?'}}),{status:200,headers:{'content-type':'application/json'}}));
+      return nativeFetch(input,init);
+    };
+    window.NikaConfig={endpoint:'/missing-nika-api',name:'Nika',subtitle:'site help, backed by Abat',avatar:'../../assets/abatchan-symbol-white-tight-504x308.png'};
+    if(new URLSearchParams(location.search).get('brand')==='custom')window.NikaConfig.launcherIcon='../../assets/abatchan-symbol-white-tight-504x308.png';
+  </script>
+  <script src="../../products/nika-core/nika-widget.js?v=0.5.9"></script>
+  <script>
+    const openWhenReady=()=>{const host=document.querySelector('[data-nika-mounted]');const root=host&&host.shadowRoot;const launch=root&&root.querySelector('.nika-launch');if(!launch)return setTimeout(openWhenReady,50);if(new URLSearchParams(location.search).get('scenario')==='launcher')return;launch.click();const scenario=new URLSearchParams(location.search).get('scenario');if(scenario==='menu')setTimeout(()=>root.querySelector('.nika-depth').click(),100);if(scenario==='approval')setTimeout(()=>{const input=root.querySelector('textarea');input.value='Take me to the verified destination.';root.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));},100)};
+    openWhenReady();
+  </script>
+</body>
+</html>

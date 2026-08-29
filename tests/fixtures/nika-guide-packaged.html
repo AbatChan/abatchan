@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Packaged guide</title>
+<!-- Theme rules that would reshape a guide mounted in the light DOM. The
+     packaged guide is isolated, so none of them may reach it. -->
+<style>
+  body{margin:0;background:#0d0d12;color:#eee;font-family:system-ui;padding:40px}
+  button{all:unset;background:#c00!important;color:#fff!important;font-size:22px!important;padding:20px!important;border-radius:0!important}
+  img{max-width:40px!important;filter:invert(1)!important}
+  textarea{background:#ff0!important;color:#000!important;font-size:28px!important}
+  div{letter-spacing:4px}
+</style>
+<main><h1>A hostile theme.</h1><p id="destination">Every rule above is designed to break a widget that is not isolated.</p></main>
+<script>
+  window.__guideEmbed = { apiBase: '', routes: { chat: '/missing/chat', feedback: '/missing/feedback' } };
+</script>
+<script type="module">
+  const { mountGuideShell } = await import('/wordpress/nika-site-guide/assets/guide-shell.js');
+  await mountGuideShell({
+    name: 'Nika', siteName: 'Test site', subtitle: 'website guide',
+    avatar: '/assets/abatchan-symbol-indigo-tight.svg',
+    assetBase: '/wordpress/nika-site-guide/assets',
+    apiBase: '', isolate: true,
+    accent: '#2563eb', panelColour: new URLSearchParams(location.search).get('light')?'#ffffff':'#101a2e', panelOpacity: 100,
+    gradientFrom: '#60a5fa', gradientTo: '#1e3a8a', logoSize: 34, markSize: 26,
+    stylesheet: '/wordpress/nika-site-guide/assets/assistant.css',
+    placeholder: 'Ask about this website...',
+    disclaimer: 'Owner-written note under the box.',
+    chips: [
+      {label:'Find the right service',description:'See what fits your needs'},
+      {label:'How does it work?',description:'Review the process'},
+      {label:'Compare the options',description:'See plans or packages'}
+    ],
+    loadSettings: async () => null
+  });
+  const s = document.createElement('script');
+  s.src = '/wordpress/nika-site-guide/assets/assistant-v2.js';
+  document.head.append(s);
+  setTimeout(() => {
+    const host = document.querySelector('[data-assist-host]');
+    const root = host && host.shadowRoot;
+    const launch = root && root.querySelector('.assist-launch');
+    if (launch) launch.click();
+  }, 900);
+</script>
