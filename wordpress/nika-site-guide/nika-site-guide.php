@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.2.0
+ * Version:           1.2.1
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.2.0';
+const NIKA_VERSION = '1.2.1';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -921,12 +921,14 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 		if ( strlen( $normalize( $candidate ) ) < 3 ) return null;
 		$best_path = '';
 		$best_score = 0;
+		$highlight_at = strpos( $normalized_message, 'highlight' );
+		$route_context = false === $highlight_at ? $normalized_message : substr( $normalized_message, 0, $highlight_at );
 		foreach ( $pages as $published_page ) {
 			$published_path = untrailingslashit( wp_parse_url( sanitize_text_field( $published_page['path'] ?? '' ), PHP_URL_PATH ) ?: '' ) ?: '/';
 			$title = $normalize( $published_page['title'] ?? '' );
 			$slug = $normalize( basename( $published_path ) );
 			foreach ( array_filter( array( $title, $slug ) ) as $route_name ) {
-				if ( strlen( $route_name ) >= 3 && false !== strpos( $normalized_message, $route_name ) && strlen( $route_name ) > $best_score ) {
+				if ( strlen( $route_name ) >= 3 && false !== strpos( $route_context, $route_name ) && strlen( $route_name ) > $best_score ) {
 					$best_path = $published_path;
 					$best_score = strlen( $route_name );
 				}
