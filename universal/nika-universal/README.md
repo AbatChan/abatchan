@@ -1,4 +1,4 @@
-# Nika Universal 0.5.8
+# Nika Universal 1.2.5
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go
@@ -68,9 +68,17 @@ server-managed exemptions that the browser admin cannot remove.
 Nika captures the live route, title, main heading, visible section and rendered
 page text again for every question. This works for newly deployed pages before
 the next static index refresh, SPA route changes, open dialogs, tabs and expanded
-details. Query parameters are never included in page context. Excluded paths are
+details. It also creates a compact local target registry from headings, cards,
+buttons, links, fields, accessible labels and open shadow roots. Exact and compound
+highlights use that registry without spending an AI request, and each target keeps
+its own clickable fallback. Raw page HTML is never sent. Query parameters are never included in page context. Excluded paths are
 also a runtime privacy boundary: the widget does not mount there and the server
 rejects chat requests carrying one of those paths.
+
+Conventional rendered HTML works automatically. Add `data-assist-target="Descriptive label"`
+to a custom component when it needs an explicit target name. Closed shadow roots,
+cross-origin iframe contents, canvas pixels and image-only text cannot be inspected
+through the page DOM and require an owner-authored accessible target outside that boundary.
 
 The supplied limits are starting examples. `hourlyLimit: 20` lets one visitor
 make 20 requests before the hourly reset. `dailyLimit: 500` allows at most

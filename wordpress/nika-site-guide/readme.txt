@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai chatbot, chatbot, ai assistant, customer support, live chat
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 1.2.4
+Stable tag: 1.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,8 @@ It is the same guide that runs on abatchan.com. Not a cut-down copy of it: the p
 * Answers drawn from your published pages and posts, plus whatever is on screen right now.
 * Replies that stream in as they are written, formatted with headings, lists and links.
 * An offer to navigate, which waits for their approval unless they choose otherwise.
+* Ordered multi-target guidance with a separate clickable link for every highlighted item.
+* Local discovery of headings, cards, buttons, links, form fields and accessible labels before an AI request is needed.
 * Dictation, so they can ask by voice.
 * A conversation that survives moving between pages.
 
@@ -80,6 +82,8 @@ Configuration is stored in the WordPress options table. Published content is rea
 
 Newly published or updated pages and posts are discovered automatically. Nika clears its bounded local content index whenever WordPress saves or deletes content. The live browser page is checked again for every question, including pages not yet present in the index. Excluded paths do not load Nika and are rejected by the chat endpoint, so their visible content is not sent for answers or navigation.
 
+For highlighting, the browser builds a compact semantic target list from rendered labels, roles and accessible attributes. It does not send raw page HTML. Conventional theme and page-builder output works automatically; authors can add `data-assist-target="Descriptive label"` when a custom component needs an explicit name. Open shadow roots are indexed, while closed shadow roots, cross-origin frames, canvas pixels and image-only text remain outside browser DOM access.
+
 = Does Abatchan receive my API key or conversations? =
 
 No. This self-hosted package does not call an Abatchan Nika service. WordPress sends AI requests directly to the provider selected by the site owner.
@@ -97,6 +101,11 @@ No. Nika is read-only. It does not submit forms, access user accounts, or comple
 The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, every colour and size in the widget, the note under the message box, and custom CSS. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 1.2.5 =
+* Add an individual clickable fallback for every target in a compound highlight.
+* Discover buttons, links, fields, accessible labels, cards, and open shadow-root content locally before using AI.
+* Bring deterministic exact and compound highlights to the Universal edition.
 
 = 1.2.4 =
 * Highlight multiple requested targets in order while preserving Ask First approval.

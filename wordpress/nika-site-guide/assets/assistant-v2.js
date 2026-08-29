@@ -94,28 +94,47 @@
     '/about':{'name-explanation':{selector:'.about-copy>p:nth-of-type(2)',label:'name explanation'}},
     '/pricing':{'monthly-support':{selector:'.scope-strip .scope-item:nth-child(3)',label:'Monthly support'}}
   };
+  const automaticTargetNodes=new Map();
   const targetText=node=>{
-    const heading=node.matches('h1,h2,h3')?node:node.querySelector('h1,h2,h3');
-    const labelled=node.matches('label')?node:node.querySelector('label');
+    const heading=node.matches('h1,h2,h3,h4,h5,h6')?node:node.querySelector('h1,h2,h3,h4,h5,h6');
+    const labelled=node.matches('label')?node:(node.labels?.[0]||node.querySelector('label'));
     const summary=node.matches('summary')?node:node.querySelector('summary');
-    return (node.dataset.assistTarget||heading?.textContent||labelled?.textContent||summary?.textContent||node.getAttribute('aria-label')||(node.matches('p')?node.textContent:'')||'').replace(/\s+/g,' ').trim().slice(0,120);
+    const directText=node.matches('button,a[href],[role="button"],[role="link"],[role="tab"],option')?node.textContent:'';
+    return (node.dataset.assistTarget||node.getAttribute('aria-label')||labelled?.textContent||heading?.textContent||summary?.textContent||directText||node.getAttribute('title')||node.getAttribute('alt')||node.getAttribute('placeholder')||node.getAttribute('name')||(node.matches('p')?node.textContent:'')||'').replace(/\s+/g,' ').trim().slice(0,120);
   };
   const targetSlug=text=>text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,58)||'content';
+  const targetKind=node=>node.matches('input,select,textarea')?'field':node.matches('button,[role="button"]')?'button':node.matches('a[href],[role="link"]')?'link':node.matches('form,fieldset')?'form':node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?'heading':node.matches('details,summary')?'details':node.matches('img,[alt]')?'media':node.matches('section,article,[role="region"],[role="tabpanel"]')?'section':'content';
+  const targetPriority=node=>node.hasAttribute('data-assist-target')&&!node.hasAttribute('data-assist-auto')?8:['field','button','link','form'].includes(targetKind(node))?7:targetKind(node)==='heading'?6:['details','section'].includes(targetKind(node))?5:targetKind(node)==='media'?4:2;
+  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:2px solid rgba(129,132,255,.78)!important;outline-offset:8px!important;border-radius:16px!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,rgba(99,102,241,.13),rgba(99,102,241,.035))!important;box-shadow:0 0 0 8px rgba(99,102,241,.055)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;padding:7px 10px!important;border-radius:999px!important;color:#fff!important;background:rgba(79,70,229,.94)!important;box-shadow:0 10px 30px rgba(79,70,229,.34)!important;font:650 11px/1.2 system-ui,sans-serif!important;pointer-events:none!important}';
+  const collectTargetCandidates=root=>{
+    const selector='[data-assist-target],h1,h2,h3,h4,h5,h6,article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[title],img[alt],p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
+    const found=[...root.querySelectorAll(selector)];
+    for(const node of root.querySelectorAll('*')){
+      if(node.shadowRoot){
+        if(!node.shadowRoot.querySelector('style[data-assist-target-style]')){const style=document.createElement('style');style.dataset.assistTargetStyle='true';style.textContent=TARGET_STYLE;node.shadowRoot.prepend(style)}
+        found.push(...collectTargetCandidates(node.shadowRoot));
+      }
+    }
+    return found;
+  };
   const installAutomaticTargets=()=>{
-    const main=document.querySelector('main');
+    const main=document.querySelector('main,[role="main"]')||document.body;
     if(!main)return;
-    const used=new Set([...main.querySelectorAll('[id]')].map(node=>node.id));
-    const candidates=[...main.querySelectorAll('h1,h2,h3,article,details,form,.field,p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]')];
+    const used=new Set([...document.querySelectorAll('[id]')].map(node=>node.id));
+    automaticTargetNodes.forEach((node,id)=>{if(node.isConnected)used.add(id);else automaticTargetNodes.delete(id)});
+    const candidates=collectTargetCandidates(main).sort((a,b)=>targetPriority(b)-targetPriority(a));
     candidates.forEach(node=>{
       if(node.closest('[hidden],[aria-hidden="true"]'))return;
       const label=targetText(node);
       if(!label||label.length<3)return;
       if(!node.dataset.assistTarget){node.dataset.assistTarget=label;node.dataset.assistAuto='true'}
-      if(node.id){used.add(node.id);return}
-      const base=`assist-${targetSlug(label)}`;
-      let id=base,index=2;
-      while(used.has(id))id=`${base}-${index++}`;
-      node.id=id;used.add(id);
+      if(!node.id){
+        const base=`assist-${targetSlug(label)}`;
+        let id=base,index=2;
+        while(used.has(id))id=`${base}-${index++}`;
+        node.id=id;
+      }
+      used.add(node.id);automaticTargetNodes.set(node.id,node);
     });
   };
   // Where the guide is allowed to send a visitor. An embed is told this by the
@@ -244,11 +263,11 @@
     const description=document.querySelector('meta[name="description"]')?.content||'';
     const main=document.querySelector('main');
     const text=(main?.innerText||'').replace(/\s+/g,' ').trim().slice(0,3500);
-    const sections=[...document.querySelectorAll('main [id]')]
-      .filter(node=>node.matches('section,article,h1,h2,h3,[data-assist-target]')||node.querySelector('h1,h2,h3'))
-      .sort((a,b)=>Number(a.matches('p'))-Number(b.matches('p')))
-      .slice(0,60)
-      .map(node=>({id:node.id,label:node.dataset.assistTarget||node.querySelector('h1,h2,h3')?.textContent.trim()||node.textContent.trim().slice(0,80)}));
+    const sections=[...automaticTargetNodes.values()]
+      .filter(node=>node.isConnected&&node.id&&targetText(node))
+      .sort((a,b)=>targetPriority(b)-targetPriority(a))
+      .slice(0,80)
+      .map(node=>({id:node.id,label:targetText(node),kind:targetKind(node)}));
     const activeCandidates=[...document.querySelectorAll('dialog[open],[role="dialog"]:not([hidden]),[aria-modal="true"]:not([hidden]),main [role="tabpanel"]:not([hidden]),main details[open],main section[id],main article[id],main h1[id],main h2[id],main h3[id],main [data-assist-target][id]')]
       .filter(node=>!node.closest('.assist-panel')&&!(node.dataset.assistAuto==='true'&&node.matches('p,.field')));
     const focusNode=document.elementFromPoint(Math.max(1,Math.min(innerWidth-1,innerWidth*.34)),Math.max(1,Math.min(innerHeight-1,innerHeight*.5)))
@@ -768,7 +787,7 @@
       const normalizedQuery=[...wanted].join(' '),normalizedCandidate=[...available].join(' ');
       return matches/wanted.size+(normalizedCandidate.includes(normalizedQuery)?1:0);
     };
-    const closestTarget=label=>[...document.querySelectorAll('main [data-assist-target]')]
+    const closestTarget=label=>[...automaticTargetNodes.values()].filter(node=>node.isConnected)
       .map(node=>({node,score:targetScore(label,node.dataset.assistTarget)}))
       .sort((a,b)=>b.score-a.score)[0];
     const targetFor=(url,label,preferExact=false)=>{
@@ -781,7 +800,8 @@
         return document.querySelector('main h1,main');
       }
       try{
-        const raw=document.getElementById(decodeURIComponent(url.hash.slice(1)));
+        const id=decodeURIComponent(url.hash.slice(1));
+        const raw=document.getElementById(id)||automaticTargetNodes.get(id);
         // A model-supplied anchor must agree with the requested content. If it
         // points at a different section, prefer the best matching safe target
         // on this page rather than faithfully highlighting the wrong thing.
@@ -797,28 +817,38 @@
       }catch{return null}
     };
 
+    const guidedVisualTargets=new Set();
     const clearGuidance=()=>{
       clearTimeout(guidanceTimer);
       document.querySelectorAll('.assist-guided-target').forEach(node=>node.classList.remove('assist-guided-target'));
       document.querySelectorAll('.assist-guide-marker').forEach(marker=>marker.remove());
+      guidedVisualTargets.forEach(node=>{node.classList?.remove('assist-guided-target');node.querySelectorAll?.('.assist-guide-marker').forEach(marker=>marker.remove())});
+      guidedVisualTargets.clear();
+      automaticTargetNodes.forEach(node=>{
+        node.classList?.remove('assist-guided-target');
+        node.querySelectorAll?.('.assist-guide-marker').forEach(marker=>marker.remove());
+      });
     };
 
     const revealTarget=(url,label,preferExact=false)=>{
       const target=targetFor(url,label,preferExact);
       if(!target)return {found:false,highlighted:false,label:String(label||'')};
+      const visualTarget=target.matches('input,select,textarea,img,option')
+        ? (target.closest('label,.field,[role="group"],fieldset')||target.parentElement||target)
+        : target;
       const pageTop=!url.hash&&!preferExact;
       // The border and title pill are one guide state. Clearing an older
       // target must remove both immediately; previously a second reveal could
       // remove the old border while its independently timed pill lingered.
       clearGuidance();
-      target.classList.add('assist-guided-target');
+      visualTarget.classList.add('assist-guided-target');guidedVisualTargets.add(visualTarget);
       if(pageTop)scrollTo({top:0,left:0,behavior:'auto'});
-      else target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+      else visualTarget.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
       const marker=document.createElement('span');
       marker.className='assist-guide-marker';
       marker.textContent=label||'Here';
       marker.setAttribute('aria-hidden','true');
-      target.appendChild(marker);
+      visualTarget.appendChild(marker);
       guidanceTimer=setTimeout(clearGuidance,GUIDANCE_DURATION);
       return {found:true,highlighted:true,label:String(label||targetText(target)).slice(0,120),id:String(target.id||'').slice(0,100)};
     };
@@ -919,26 +949,31 @@
     // fallback that can reopen or re-highlight the same place after reload.
     const appendJourneyFallback=(arrival,journey)=>{
       if(!arrival||!journey?.href||arrival.querySelector('.assist-journey-fallback'))return;
-      let url;
-      try{url=new URL(journey.href,location.href)}catch{return}
-      if(!isSafeDestination(url))return;
-      const href=publicPath(url)+url.hash;
-      const alreadyLinked=[...arrival.querySelectorAll('a[href]')].some(link=>{
-        try{const linked=new URL(link.getAttribute('href'),location.href);return publicPath(linked)+linked.hash===href}catch{return false}
-      });
-      if(alreadyLinked)return;
-      const label=String(journey.label||'destination').trim();
-      const link=document.createElement('a');
-      link.className='assist-action-link assist-journey-fallback';
-      link.href=href;
-      link.innerHTML=`${actionIcon(href)}<span>${escapeText(`Open ${label}`)}</span>`;
-      link.addEventListener('click',event=>{
-        if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
-        event.preventDefault();
-        navigateTo(href,label,{section_requested:journey.section_requested===true,form_prefill:journey.form_prefill,replace_fields:journey.replace_fields});
-      });
+      const destinations=(Array.isArray(journey.steps)&&journey.steps.length?journey.steps:[journey]).slice(0,3);
       const host=arrival.querySelector('p:last-child')||arrival;
-      host.append(document.createTextNode(' '),link);
+      const seen=new Set();
+      destinations.forEach(destination=>{
+        let url;try{url=new URL(destination.href,location.href)}catch{return}
+        if(!isSafeDestination(url))return;
+        const href=publicPath(url)+url.hash;
+        const label=String(destination.label||'destination').trim();
+        const key=`${href}\n${label.toLowerCase()}`;
+        if(seen.has(key))return;seen.add(key);
+        const alreadyLinked=[...arrival.querySelectorAll('a[href]')].some(link=>{
+          try{const linked=new URL(link.getAttribute('href'),location.href);return publicPath(linked)+linked.hash===href&&link.textContent.includes(label)}catch{return false}
+        });
+        if(alreadyLinked)return;
+        const link=document.createElement('a');
+        link.className='assist-action-link assist-journey-fallback';
+        link.href=href;
+        link.innerHTML=`${actionIcon(href)}<span>${escapeText(`Open ${label}`)}</span>`;
+        link.addEventListener('click',event=>{
+          if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+          event.preventDefault();
+          navigateTo(href,label,{section_requested:destination.section_requested===true,form_prefill:destination.form_prefill,replace_fields:destination.replace_fields});
+        });
+        host.append(document.createTextNode(' '),link);
+      });
     };
 
     const enhanceActions=el=>{
