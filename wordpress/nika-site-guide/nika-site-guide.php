@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.2.1
+ * Version:           1.2.2
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.2.1';
+const NIKA_VERSION = '1.2.2';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -966,8 +966,6 @@ function nika_chat_prepare( WP_REST_Request $request, $mode = 'json' ) {
 	$message = sanitize_textarea_field( $body['message'] ?? '' );
 	$answer_depth = 'detailed' === sanitize_key( $body['answerDepth'] ?? '' ) ? 'detailed' : 'concise';
 	if ( ! $message || strlen( $message ) > 4000 ) return new WP_Error( 'nika_invalid_message', __( 'Enter a shorter question.', 'nika-site-guide' ), array( 'status' => 400 ) );
-	$limited = nika_rate_allowed( $s['hourly_limit'], $s['daily_limit'] );
-	if ( $limited ) return new WP_Error( 'nika_rate_limit', 'site_daily' === $limited ? __( 'This site has reached its daily Nika budget.', 'nika-site-guide' ) : __( 'You have reached the hourly Nika limit. Please try later.', 'nika-site-guide' ), array( 'status' => 429 ) );
 	$pages = nika_pages();
 	$page = is_array( $body['pageContext'] ?? null ) ? $body['pageContext'] : ( is_array( $body['page'] ?? null ) ? $body['page'] : array() );
 	if ( current_user_can( 'manage_options' ) && is_array( $body['preview'] ?? null ) ) {
@@ -983,6 +981,8 @@ function nika_chat_prepare( WP_REST_Request $request, $mode = 'json' ) {
 	if ( $direct_location ) return array( 'direct' => $direct_location );
 	$direct_highlight = nika_direct_highlight_action( $message, $page, $pages );
 	if ( $direct_highlight ) return array( 'direct_action' => $direct_highlight );
+	$limited = nika_rate_allowed( $s['hourly_limit'], $s['daily_limit'] );
+	if ( $limited ) return new WP_Error( 'nika_rate_limit', 'site_daily' === $limited ? __( 'This site has reached its daily Nika budget.', 'nika-site-guide' ) : __( 'You have reached the hourly Nika limit. Please try later.', 'nika-site-guide' ), array( 'status' => 429 ) );
 	$messages = array( array( 'role' => 'system', 'content' => nika_system_prompt( $s, $pages, $page, $answer_depth, $mode ) ) );
 	$history = is_array( $body['history'] ?? null ) ? array_slice( $body['history'], -2 * (int) $s['history_turns'] ) : array();
 	// JSON mode requires every assistant turn to be JSON. A streamed turn,
