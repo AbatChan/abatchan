@@ -1455,7 +1455,9 @@
     const budgetStatus=document.createElement('span');
     budgetStatus.className='assist-sr-only';budgetStatus.setAttribute('role','status');budgetStatus.setAttribute('aria-live','polite');
     budgetIndicator.append(budgetButton,budgetTooltip,budgetStatus);head.append(budgetIndicator,clear);
-    const syncClearVisibility=()=>{clear.hidden=!transcript.length};
+    // The control follows what the visitor can actually see. Preview history
+    // may remain in storage while its empty state is restored in the panel.
+    const syncClearVisibility=()=>{clear.hidden=panel.classList.contains('is-empty')};
     syncClearVisibility();
     const closeBudgetTip=()=>{budgetIndicator.classList.remove('is-open');budgetButton.setAttribute('aria-expanded','false')};
     budgetButton.addEventListener('click',event=>{
@@ -1690,9 +1692,8 @@
       const runtimeAttachments=files.slice(0,MAX_ATTACHMENTS).map(({kind,name,type,size,text,previewUrl,previewData})=>({kind,name,type,size,previewUrl,previewData,...(kind==='text'?{text}:{})}));
       const entry={id:uid(),role:'user',content:clean,createdAt:Date.now(),state:'pending',attachments:runtimeAttachments};
       transcript.push(entry);add(clean,'me',true,entry);writeStored(transcript);
-      syncClearVisibility();
       pendingAttachments=[];renderPendingAttachments();
-      if(chips)chips.hidden=true;panel.classList.remove('is-empty');input.value='';grow();meter(false);reply(clean,entry.id,files);
+      if(chips)chips.hidden=true;panel.classList.remove('is-empty');syncClearVisibility();input.value='';grow();meter(false);reply(clean,entry.id,files);
     };
     form.addEventListener('submit',e=>{e.preventDefault();if(pending){activeController?.abort();return}ask(input.value)});
     chips?.addEventListener('click',e=>{const button=e.target.closest('button');if(button)ask(button.dataset.question||button.querySelector('strong')?.textContent||'')});
