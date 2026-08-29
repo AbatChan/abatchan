@@ -42,6 +42,7 @@ export async function mountGuideShell(options = {}) {
     textColour: '',
     iconColour: '',
     customCss: '',
+    attachments: true,
     logoSize: null,
     markSize: null,
     assetBase: '',
@@ -181,7 +182,7 @@ export async function mountGuideShell(options = {}) {
       '<div class="assist-attachment-list" aria-live="polite" hidden></div>'+
       '<p class="assist-attachment-error" role="alert" hidden></p>'+
       `<textarea name="q" rows="1" autocomplete="off" maxlength="4000" placeholder="${cfg.placeholder}" aria-label="Your question"></textarea>`+
-      '<input class="assist-file-input" type="file" accept="image/*,.txt,.md,.csv,.json,.pdf,.doc,.docx,.rtf,text/plain,text/markdown,text/csv,application/json,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>'+
+      (cfg.attachments===false?'':'<input class="assist-file-input" type="file" accept="image/*,.txt,.md,.csv,.json,.pdf,.doc,.docx,.rtf,text/plain,text/markdown,text/csv,application/json,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>')+
       '<div class="assist-dictation-bar" role="group" aria-label="Voice dictation" hidden>'+
         `<button class="assist-dictation-cancel" type="button" aria-label="Cancel dictation"><img src="${cfg.assetBase}/assets/icons/x.svg" alt="" aria-hidden="true"></button>`+
         '<canvas class="assist-dictation-wave" aria-hidden="true"></canvas>'+
@@ -190,7 +191,7 @@ export async function mountGuideShell(options = {}) {
       '</div>'+
       '<div class="assist-composer-rail">'+
         '<div class="assist-composer-group">'+
-          `<button class="assist-composer-icon assist-add" type="button" aria-label="Attach project details" data-tip="Attach project details"><img src="${cfg.assetBase}/assets/icons/plus.svg" alt="" aria-hidden="true"></button>`+
+          (cfg.attachments===false?'':`<button class="assist-composer-icon assist-add" type="button" aria-label="Attach project details" data-tip="Attach project details"><img src="${cfg.assetBase}/assets/icons/plus.svg" alt="" aria-hidden="true"></button>`)+
           '<div class="assist-composer-menu-wrap">'+
             `<button class="assist-composer-choice assist-approval" type="button" aria-haspopup="menu" aria-expanded="false" data-tip="Choose how site actions are approved"><img src="${cfg.assetBase}/assets/icons/shield-check.svg" alt="" aria-hidden="true"><span>Ask first</span><img class="assist-choice-chevron" src="${cfg.assetBase}/assets/icons/chevron-down.svg" alt="" aria-hidden="true"></button>`+
             '<div class="assist-composer-menu assist-approval-menu" role="menu" hidden><button type="button" role="menuitemradio" data-action-mode="ask"><strong>Ask before actions</strong><span>Confirm navigation each time</span></button><button type="button" role="menuitemradio" data-action-mode="allow"><strong>Allow site actions</strong><span>Navigate when I clearly ask</span></button></div>'+

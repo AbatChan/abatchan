@@ -383,6 +383,7 @@
           assetBase: window.NikaAdmin.assetBase,
           apiBase: '',
           stylesheet: window.NikaAdmin.stylesheet,
+          attachments: false,
           isolate: true,
           loadSettings: async () => null
         }))

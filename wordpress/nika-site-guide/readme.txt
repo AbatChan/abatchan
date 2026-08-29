@@ -1,19 +1,40 @@
 === Nika Site Guide ===
 Contributors: abatchan
-Tags: ai assistant, site guide, navigation, byok
+Tags: ai chatbot, chatbot, ai assistant, customer support, live chat
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A self-hosted, context-aware website guide using your AI key and WordPress database.
+Answer visitor questions from your own pages, and take people straight to the one they need. Your AI key, your database, no monthly fee.
 
 == Description ==
 
-Nika answers from configured instructions, published WordPress content, and limited visible context from the visitor's current page. When explicitly asked, it can navigate to a published page, scroll to a section, and highlight the destination.
+Most visitors will not read your whole site to find one answer. Nika sits in the corner of every page and answers them from what you have already published, in your words, and then offers to take them to the page that proves it.
 
-This edition is bring-your-own-key software:
+It is the same guide that runs on abatchan.com. Not a cut-down copy of it: the plugin ships those exact files.
+
+**What your visitors get**
+
+* Answers drawn from your published pages and posts, plus whatever is on screen right now.
+* Replies that stream in as they are written, formatted with headings, lists and links.
+* An offer to navigate, which waits for their approval unless they choose otherwise.
+* Dictation, so they can ask by voice.
+* A conversation that survives moving between pages.
+
+**What you control**
+
+* The assistant's name, greeting, starter questions and the note under the message box.
+* Colours: accent, panel and its opacity, both bubble gradient stops, scrollbar, shadow, text and icons. One click matches your theme's own palette.
+* Your logo and bubble icon, at the size you choose, previewed on the surface they land on.
+* Custom CSS for anything else. It loads inside the guide only and cannot affect the rest of your site.
+* Per-visitor hourly and site-wide daily request budgets, IP exemptions for your own testing, and paths where Nika must never appear.
+* A live preview on the settings page: the real guide, answering real questions, while the site stays hidden from visitors.
+
+**Your key, your data, no subscription**
+
+This is bring-your-own-key software. You pay your AI provider directly for what you use, and nothing to us after purchase.
 
 * Settings and website content remain in your WordPress database.
 * Conversation history remains in the visitor's browser session.
@@ -22,6 +43,10 @@ This edition is bring-your-own-key software:
 * No Abatchan account or hosted Nika database is required.
 
 Supported providers are OpenAI, DeepSeek, and OpenAI-compatible chat-completions endpoints.
+
+**What Nika will not do**
+
+It is read-only. It does not submit forms, sign in to accounts, take payments, or promise anything on your behalf, and it can only navigate to paths your own WordPress installation reports as published.
 
 == Third-party services ==
 
@@ -65,13 +90,17 @@ No. The server and browser both restrict navigation to published paths returned 
 
 = Does Nika submit forms? =
 
-No. Version 0.2.0 is read-only and does not submit forms, access user accounts, or complete payments.
+No. Nika is read-only. It does not submit forms, access user accounts, or complete payments.
 
 = Which limits can I control? =
 
-The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, colour, and position. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
+The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, every colour and size in the widget, the note under the message box, and custom CSS. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 1.0.6 =
+* Rewrite the plugin description around what the guide does for a site owner.
+* Hide the attachment control, which this edition does not yet read.
 
 = 1.0.5 =
 * Fix sections that collapsed only partly, leaving a tall empty card behind.
@@ -101,7 +130,7 @@ The site owner controls the pre-chat starter suggestions, per-visitor hourly and
 
 = 0.8.2 =
 * Ship the guide from abatchan.com itself: the same shell, widget, stylesheet and icons the designed-for site runs, rather than a smaller copy of it.
-* Adds attachments, streamed answers with a typing indicator, formatted replies, per-message feedback, and the site's own suggestion icons.
+* Adds streamed answers with a typing indicator, formatted replies, per-message feedback, and the site's own suggestion icons.
 * The guide is isolated from the theme it lands in, so it renders the same on any site.
 * Answers describe the page the visitor is actually on.
 

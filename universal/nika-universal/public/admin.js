@@ -18,7 +18,7 @@
     if(previewGuide)return previewGuide.update(previewSettings());
     window.__guideEmbed={apiBase:'',assetBase:'/nika',routes:{chat:'/nika/chat-stream',feedback:'/nika/guide-feedback'},headers:{Authorization:`Bearer ${token}`}};
     import('/nika/guide-shell.js')
-      .then(module=>module.mountGuideShell({...previewSettings(),assetBase:'/nika',apiBase:'',stylesheet:'/nika/assistant.css',isolate:true,loadSettings:async()=>null}))
+      .then(module=>module.mountGuideShell({...previewSettings(),assetBase:'/nika',apiBase:'',stylesheet:'/nika/assistant.css',attachments:false,isolate:true,loadSettings:async()=>null}))
       .then(handle=>{previewGuide=handle;const widget=document.createElement('script');widget.src='/nika/assistant-v2.js';document.head.append(widget)});
   };
   settings.addEventListener('input',renderPreview);settings.addEventListener('change',renderPreview);

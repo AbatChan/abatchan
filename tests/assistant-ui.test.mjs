@@ -144,6 +144,7 @@ check('assets resolve against the guide origin',shell.includes('${cfg.assetBase}
 
 console.log('\n=== the widget can be served from another origin ===');
 check('a burst is revealed at a readable pace, not dropped in one frame',assistant.includes('Math.min(REVEAL_MAX,Math.max(REVEAL_MIN,Math.ceil(behind/24)))')&&assistant.includes('paint(false)')&&assistant.includes('paint(true)'));
+check('this site keeps its attachment control',shell.includes('attachments: true,'));
 check('a reply already on screen is never cleared and retyped',assistant.includes('}else if(paintedFrames===0){')&&!assistant.includes('paintedFrames<2'));
 check('api calls go through a base',assistant.includes('apiUrl(ROUTES.chat)')&&assistant.includes('apiUrl(ROUTES.feedback)')&&assistant.includes("chat:'/api/chat-stream',feedback:'/api/guide-feedback'"));
 check('no same-origin api calls remain',!assistant.includes("fetch('/api/"));

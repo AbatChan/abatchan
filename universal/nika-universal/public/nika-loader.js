@@ -59,6 +59,7 @@
       disclaimer: config.disclaimer,
       chips: config.suggestions || [],
       // A packaged guide lands inside somebody else's site, so it is isolated.
+      attachments: false,
       isolate: true,
       loadSettings: async () => null
     });
