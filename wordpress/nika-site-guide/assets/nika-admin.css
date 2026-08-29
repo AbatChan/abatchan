@@ -139,7 +139,7 @@
 .nika-card__toggle { align-self: flex-start; flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; padding: 0; color: #555968; background: #f4f4f8; border: 1px solid #e3e4eb; border-radius: 10px; cursor: pointer; transition: transform .2s ease, background .2s ease; }
 .nika-card__toggle:hover, .nika-card__toggle:focus-visible { color: var(--nika-indigo-dark); background: #f1f1ff; border-color: #d8d8ff; outline: 0; }
 .nika-card__body { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .32s cubic-bezier(.2,.75,.2,1), opacity .24s ease; }
-.nika-card__body > * { min-height: 0; }
+.nika-card__inner { min-height: 0; overflow: hidden; }
 .nika-card.is-collapsed .nika-card__body { grid-template-rows: 0fr; opacity: 0; overflow: hidden; }
 .nika-card__body.is-instant { transition: none; }
 .nika-card.is-collapsed .nika-card__toggle svg { transform: rotate(-90deg); }

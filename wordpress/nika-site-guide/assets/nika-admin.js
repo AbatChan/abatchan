@@ -122,7 +122,10 @@
       // anyone having to know how tall it is.
       const body = document.createElement('div');
       body.className = 'nika-card__body';
-      body.append(...rest);
+      const inner = document.createElement('div');
+      inner.className = 'nika-card__inner';
+      inner.append(...rest);
+      body.append(inner);
       card.append(body);
       const toggle = document.createElement('button');
       toggle.type = 'button';
