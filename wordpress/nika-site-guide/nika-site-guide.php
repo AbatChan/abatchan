@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.1.9
+ * Version:           1.2.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.1.9';
+const NIKA_VERSION = '1.2.0';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -918,7 +918,7 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 	if ( ! $label ) {
 		if ( ! preg_match( '/\bhighlight\b\s+(?:(?:the|this)\s+)?(?:(?:heading|section|card|price|field)\s+)?(.+?)[.!?]*$/iu', (string) $message, $match ) ) return null;
 		$candidate = trim( sanitize_text_field( $match[1] ?? '' ) );
-		if ( strlen( $normalize( $candidate ) ) < 3 || false === strpos( $normalize( nika_site_index() ), $normalize( $candidate ) ) ) return null;
+		if ( strlen( $normalize( $candidate ) ) < 3 ) return null;
 		$best_path = '';
 		$best_score = 0;
 		foreach ( $pages as $published_page ) {
@@ -933,6 +933,15 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 			}
 		}
 		if ( ! $best_path ) return null;
+		$post_id = '/' === $best_path ? (int) get_option( 'page_on_front' ) : (int) url_to_postid( home_url( $best_path ) );
+		$published_target_text = nika_site_index();
+		if ( $post_id ) {
+			$post = get_post( $post_id );
+			if ( $post ) $published_target_text .= ' ' . $post->post_title . ' ' . $post->post_content;
+			$elementor_data = get_post_meta( $post_id, '_elementor_data', true );
+			if ( is_string( $elementor_data ) ) $published_target_text .= ' ' . $elementor_data;
+		}
+		if ( false === strpos( $normalize( $published_target_text ), $normalize( $candidate ) ) ) return null;
 		$label = $candidate;
 		$path = $best_path;
 	}

@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const version = '1.1.9';
+const version = '1.2.0';
 
 // Versions iterate in .9s: the patch digit runs 0-9, then the minor rolls over.
 // 0.3.9 is followed by 0.4.0, never 0.3.10.
