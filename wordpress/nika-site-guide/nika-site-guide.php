@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Self-hosted, context-aware AI guidance using your API key and WordPress database.
- * Version:           1.0.3
+ * Version:           1.0.4
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.0.3';
+const NIKA_VERSION = '1.0.4';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -291,7 +291,7 @@ function nika_settings_page() {
 
 				<section class="nika-card" id="nika-styles">
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Advanced', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Custom CSS', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'For anything the settings above do not cover. These rules load inside the guide only, so they cannot affect the rest of your site.', 'nika-site-guide' ); ?></p></div></div>
-					<label class="nika-field"><span><?php esc_html_e( 'Your rules', 'nika-site-guide' ); ?></span><textarea class="code nika-css" rows="8" name="<?php echo esc_attr( NIKA_OPTION ); ?>[custom_css]" spellcheck="false" placeholder=".assist-panel { border-radius: 18px; }&#10;.assist-chips button { font-weight: 700; }"><?php echo esc_textarea( $s['custom_css'] ); ?></textarea><small><?php esc_html_e( 'Target the guide\'s own classes, such as .assist-panel, .assist-chips or .assist-composer-rail. Composer glyphs follow colour, so .assist-add { color: red } tints the plus. Changes appear in the preview as you type.', 'nika-site-guide' ); ?></small></label>
+					<label class="nika-field"><span><?php esc_html_e( 'Your rules', 'nika-site-guide' ); ?></span><textarea class="code nika-css" rows="8" name="<?php echo esc_attr( NIKA_OPTION ); ?>[custom_css]" spellcheck="false" placeholder=".assist-panel { border-radius: 18px; }&#10;.assist-chips button { font-weight: 700; }"><?php echo esc_textarea( $s['custom_css'] ); ?></textarea><small><?php esc_html_e( 'Target the guide\'s own classes, such as .assist-panel, .assist-chips or .assist-composer-rail. Composer glyphs are painted, so tint one with the variable rather than colour: .assist-add { --assist-icon: #ff3b3b }. Changes appear in the preview as you type.', 'nika-site-guide' ); ?></small></label>
 				</section>
 
 				<section class="nika-card" id="nika-guardrails">

@@ -103,7 +103,7 @@ check('a split SSE line is carried into the next chunk',php.includes('$carry = a
 check('a streamed turn is asked for prose, and navigation for a tool call',php.includes("'stream' === $mode")&&php.includes('Never wrap it in JSON or code fences')&&php.includes("'name' => 'navigate_site'"));
 check('both routes prepare a turn the same way',php.includes('function nika_chat_prepare( WP_REST_Request $request, $mode')&&php.includes('$ready = nika_chat_prepare( $request );')&&php.includes("nika_chat_prepare( $request, 'stream' )"));
 check('the markdown libraries load beside the guide, not at the site root',widget.includes("marked:assetUrl('/assets/vendor/marked-15.0.12.min.js')")&&widget.includes("purify:assetUrl('/assets/vendor/purify-3.4.7.min.js')")&&!widget.includes('${API_BASE}/assets/vendor'));
-check('composer glyphs follow colour, so ordinary CSS tints them',guideCss.includes('background-color:var(--assist-icon,currentColor)'));
+check('a glyph is tinted through the variable the setting uses',guideCss.includes('background-color:var(--assist-icon,currentColor)')&&php.includes('--assist-icon: #ff3b3b'));
 check('a control inside a collapsed section opens it first',adminJs.includes("trigger.closest('.nika-card.is-collapsed')")&&adminJs.includes("card?.querySelector('.nika-card__toggle')?.click()"));
 check('the guide finds its icons beside itself, not at the site root',widget.includes("const assetUrl=path=>`${ASSET_BASE}${path}`")&&(widget.match(/\/assets\/icons/g)||[]).length===(widget.match(/assetUrl\('\/assets\/icons/g)||[]).length&&php.includes("'assetBase' => $base"));
 check('navigation cannot be forged by the page',php.includes("'X-Abatchan-Action-Token: ' . $token")&&php.includes('<!--abatchan-nav:{$token}:'));
