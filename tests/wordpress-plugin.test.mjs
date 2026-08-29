@@ -100,6 +100,7 @@ check('REST response hides provider details',php.includes("Nika could not reach 
 check('the packaged guide never reads an AI key in the browser',!/(api[_-]?key|authorization)\s*[:=]\s*['"`]/i.test(widget));
 check('the guide is isolated from the theme it lands in',php.includes("'isolate' => true")&&shell.includes("host.style.cssText='all:initial")&&guideCss.includes(':host{color-scheme:dark;--ease:'));
 check('a packaged install carries the design tokens the stylesheet reads',['--ink','--paper','--muted','--line','--edge','--signal','--signal-ink','--ease'].every(name=>guideCss.includes(`${name}:`)));
+check('error action buttons use the compact requested minimum height',guideCss.includes('.assist-error-actions .btn{min-height:22px;'));
 check('the provider stream is relayed as it arrives, not collected and replayed',php.includes('CURLOPT_WRITEFUNCTION')&&php.includes("'stream' => true")&&php.includes('ob_implicit_flush( true )')&&php.includes("header( 'X-Accel-Buffering: no' )"));
 check('the relay is installed after every other option, so it is not reset',php.includes('curl_setopt( $curl, CURLOPT_WRITEFUNCTION, $relay );')&&!php.includes('CURLOPT_RETURNTRANSFER =>'));
 check('nothing between the provider and the visitor may buffer the answer',php.includes("@ini_set( 'zlib.output_compression', 'Off' )")&&php.includes("header( 'Content-Encoding: none' )")&&php.includes('flush();'));
