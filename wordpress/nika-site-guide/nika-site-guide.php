@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.1.6
+ * Version:           1.1.7
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.1.6';
+const NIKA_VERSION = '1.1.7';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -897,6 +897,33 @@ function nika_validate_action( $action, $pages ) {
 	return array( 'href' => $path . $hash, 'label' => sanitize_text_field( $action['label'] ?? '' ), 'departure' => sanitize_text_field( $action['departure'] ?? '' ) );
 }
 
+function nika_direct_highlight_action( $message, $page, $pages ) {
+	if ( ! preg_match( '/\bhighlight\b/i', (string) $message ) ) return null;
+	$headings = is_array( $page['headings'] ?? null ) ? $page['headings'] : array();
+	$normalize = static function ( $value ) {
+		$value = strtolower( html_entity_decode( sanitize_text_field( $value ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+		return trim( preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $value ) );
+	};
+	$normalized_message = $normalize( $message );
+	$label = '';
+	foreach ( $headings as $heading ) {
+		if ( ! is_array( $heading ) ) continue;
+		$candidate = sanitize_text_field( $heading['text'] ?? '' );
+		$normalized_candidate = $normalize( $candidate );
+		if ( strlen( $normalized_candidate ) < 3 || false === strpos( $normalized_message, $normalized_candidate ) ) continue;
+		if ( strlen( $candidate ) > strlen( $label ) ) $label = $candidate;
+	}
+	if ( ! $label ) return null;
+	$path = untrailingslashit( wp_parse_url( sanitize_text_field( $page['path'] ?? '/' ), PHP_URL_PATH ) ?: '/' ) ?: '/';
+	$validated = nika_validate_action( array( 'href' => $path, 'label' => $label, 'departure' => sprintf( __( 'Highlighting %s.', 'nika-site-guide' ), $label ) ), $pages );
+	if ( ! $validated ) return null;
+	return array_merge( $validated, array(
+		'section_requested' => true,
+		'status' => sprintf( __( 'Highlighting %s.', 'nika-site-guide' ), $label ),
+		'arrival' => sprintf( __( '%s is highlighted.', 'nika-site-guide' ), $label ),
+	) );
+}
+
 function nika_chat_prepare( WP_REST_Request $request, $mode = 'json' ) {
 	$s = nika_settings();
 	if ( ! nika_origin_allowed() ) return new WP_Error( 'nika_origin', __( 'This browser origin is not allowed.', 'nika-site-guide' ), array( 'status' => 403 ) );
@@ -922,6 +949,8 @@ function nika_chat_prepare( WP_REST_Request $request, $mode = 'json' ) {
 	if ( in_array( $current_path, nika_excluded_paths(), true ) ) return new WP_Error( 'nika_excluded', __( 'Nika is not available on this excluded page.', 'nika-site-guide' ), array( 'status' => 403 ) );
 	$direct_location = nika_location_answer( $message, $page );
 	if ( $direct_location ) return array( 'direct' => $direct_location );
+	$direct_highlight = nika_direct_highlight_action( $message, $page, $pages );
+	if ( $direct_highlight ) return array( 'direct_action' => $direct_highlight );
 	$messages = array( array( 'role' => 'system', 'content' => nika_system_prompt( $s, $pages, $page, $answer_depth, $mode ) ) );
 	$history = is_array( $body['history'] ?? null ) ? array_slice( $body['history'], -2 * (int) $s['history_turns'] ) : array();
 	// JSON mode requires every assistant turn to be JSON. A streamed turn,
@@ -952,6 +981,7 @@ function nika_chat_response( WP_REST_Request $request ) {
 	$ready = nika_chat_prepare( $request );
 	if ( is_wp_error( $ready ) ) return $ready;
 	if ( isset( $ready['direct'] ) ) return rest_ensure_response( array( 'message' => $ready['direct'], 'action' => null ) );
+	if ( isset( $ready['direct_action'] ) ) return rest_ensure_response( array( 'message' => $ready['direct_action']['departure'], 'action' => $ready['direct_action'] ) );
 	$s = $ready['settings'];
 	$messages = $ready['messages'];
 	$provider = $ready['provider'];
@@ -1001,6 +1031,15 @@ function nika_chat_stream_response( WP_REST_Request $request ) {
 	if ( isset( $ready['direct'] ) ) {
 		header( 'Content-Type: text/plain; charset=utf-8' );
 		echo $ready['direct'];
+		exit;
+	}
+	if ( isset( $ready['direct_action'] ) ) {
+		$token = wp_generate_password( 20, false );
+		header( 'Content-Type: text/plain; charset=utf-8' );
+		header( 'Cache-Control: no-cache, no-store' );
+		header( 'X-Abatchan-Action-Token: ' . $token );
+		echo esc_html( $ready['direct_action']['departure'] );
+		echo "\n<!--abatchan-nav:{$token}:" . rawurlencode( wp_json_encode( $ready['direct_action'] ) ) . '-->';
 		exit;
 	}
 
@@ -1110,7 +1149,7 @@ function nika_chat_stream_response( WP_REST_Request $request ) {
 		$marker = array(
 			'href' => $action['href'],
 			'label' => $label,
-			'section_requested' => ! empty( $parsed['section_requested'] ),
+			'section_requested' => ! empty( $parsed['section_requested'] ) || (bool) preg_match( '/\bhighlight\b/i', $ready['message'] ?? '' ),
 			'departure' => $departure,
 			'status' => sanitize_text_field( $parsed['status'] ?? '' ) ?: sprintf( __( 'Opening %s', 'nika-site-guide' ), $label ),
 			'arrival' => sanitize_text_field( $parsed['arrival'] ?? '' ) ?: sprintf( __( 'Here is %s.', 'nika-site-guide' ), $label ),
