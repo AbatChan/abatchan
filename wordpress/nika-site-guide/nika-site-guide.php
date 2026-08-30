@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.3.2
+ * Version:           1.3.3
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.3.2';
+const NIKA_VERSION = '1.3.3';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -980,6 +980,16 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 	foreach ( $matches as $match ) {
 		$normalized_label = $normalize( $match['label'] );
 		if ( isset( $ordered[ $normalized_label ] ) ) continue;
+		$contained = false;
+		foreach ( $ordered as $kept ) {
+			$match_end = (int) $match['position'] + (int) $match['length'];
+			$kept_end = (int) $kept['position'] + (int) $kept['length'];
+			if ( (int) $match['position'] >= (int) $kept['position'] && $match_end <= $kept_end ) {
+				$contained = true;
+				break;
+			}
+		}
+		if ( $contained ) continue;
 		$ordered[ $normalized_label ] = $match;
 	}
 	$path = untrailingslashit( wp_parse_url( sanitize_text_field( $page['path'] ?? '/' ), PHP_URL_PATH ) ?: '/' ) ?: '/';

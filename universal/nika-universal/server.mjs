@@ -466,7 +466,14 @@ function directHighlightAction(message, current, pages) {
     matches.push({ label, position, length: normalized.length });
   }
   matches.sort((a, b) => a.position - b.position || b.length - a.length);
-  const ordered = [...new Map(matches.map(item => [normalizeTarget(item.label), item])).values()].slice(0, 3);
+  const ordered = [];
+  for (const item of matches) {
+    const duplicate = ordered.some(kept => normalizeTarget(kept.label) === normalizeTarget(item.label));
+    const contained = ordered.some(kept => item.position >= kept.position && item.position + item.length <= kept.position + kept.length);
+    if (duplicate || contained) continue;
+    ordered.push(item);
+    if (ordered.length === 3) break;
+  }
   if (!ordered.length) return null;
   const path = current.path || '/';
   const steps = ordered.map(item => ({

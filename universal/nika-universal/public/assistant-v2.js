@@ -112,7 +112,28 @@
   const targetSlug=text=>text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,58)||'content';
   const targetKind=node=>node.matches('input,select,textarea')?'field':node.matches('button,[role="button"]')?'button':node.matches('a[href],[role="link"]')?'link':node.matches('form,fieldset')?'form':node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?'heading':node.matches('details,summary')?'details':node.matches('img,[alt]')?'media':node.matches('section,article,[role="region"],[role="tabpanel"]')?'section':'content';
   const targetPriority=node=>node.hasAttribute('data-assist-target')&&!node.hasAttribute('data-assist-auto')?8:['field','button','link','form'].includes(targetKind(node))?7:targetKind(node)==='heading'?6:['details','section'].includes(targetKind(node))?5:targetKind(node)==='media'?4:2;
-  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:2px solid rgba(129,132,255,.78)!important;outline-offset:8px!important;border-radius:16px!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,rgba(99,102,241,.13),rgba(99,102,241,.035))!important;box-shadow:0 0 0 8px rgba(99,102,241,.055)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;padding:7px 10px!important;border-radius:999px!important;color:#fff!important;background:rgba(79,70,229,.94)!important;box-shadow:0 10px 30px rgba(79,70,229,.34)!important;font:650 11px/1.2 system-ui,sans-serif!important;pointer-events:none!important}';
+  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:3px solid var(--assist-guide-border,#312e81)!important;outline-offset:6px!important;border-radius:16px!important;box-shadow:0 0 0 10px var(--assist-guide-glow,rgba(49,46,129,.22))!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;padding:7px 10px!important;border:2px solid var(--assist-guide-marker-border,#fff)!important;border-radius:999px!important;color:var(--assist-guide-marker-text,#fff)!important;background:var(--assist-guide-marker-bg,#312e81)!important;box-shadow:0 10px 30px var(--assist-guide-glow,rgba(49,46,129,.34))!important;font:650 11px/1.2 system-ui,sans-serif!important;pointer-events:none!important}';
+  const effectiveTargetBackground=node=>{
+    for(let current=node;current&&current.nodeType===1;current=current.parentElement){
+      const style=getComputedStyle(current);
+      const match=style.backgroundColor.match(/rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)/i);
+      if(match&&Number(match[4]??1)>.18)return match.slice(1,4).map(Number);
+    }
+    return [255,255,255];
+  };
+  const applyAdaptiveGuidance=node=>{
+    const [r,g,b]=effectiveTargetBackground(node).map(value=>value/255);
+    const linear=value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
+    const luminance=.2126*linear(r)+.7152*linear(g)+.0722*linear(b);
+    const dark=luminance<.42;
+    node.style.setProperty('--assist-guide-border',dark?'#ffffff':'#312e81');
+    node.style.setProperty('--assist-guide-glow',dark?'rgba(255,255,255,.28)':'rgba(49,46,129,.22)');
+    node.style.setProperty('--assist-guide-fill',dark?'rgba(255,255,255,.10)':'rgba(99,102,241,.13)');
+    node.style.setProperty('--assist-guide-marker-bg',dark?'#ffffff':'#312e81');
+    node.style.setProperty('--assist-guide-marker-text',dark?'#111827':'#ffffff');
+    node.style.setProperty('--assist-guide-marker-border',dark?'#111827':'#ffffff');
+  };
+  const clearAdaptiveGuidance=node=>['--assist-guide-border','--assist-guide-glow','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text','--assist-guide-marker-border'].forEach(name=>node.style?.removeProperty(name));
   const collectTargetCandidates=root=>{
     const selector='[data-assist-target],h1,h2,h3,h4,h5,h6,article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[title],img[alt],p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
     const found=[...root.querySelectorAll(selector)];
@@ -828,12 +849,12 @@
     const guidedVisualTargets=new Set();
     const clearGuidance=()=>{
       clearTimeout(guidanceTimer);
-      document.querySelectorAll('.assist-guided-target').forEach(node=>node.classList.remove('assist-guided-target'));
+      document.querySelectorAll('.assist-guided-target').forEach(node=>{node.classList.remove('assist-guided-target');clearAdaptiveGuidance(node)});
       document.querySelectorAll('.assist-guide-marker').forEach(marker=>marker.remove());
-      guidedVisualTargets.forEach(node=>{node.classList?.remove('assist-guided-target');node.querySelectorAll?.('.assist-guide-marker').forEach(marker=>marker.remove())});
+      guidedVisualTargets.forEach(node=>{node.classList?.remove('assist-guided-target');clearAdaptiveGuidance(node);node.querySelectorAll?.('.assist-guide-marker').forEach(marker=>marker.remove())});
       guidedVisualTargets.clear();
       automaticTargetNodes.forEach(node=>{
-        node.classList?.remove('assist-guided-target');
+        node.classList?.remove('assist-guided-target');clearAdaptiveGuidance(node);
         node.querySelectorAll?.('.assist-guide-marker').forEach(marker=>marker.remove());
       });
     };
@@ -849,6 +870,7 @@
       // target must remove both immediately; previously a second reveal could
       // remove the old border while its independently timed pill lingered.
       clearGuidance();
+      applyAdaptiveGuidance(visualTarget);
       visualTarget.classList.add('assist-guided-target');guidedVisualTargets.add(visualTarget);
       if(pageTop)scrollTo({top:0,left:0,behavior:'auto'});
       else visualTarget.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
