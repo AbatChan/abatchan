@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.2.5
+ * Version:           1.2.6
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.2.5';
+const NIKA_VERSION = '1.2.6';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -898,6 +898,44 @@ function nika_validate_action( $action, $pages ) {
 	return array( 'href' => $path . $hash, 'label' => sanitize_text_field( $action['label'] ?? '' ), 'departure' => sanitize_text_field( $action['departure'] ?? '' ) );
 }
 
+function nika_direct_navigation_action( $message, $page, $pages ) {
+	$message = (string) $message;
+	// Only deterministic, explicit movement requests are eligible. Questions
+	// about a page still go to the guide as normal and never move the visitor.
+	if ( ! preg_match( '/\b(?:take|bring|send)\s+me\b|\b(?:go|navigate|head|open|visit)\s+(?:me\s+)?(?:to\s+)?/i', $message ) ) return null;
+	$normalize = static function ( $value ) {
+		$value = strtolower( html_entity_decode( sanitize_text_field( $value ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+		return trim( preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $value ) );
+	};
+	$normalized_message = $normalize( $message );
+	$current_path = untrailingslashit( wp_parse_url( sanitize_text_field( $page['path'] ?? '/' ), PHP_URL_PATH ) ?: '/' ) ?: '/';
+	$best = null;
+	$best_length = 0;
+	foreach ( $pages as $published_page ) {
+		$path = untrailingslashit( wp_parse_url( sanitize_text_field( $published_page['path'] ?? '' ), PHP_URL_PATH ) ?: '' ) ?: '/';
+		if ( $path === $current_path ) continue;
+		$title = sanitize_text_field( $published_page['title'] ?? '' );
+		$names = array_filter( array_unique( array( $normalize( $title ), $normalize( basename( $path ) ) ) ) );
+		foreach ( $names as $name ) {
+			if ( strlen( $name ) < 3 || false === strpos( $normalized_message, $name ) || strlen( $name ) <= $best_length ) continue;
+			$best = array( 'path' => $path, 'title' => $title ?: ucwords( str_replace( '-', ' ', basename( $path ) ) ) );
+			$best_length = strlen( $name );
+		}
+	}
+	if ( ! $best ) return null;
+	$validated = nika_validate_action( array(
+		'href' => $best['path'],
+		'label' => $best['title'],
+		'departure' => sprintf( __( 'Taking you to %s.', 'nika-site-guide' ), $best['title'] ),
+	), $pages );
+	if ( ! $validated ) return null;
+	return array_merge( $validated, array(
+		'section_requested' => false,
+		'status' => sprintf( __( 'Opening %s.', 'nika-site-guide' ), $best['title'] ),
+		'arrival' => sprintf( __( "You're on %s.", 'nika-site-guide' ), $best['title'] ),
+	) );
+}
+
 function nika_direct_highlight_action( $message, $page, $pages ) {
 	if ( ! preg_match( '/\bhighlight\b/i', (string) $message ) ) return null;
 	$headings = is_array( $page['headings'] ?? null ) ? $page['headings'] : ( is_array( $page['sections'] ?? null ) ? $page['sections'] : array() );
@@ -1040,6 +1078,8 @@ function nika_chat_prepare( WP_REST_Request $request, $mode = 'json' ) {
 	if ( $direct_location ) return array( 'direct' => $direct_location );
 	$direct_highlight = nika_direct_highlight_action( $message, $page, $pages );
 	if ( $direct_highlight ) return array( 'direct_action' => $direct_highlight );
+	$direct_navigation = $s['navigation'] ? nika_direct_navigation_action( $message, $page, $pages ) : null;
+	if ( $direct_navigation ) return array( 'direct_action' => $direct_navigation );
 	$limited = nika_rate_allowed( $s['hourly_limit'], $s['daily_limit'] );
 	if ( $limited ) return new WP_Error( 'nika_rate_limit', 'site_daily' === $limited ? __( 'This site has reached its daily Nika budget.', 'nika-site-guide' ) : __( 'You have reached the hourly Nika limit. Please try later.', 'nika-site-guide' ), array( 'status' => 429 ) );
 	$messages = array( array( 'role' => 'system', 'content' => nika_system_prompt( $s, $pages, $page, $answer_depth, $mode ) ) );

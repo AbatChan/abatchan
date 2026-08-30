@@ -32,6 +32,7 @@ const checks = [
   ['excluded pages are blocked before visible context reaches AI', server.includes("return send(res, 403, { error: 'Nika is not available on this excluded page.'")],
   ['current-location answers do not depend on model obedience', server.includes('currentLocationAnswer(message, current)')],
   ['exact and compound highlights resolve locally without AI tokens', server.includes('function directHighlightAction(') && server.indexOf('const directAction = config.navigation ? directHighlightAction') < server.indexOf('const limited = rateAllowed') && server.includes('steps\n  };')],
+  ['explicit published-page navigation resolves locally without AI tokens', server.includes('function directNavigationAction(') && server.includes('directHighlightAction(message, current, pages) || directNavigationAction(message, current, pages)') && server.indexOf('const directAction = config.navigation ?') < server.indexOf('const limited = rateAllowed')],
   ['reads the compact target field the shared browser actually sends', server.includes('Array.isArray(snapshot.sections)') && server.includes('item?.text ?? item?.label')],
   ['stale replies are marked historical after a page change', server.includes('historicalContext(')],
   ['visibility limitations and compact semantic targets reach the model', server.includes('Visibility limitations:') && server.includes('Available semantic targets:')],

@@ -491,6 +491,31 @@ function directHighlightAction(message, current, pages) {
   };
 }
 
+function directNavigationAction(message, current, pages) {
+  if (!/\b(?:take|bring|send)\s+me\b|\b(?:go|navigate|head|open|visit)\s+(?:me\s+)?(?:to\s+)?/i.test(message)) return null;
+  const normalizedMessage = normalizeTarget(message);
+  let best = null;
+  let bestLength = 0;
+  for (const page of pages) {
+    if (page.path === current.path) continue;
+    const slug = page.path.split('/').filter(Boolean).at(-1) || '';
+    for (const candidate of [...new Set([normalizeTarget(page.title), normalizeTarget(slug)])]) {
+      if (candidate.length < 3 || !normalizedMessage.includes(candidate) || candidate.length <= bestLength) continue;
+      best = page;
+      bestLength = candidate.length;
+    }
+  }
+  if (!best) return null;
+  return validateAction({
+    href: best.path,
+    label: best.title,
+    departure: `Taking you to ${best.title}.`,
+    section_requested: false,
+    status: `Opening ${best.title}.`,
+    arrival: `You're on ${best.title}.`
+  }, pages);
+}
+
 async function chat(req, res, stream = false) {
   if (!API_KEY || !ENDPOINT || !SECRET) return send(res, 503, { error: 'Nika is not configured by the site owner.' });
   const body = await bodyJson(req);
@@ -519,7 +544,7 @@ async function chat(req, res, stream = false) {
   if (config.excludedPaths.includes(current.path.split('#')[0])) return send(res, 403, { error: 'Nika is not available on this excluded page.' });
   const directLocation = currentLocationAnswer(message, current);
   if (directLocation) return send(res, 200, { message: directLocation, action: null });
-  const directAction = config.navigation ? directHighlightAction(message, current, pages) : null;
+  const directAction = config.navigation ? (directHighlightAction(message, current, pages) || directNavigationAction(message, current, pages)) : null;
   if (directAction) {
     if (!stream) return send(res, 200, { message: directAction.departure, action: directAction });
     const token = randomUUID();
