@@ -808,6 +808,7 @@
         if(preferExact&&label){
           const ranked=closestTarget(label);
           if(ranked?.score>=.6)return ranked.node;
+          return null;
         }
         return document.querySelector('main h1,main');
       }
