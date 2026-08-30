@@ -95,6 +95,15 @@
     '/pricing':{'monthly-support':{selector:'.scope-strip .scope-item:nth-child(3)',label:'Monthly support'}}
   };
   const automaticTargetNodes=new Map();
+  const targetReachable=node=>{
+    try{
+      const owner=node?.ownerDocument;
+      if(!owner||!node.isConnected)return false;
+      if(owner===document)return true;
+      const frame=owner.defaultView?.frameElement;
+      return Boolean(frame&&frame.contentDocument===owner);
+    }catch{return false}
+  };
   const targetText=node=>{
     const heading=node.matches('h1,h2,h3,h4,h5,h6')?node:node.querySelector('h1,h2,h3,h4,h5,h6');
     const labelled=node.matches('label')?node:(node.labels?.[0]||node.querySelector('label'));
@@ -133,7 +142,7 @@
     const main=document.querySelector('main,[role="main"]')||document.body;
     if(!main)return;
     const used=new Set([...document.querySelectorAll('[id]')].map(node=>node.id));
-    automaticTargetNodes.forEach((node,id)=>{if(node.isConnected)used.add(id);else automaticTargetNodes.delete(id)});
+    automaticTargetNodes.forEach((node,id)=>{if(targetReachable(node))used.add(id);else automaticTargetNodes.delete(id)});
     const candidates=collectTargetCandidates(main).sort((a,b)=>targetPriority(b)-targetPriority(a));
     candidates.forEach(node=>{
       if(node.closest('[hidden],[aria-hidden="true"]'))return;
@@ -276,7 +285,7 @@
     const main=document.querySelector('main');
     const text=(main?.innerText||'').replace(/\s+/g,' ').trim().slice(0,3500);
     const sections=[...automaticTargetNodes.values()]
-      .filter(node=>node.isConnected&&node.id&&targetText(node))
+      .filter(node=>targetReachable(node)&&node.id&&targetText(node))
       .sort((a,b)=>targetPriority(b)-targetPriority(a))
       .slice(0,80)
       .map(node=>({id:node.id,label:targetText(node),kind:targetKind(node)}));
@@ -799,7 +808,7 @@
       const normalizedQuery=[...wanted].join(' '),normalizedCandidate=[...available].join(' ');
       return matches/wanted.size+(normalizedCandidate.includes(normalizedQuery)?1:0);
     };
-    const closestTarget=label=>[...automaticTargetNodes.values()].filter(node=>node.isConnected)
+    const closestTarget=label=>[...automaticTargetNodes.values()].filter(targetReachable)
       .map(node=>({node,score:targetScore(label,node.dataset.assistTarget)}))
       .sort((a,b)=>b.score-a.score)[0];
     const targetFor=(url,label,preferExact=false)=>{
