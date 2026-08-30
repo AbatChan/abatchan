@@ -64,9 +64,9 @@ check('semantic controls and fields join the safe target registry',assistant.inc
 check('open shadow roots can register and paint their own targets',assistant.includes('if(node.shadowRoot)')&&assistant.includes("style.dataset.assistTargetStyle='true'")&&assistant.includes('automaticTargetNodes.get(id)'));
 check('void form controls highlight a safe visual wrapper',assistant.includes("target.matches('input,select,textarea,img,option')")&&assistant.includes("target.closest('label,.field,[role=\"group\"],fieldset')"));
 check('specific field placeholders can identify hard controls',assistant.includes("node.matches('input,select,textarea')?(node.getAttribute('aria-label')||node.getAttribute('placeholder')||labelled?.textContent||node.getAttribute('name'))"));
-check('accessible same-origin frames join the compact target registry',assistant.includes("const frameDoc=frame.contentDocument")&&assistant.includes('found.push(...collectTargetCandidates(frameDoc))'));
 check('an inaccessible exact target never falls back to the whole page',assistant.includes("if(ranked?.score>=.6)return ranked.node;\n          return null;"));
-check('targets moved into opaque frames are discarded before success',assistant.includes('const targetReachable=node=>')&&assistant.includes('frame&&frame.contentDocument===owner')&&assistant.includes('.filter(targetReachable)'));
+check('targets moved into frames are discarded before success',assistant.includes('const targetReachable=node=>')&&assistant.includes('owner===document&&node.isConnected')&&assistant.includes('.filter(targetReachable)'));
+check('unverified actions never reuse an optimistic arrival sentence',assistant.includes("result?.outcome==='completed'")&&assistant.includes("I couldn't find or highlight"));
 check('the browser sends compact labels and kinds, never page HTML',assistant.includes(".slice(0,80)")&&assistant.includes('kind:targetKind(node)')&&!assistant.includes('outerHTML'));
 
 console.log('\n=== mobile cross-page arrival keeps the target visible ===');

@@ -98,10 +98,7 @@
   const targetReachable=node=>{
     try{
       const owner=node?.ownerDocument;
-      if(!owner||!node.isConnected)return false;
-      if(owner===document)return true;
-      const frame=owner.defaultView?.frameElement;
-      return Boolean(frame&&frame.contentDocument===owner);
+      return Boolean(owner===document&&node.isConnected);
     }catch{return false}
   };
   const targetText=node=>{
@@ -124,17 +121,6 @@
         if(!node.shadowRoot.querySelector('style[data-assist-target-style]')){const style=document.createElement('style');style.dataset.assistTargetStyle='true';style.textContent=TARGET_STYLE;node.shadowRoot.prepend(style)}
         found.push(...collectTargetCandidates(node.shadowRoot));
       }
-    }
-    // Same-origin and srcdoc frames are part of the owner-controlled page and
-    // can be indexed without sending HTML anywhere. Cross-origin frames throw
-    // here by browser design (for example reCAPTCHA) and stay inaccessible.
-    for(const frame of root.querySelectorAll('iframe')){
-      try{
-        const frameDoc=frame.contentDocument;
-        if(!frameDoc?.body)continue;
-        if(!frameDoc.head?.querySelector('style[data-assist-target-style]')){const style=frameDoc.createElement('style');style.dataset.assistTargetStyle='true';style.textContent=TARGET_STYLE;frameDoc.head?.append(style)}
-        found.push(...collectTargetCandidates(frameDoc));
-      }catch{}
     }
     return found;
   };
@@ -1404,8 +1390,13 @@
       try{conclusion=await streamActionConclusion(journey,result,arrival,settleStep)}
       catch{
         settleStep();
-        await typeBufferedMessage(arrival,journey.arrival);
-        conclusion=journey.arrival;
+        const verifiedFallback=result?.outcome==='completed'
+          ? journey.arrival
+          : journey.section_requested===true
+            ? `I couldn't find or highlight ${journey.label||'that page element'} in the accessible page content.`
+            : `I couldn't confirm opening ${journey.label||'that page'}.`;
+        await typeBufferedMessage(arrival,verifiedFallback);
+        conclusion=verifiedFallback;
       }
       journey.arrival=conclusion;
       for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){
