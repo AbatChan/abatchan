@@ -60,6 +60,8 @@ check('one timer clears the complete guidance state',assistant.includes('guidanc
 check('compound journeys expose one clickable fallback per target',assistant.includes("journey.steps:[journey]")&&assistant.includes('destinations.forEach(destination=>')&&assistant.includes('section_requested:destination.section_requested===true'));
 check('highlight rings adapt to the computed page background',assistant.includes('effectiveTargetBackground')&&assistant.includes('luminance<.42')&&assistant.includes("dark?'#ffffff':'#312e81'"));
 check('adaptive highlight styles are removed with the guidance state',assistant.includes('clearAdaptiveGuidance(node)')&&assistant.includes("removeProperty(name)"));
+check('theme-important control styles cannot suppress the adaptive ring',assistant.includes("setProperty('outline',`3px solid ${border}`,'important')")&&assistant.includes("setProperty('outline-offset','6px','important')")&&assistant.includes('guidanceInlineRestore'));
+check('compact controls do not receive a duplicate floating label',assistant.includes("!visualTarget.matches('button,a[href],input,select,textarea,[role=\"button\"],[role=\"link\"],[role=\"tab\"]')"));
 
 console.log('\n=== difficult elements are indexed locally before AI ===');
 check('semantic controls and fields join the safe target registry',assistant.includes('button,a[href],input:not([type="hidden"]),select,textarea')&&assistant.includes("node.labels?.[0]")&&assistant.includes("node.getAttribute('aria-label')"));

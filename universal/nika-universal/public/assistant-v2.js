@@ -121,19 +121,36 @@
     }
     return [255,255,255];
   };
+  const guidanceInlineRestore=new WeakMap();
+  const guidanceInlineProperties=['outline','outline-offset','box-shadow'];
   const applyAdaptiveGuidance=node=>{
     const [r,g,b]=effectiveTargetBackground(node).map(value=>value/255);
     const linear=value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
     const luminance=.2126*linear(r)+.7152*linear(g)+.0722*linear(b);
     const dark=luminance<.42;
-    node.style.setProperty('--assist-guide-border',dark?'#ffffff':'#312e81');
-    node.style.setProperty('--assist-guide-glow',dark?'rgba(255,255,255,.28)':'rgba(49,46,129,.22)');
+    const border=dark?'#ffffff':'#312e81';
+    const glow=dark?'rgba(255,255,255,.28)':'rgba(49,46,129,.22)';
+    if(!guidanceInlineRestore.has(node))guidanceInlineRestore.set(node,guidanceInlineProperties.map(name=>[name,node.style.getPropertyValue(name),node.style.getPropertyPriority(name)]));
+    node.style.setProperty('--assist-guide-border',border);
+    node.style.setProperty('--assist-guide-glow',glow);
     node.style.setProperty('--assist-guide-fill',dark?'rgba(255,255,255,.10)':'rgba(99,102,241,.13)');
     node.style.setProperty('--assist-guide-marker-bg',dark?'#ffffff':'#312e81');
     node.style.setProperty('--assist-guide-marker-text',dark?'#111827':'#ffffff');
     node.style.setProperty('--assist-guide-marker-border',dark?'#111827':'#ffffff');
+    // Some WordPress themes declare button outlines and shadows as !important.
+    // An inline important guide wins that conflict without permanently
+    // changing the site's own control style.
+    node.style.setProperty('outline',`3px solid ${border}`,'important');
+    node.style.setProperty('outline-offset','6px','important');
+    node.style.setProperty('box-shadow',`0 0 0 7px ${glow}`,'important');
   };
-  const clearAdaptiveGuidance=node=>['--assist-guide-border','--assist-guide-glow','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text','--assist-guide-marker-border'].forEach(name=>node.style?.removeProperty(name));
+  const clearAdaptiveGuidance=node=>{
+    ['--assist-guide-border','--assist-guide-glow','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text','--assist-guide-marker-border'].forEach(name=>node.style?.removeProperty(name));
+    const restore=guidanceInlineRestore.get(node);
+    if(!restore)return;
+    restore.forEach(([name,value,priority])=>value?node.style.setProperty(name,value,priority):node.style.removeProperty(name));
+    guidanceInlineRestore.delete(node);
+  };
   const collectTargetCandidates=root=>{
     const selector='[data-assist-target],h1,h2,h3,h4,h5,h6,article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[title],img[alt],p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
     const found=[...root.querySelectorAll(selector)];
@@ -874,11 +891,16 @@
       visualTarget.classList.add('assist-guided-target');guidedVisualTargets.add(visualTarget);
       if(pageTop)scrollTo({top:0,left:0,behavior:'auto'});
       else visualTarget.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
-      const marker=document.createElement('span');
-      marker.className='assist-guide-marker';
-      marker.textContent=label||'Here';
-      marker.setAttribute('aria-hidden','true');
-      visualTarget.appendChild(marker);
+      // Interactive controls already have a visible or accessible name. A
+      // second pill on a compact button duplicates that label and can cover
+      // adjacent copy, so controls use the ring alone.
+      if(!visualTarget.matches('button,a[href],input,select,textarea,[role="button"],[role="link"],[role="tab"]')){
+        const marker=document.createElement('span');
+        marker.className='assist-guide-marker';
+        marker.textContent=label||'Here';
+        marker.setAttribute('aria-hidden','true');
+        visualTarget.appendChild(marker);
+      }
       guidanceTimer=setTimeout(clearGuidance,GUIDANCE_DURATION);
       return {found:true,highlighted:true,label:String(label||targetText(target)).slice(0,120),id:String(target.id||'').slice(0,100)};
     };
