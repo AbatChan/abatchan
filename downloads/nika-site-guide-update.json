@@ -1,6 +1,6 @@
 {
-  "version": "1.3.5",
-  "package": "https://abatchan.com/downloads/nika-site-guide-1.3.5.zip",
+  "version": "1.3.6",
+  "package": "https://abatchan.com/downloads/nika-site-guide-1.3.6.zip",
   "homepage": "https://abatchan.com/nika",
   "requires": "6.2",
   "requires_php": "7.4",

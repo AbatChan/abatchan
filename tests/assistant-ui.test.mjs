@@ -62,7 +62,7 @@ check('highlight rings adapt to the computed page background',assistant.includes
 check('adaptive highlight styles are removed with the guidance state',assistant.includes('clearAdaptiveGuidance(node)')&&assistant.includes("removeProperty(name)"));
 check('theme-important control styles cannot suppress the adaptive ring',assistant.includes("setProperty('outline',`3px solid ${border}`,'important')")&&assistant.includes("setProperty('outline-offset','6px','important')")&&assistant.includes('guidanceInlineRestore'));
 check('compact controls do not receive a duplicate floating label',assistant.includes("!visualTarget.matches('button,a[href],input,select,textarea,[role=\"button\"],[role=\"link\"],[role=\"tab\"]')"));
-check('the page footer is a first-class semantic highlight target',assistant.includes("node.matches('footer,[role=\"contentinfo\"]')")&&assistant.includes("document.querySelectorAll('footer,[role=\"contentinfo\"]')"));
+check('the page footer root itself is a first-class semantic highlight target',assistant.includes("node.matches('footer,[role=\"contentinfo\"]')")&&assistant.includes("document.querySelectorAll('footer,[role=\"contentinfo\"]')")&&assistant.includes("root.matches?.(selector)?[root]:[]"));
 check('relative price requests resolve locally from headings and prices',assistant.includes('const relativePriceTarget=label=>')&&assistant.includes('afterAddOns')&&assistant.includes("if(relative)return relative"));
 
 console.log('\n=== difficult elements are indexed locally before AI ===');

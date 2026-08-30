@@ -154,7 +154,7 @@
   };
   const collectTargetCandidates=root=>{
     const selector='[data-assist-target],h1,h2,h3,h4,h5,h6,footer,[role="contentinfo"],article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[title],img[alt],p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
-    const found=[...root.querySelectorAll(selector)];
+    const found=[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)];
     for(const node of root.querySelectorAll('*')){
       if(node.shadowRoot){
         if(!node.shadowRoot.querySelector('style[data-assist-target-style]')){const style=document.createElement('style');style.dataset.assistTargetStyle='true';style.textContent=TARGET_STYLE;node.shadowRoot.prepend(style)}
