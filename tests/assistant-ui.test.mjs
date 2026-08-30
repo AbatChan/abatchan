@@ -64,6 +64,7 @@ check('semantic controls and fields join the safe target registry',assistant.inc
 check('open shadow roots can register and paint their own targets',assistant.includes('if(node.shadowRoot)')&&assistant.includes("style.dataset.assistTargetStyle='true'")&&assistant.includes('automaticTargetNodes.get(id)'));
 check('void form controls highlight a safe visual wrapper',assistant.includes("target.matches('input,select,textarea,img,option')")&&assistant.includes("target.closest('label,.field,[role=\"group\"],fieldset')"));
 check('specific field placeholders can identify hard controls',assistant.includes("node.matches('input,select,textarea')?(node.getAttribute('aria-label')||node.getAttribute('placeholder')||labelled?.textContent||node.getAttribute('name'))"));
+check('accessible same-origin frames join the compact target registry',assistant.includes("const frameDoc=frame.contentDocument")&&assistant.includes('found.push(...collectTargetCandidates(frameDoc))'));
 check('the browser sends compact labels and kinds, never page HTML',assistant.includes(".slice(0,80)")&&assistant.includes('kind:targetKind(node)')&&!assistant.includes('outerHTML'));
 
 console.log('\n=== mobile cross-page arrival keeps the target visible ===');

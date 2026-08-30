@@ -116,6 +116,17 @@
         found.push(...collectTargetCandidates(node.shadowRoot));
       }
     }
+    // Same-origin and srcdoc frames are part of the owner-controlled page and
+    // can be indexed without sending HTML anywhere. Cross-origin frames throw
+    // here by browser design (for example reCAPTCHA) and stay inaccessible.
+    for(const frame of root.querySelectorAll('iframe')){
+      try{
+        const frameDoc=frame.contentDocument;
+        if(!frameDoc?.body)continue;
+        if(!frameDoc.head?.querySelector('style[data-assist-target-style]')){const style=frameDoc.createElement('style');style.dataset.assistTargetStyle='true';style.textContent=TARGET_STYLE;frameDoc.head?.append(style)}
+        found.push(...collectTargetCandidates(frameDoc));
+      }catch{}
+    }
     return found;
   };
   const installAutomaticTargets=()=>{
