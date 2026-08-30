@@ -35,6 +35,7 @@ const checks = [
   ['nested semantic labels collapse to the longest requested control', server.includes('item.position + item.length <= kept.position + kept.length')],
   ['explicit published-page navigation resolves locally without AI tokens', server.includes('function directNavigationAction(') && server.includes('directHighlightAction(message, current, pages) || directNavigationAction(message, current, pages)') && server.indexOf('const directAction = config.navigation ?') < server.indexOf('const limited = rateAllowed')],
   ['footer and cross-page highlights retain their target intent', server.includes("normalizedMessage.includes('footer')") && server.includes('const highlightLabel =') && server.includes('section_requested: Boolean(highlightLabel)')],
+  ['the route named before highlight cannot masquerade as the target', server.includes("const targetMessage = highlightPosition < 0") && server.includes('targetMessage.indexOf(normalized)')],
   ['reads the compact target field the shared browser actually sends', server.includes('Array.isArray(snapshot.sections)') && server.includes('item?.text ?? item?.label')],
   ['stale replies are marked historical after a page change', server.includes('historicalContext(')],
   ['visibility limitations and compact semantic targets reach the model', server.includes('Visibility limitations:') && server.includes('Available semantic targets:')],

@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.3.6
+ * Version:           1.3.7
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.3.6';
+const NIKA_VERSION = '1.3.7';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -952,13 +952,15 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 		return trim( preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $value ) );
 	};
 	$normalized_message = $normalize( $message );
+	$highlight_position = strpos( $normalized_message, 'highlight' );
+	$target_message = false === $highlight_position ? $normalized_message : substr( $normalized_message, $highlight_position );
 	$label = '';
 	$matches = array();
 	foreach ( $headings as $heading ) {
 		if ( ! is_array( $heading ) ) continue;
 		$candidate = sanitize_text_field( $heading['text'] ?? ( $heading['label'] ?? '' ) );
 		$normalized_candidate = $normalize( $candidate );
-		$position = strlen( $normalized_candidate ) < 3 ? false : strpos( $normalized_message, $normalized_candidate );
+		$position = strlen( $normalized_candidate ) < 3 ? false : strpos( $target_message, $normalized_candidate );
 		if ( false === $position ) continue;
 		$matches[] = array( 'label' => $candidate, 'position' => $position, 'length' => strlen( $normalized_candidate ) );
 		if ( strlen( $candidate ) > strlen( $label ) ) $label = $candidate;

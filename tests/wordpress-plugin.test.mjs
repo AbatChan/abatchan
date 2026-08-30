@@ -183,6 +183,7 @@ check('an empty explicit guide turn gets one constrained retry',php.includes('fu
 check('explicit published-page navigation resolves locally before rate limiting',php.includes('function nika_direct_navigation_action(')&&php.indexOf('$direct_navigation =')<php.indexOf('$limited = nika_rate_allowed'));
 check('footer movement resolves locally as a same-page highlighted target',php.includes("false !== strpos( $normalized_message, 'footer' )")&&php.includes("'label' => 'Footer'")&&php.includes("'section_requested' => true"));
 check('cross-page navigation preserves an explicit highlight clause',php.includes('$highlight_label =')&&php.includes("'section_requested' => (bool) $highlight_label")&&php.includes('and highlighting %2$s'));
+check('the route named before highlight cannot masquerade as the target',php.includes('$target_message = false === $highlight_position')&&php.includes('strpos( $target_message, $normalized_candidate )'));
 check('the browser receives this WordPress site published route allowlist',php.includes("'paths' => wp_list_pluck( $published_pages, 'path' )"));
 check('the listing leads with what an owner gets, not how it is built',readme.includes('Answer visitor questions from your own pages')&&readme.includes('**What your visitors get**')&&readme.includes('**What you control**')&&php.includes('Answers visitor questions from your published pages'));
 check('the listing is findable by what people search for',readme.includes('Tags: ai chatbot, chatbot, ai assistant, customer support, live chat')&&!readme.includes('byok'));

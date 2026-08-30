@@ -457,11 +457,13 @@ const normalizeTarget = value => text(value, 240).toLowerCase().normalize('NFKD'
 function directHighlightAction(message, current, pages) {
   if (!/\bhighlight\b/i.test(message)) return null;
   const normalizedMessage = normalizeTarget(message);
+  const highlightPosition = normalizedMessage.indexOf('highlight');
+  const targetMessage = highlightPosition < 0 ? normalizedMessage : normalizedMessage.slice(highlightPosition);
   const matches = [];
   for (const target of (Array.isArray(current.headings) ? current.headings : [])) {
     const label = text(target?.text, 180);
     const normalized = normalizeTarget(label);
-    const position = normalized.length < 3 ? -1 : normalizedMessage.indexOf(normalized);
+    const position = normalized.length < 3 ? -1 : targetMessage.indexOf(normalized);
     if (position < 0) continue;
     matches.push({ label, position, length: normalized.length });
   }
