@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.3.4
+ * Version:           1.3.5
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.3.4';
+const NIKA_VERSION = '1.3.5';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -909,6 +909,10 @@ function nika_direct_navigation_action( $message, $page, $pages ) {
 	};
 	$normalized_message = $normalize( $message );
 	$current_path = untrailingslashit( wp_parse_url( sanitize_text_field( $page['path'] ?? '/' ), PHP_URL_PATH ) ?: '/' ) ?: '/';
+	if ( false !== strpos( $normalized_message, 'footer' ) ) {
+		$footer = nika_validate_action( array( 'href' => $current_path, 'label' => 'Footer', 'departure' => __( 'Taking you to the footer of this page.', 'nika-site-guide' ) ), $pages );
+		if ( $footer ) return array_merge( $footer, array( 'section_requested' => true, 'status' => __( 'Scrolling to the footer.', 'nika-site-guide' ), 'arrival' => __( 'The footer is highlighted.', 'nika-site-guide' ) ) );
+	}
 	$best = null;
 	$best_length = 0;
 	foreach ( $pages as $published_page ) {
@@ -923,16 +927,20 @@ function nika_direct_navigation_action( $message, $page, $pages ) {
 		}
 	}
 	if ( ! $best ) return null;
+	$highlight_label = '';
+	if ( preg_match( '/\bhighlight\b\s+(?:(?:the|this)\s+)?(.+?)[.!?]*$/iu', $message, $highlight_match ) ) {
+		$highlight_label = trim( sanitize_text_field( $highlight_match[1] ?? '' ) );
+	}
 	$validated = nika_validate_action( array(
 		'href' => $best['path'],
-		'label' => $best['title'],
-		'departure' => sprintf( __( 'Taking you to %s.', 'nika-site-guide' ), $best['title'] ),
+		'label' => $highlight_label ?: $best['title'],
+		'departure' => $highlight_label ? sprintf( __( 'Taking you to %1$s and highlighting %2$s.', 'nika-site-guide' ), $best['title'], $highlight_label ) : sprintf( __( 'Taking you to %s.', 'nika-site-guide' ), $best['title'] ),
 	), $pages );
 	if ( ! $validated ) return null;
 	return array_merge( $validated, array(
-		'section_requested' => false,
-		'status' => sprintf( __( 'Opening %s.', 'nika-site-guide' ), $best['title'] ),
-		'arrival' => sprintf( __( "You're on %s.", 'nika-site-guide' ), $best['title'] ),
+		'section_requested' => (bool) $highlight_label,
+		'status' => $highlight_label ? sprintf( __( 'Opening %1$s and finding %2$s.', 'nika-site-guide' ), $best['title'], $highlight_label ) : sprintf( __( 'Opening %s.', 'nika-site-guide' ), $best['title'] ),
+		'arrival' => $highlight_label ? sprintf( __( '%1$s is open and %2$s is highlighted.', 'nika-site-guide' ), $best['title'], $highlight_label ) : sprintf( __( "You're on %s.", 'nika-site-guide' ), $best['title'] ),
 	) );
 }
 

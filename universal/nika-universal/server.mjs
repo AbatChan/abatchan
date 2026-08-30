@@ -501,6 +501,10 @@ function directHighlightAction(message, current, pages) {
 function directNavigationAction(message, current, pages) {
   if (!/\b(?:take|bring|send)\s+me\b|\b(?:go|navigate|head|open|visit)\s+(?:me\s+)?(?:to\s+)?/i.test(message)) return null;
   const normalizedMessage = normalizeTarget(message);
+  if (normalizedMessage.includes('footer')) return validateAction({
+    href: current.path || '/', label: 'Footer', departure: 'Taking you to the footer of this page.',
+    section_requested: true, status: 'Scrolling to the footer.', arrival: 'The footer is highlighted.'
+  }, pages);
   let best = null;
   let bestLength = 0;
   for (const page of pages) {
@@ -513,13 +517,14 @@ function directNavigationAction(message, current, pages) {
     }
   }
   if (!best) return null;
+  const highlightLabel = text(message.match(/\bhighlight\b\s+(?:(?:the|this)\s+)?(.+?)[.!?]*$/iu)?.[1], 120);
   return validateAction({
     href: best.path,
-    label: best.title,
-    departure: `Taking you to ${best.title}.`,
-    section_requested: false,
-    status: `Opening ${best.title}.`,
-    arrival: `You're on ${best.title}.`
+    label: highlightLabel || best.title,
+    departure: highlightLabel ? `Taking you to ${best.title} and highlighting ${highlightLabel}.` : `Taking you to ${best.title}.`,
+    section_requested: Boolean(highlightLabel),
+    status: highlightLabel ? `Opening ${best.title} and finding ${highlightLabel}.` : `Opening ${best.title}.`,
+    arrival: highlightLabel ? `${best.title} is open and ${highlightLabel} is highlighted.` : `You're on ${best.title}.`
   }, pages);
 }
 
