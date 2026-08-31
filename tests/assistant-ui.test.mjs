@@ -73,6 +73,7 @@ check('open shadow roots can register and paint their own targets',assistant.inc
 check('void form controls highlight a safe visual wrapper',assistant.includes("target.matches('input,select,textarea,img,option')")&&assistant.includes("target.closest('label,.field,[role=\"group\"],fieldset')"));
 check('specific field placeholders can identify hard controls',assistant.includes("node.matches('input,select,textarea')?(node.getAttribute('aria-label')||node.getAttribute('placeholder')||labelled?.textContent||node.getAttribute('name'))"));
 check('an inaccessible exact target never falls back to the whole page',assistant.includes("if(ranked?.score>=.6)return ranked.node;\n          return null;"));
+check('main content outranks duplicate footer and navigation labels',assistant.includes("node.closest('main,[role=\"main\"]')?0.25:0")&&assistant.includes("targetKind(node)==='heading'?0.08:0"));
 check('detached hidden and zero-size targets are discarded before success',assistant.includes('owner!==document||!node.isConnected')&&assistant.includes('node.getClientRects().length>0&&rect.width>1&&rect.height>1')&&assistant.includes('.filter(targetReachable)'));
 check('unverified actions never reuse an optimistic arrival sentence',assistant.includes("result?.outcome==='completed'")&&assistant.includes("I couldn't find or highlight"));
 check('the browser sends compact labels and kinds, never page HTML',assistant.includes(".slice(0,80)")&&assistant.includes('kind:targetKind(node)')&&!assistant.includes('outerHTML'));

@@ -840,7 +840,7 @@
       return matches/wanted.size+(normalizedCandidate.includes(normalizedQuery)?1:0);
     };
     const closestTarget=label=>[...automaticTargetNodes.values()].filter(targetReachable)
-      .map(node=>({node,score:targetScore(label,node.dataset.assistTarget)}))
+      .map(node=>({node,score:targetScore(label,node.dataset.assistTarget)+(node.closest('main,[role="main"]')?0.25:0)+(targetKind(node)==='heading'?0.08:0)}))
       .sort((a,b)=>b.score-a.score)[0];
     const relativePriceTarget=label=>{
       if(!/\b(?:cheapest|lowest)\b/.test(String(label||'').toLowerCase())||!/\b(?:price|plan|option)\b/.test(String(label||'').toLowerCase()))return null;
