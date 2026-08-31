@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.3.7
+ * Version:           1.3.8
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.3.7';
+const NIKA_VERSION = '1.3.8';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -960,26 +960,29 @@ function nika_direct_highlight_action( $message, $page, $pages ) {
 		if ( ! is_array( $heading ) ) continue;
 		$candidate = sanitize_text_field( $heading['text'] ?? ( $heading['label'] ?? '' ) );
 		$normalized_candidate = $normalize( $candidate );
-		$position = strlen( $normalized_candidate ) < 3 ? false : strpos( $target_message, $normalized_candidate );
+		$is_price = (bool) preg_match( '/(?:[$£€₦]|USD\s*)\s*[\d,.]+/iu', $candidate );
+		$position = strlen( $normalized_candidate ) < 3 && ! $is_price ? false : strpos( $target_message, $normalized_candidate );
 		if ( false === $position ) continue;
 		$matches[] = array( 'label' => $candidate, 'position' => $position, 'length' => strlen( $normalized_candidate ) );
 		if ( strlen( $candidate ) > strlen( $label ) ) $label = $candidate;
 	}
-	// Relative pricing language still has to resolve to a target the browser can
-	// verify. On the published pricing view, Small Business is the one-location
-	// $99 option and therefore the lowest starting total. Add it at the phrase's
-	// position so compound requests retain the visitor's requested order.
+	// "Highlight X in the Y package" names one target and one container.
+	// Do not turn the contextual package name into a second highlight step.
+	if ( preg_match( '/\b(?:in|inside|within)\b.+\b(?:package|card|plan|section)\b/iu', $target_message, $context_match, PREG_OFFSET_CAPTURE ) ) {
+		$context_at = (int) $context_match[0][1];
+		$matches = array_values( array_filter( $matches, static function ( $match ) use ( $context_at ) {
+			return (int) $match['position'] < $context_at;
+		} ) );
+		$label = empty( $matches ) ? '' : $matches[0]['label'];
+	}
+	// Keep relative pricing language intact so the browser can compare the live
+	// visible prices. A hardcoded plan name would only work for one website and
+	// would outline the plan title instead of the requested price.
 	if ( preg_match( '/\bcheapest\s+(?:option|price|plan)\b/i', (string) $message, $relative, PREG_OFFSET_CAPTURE ) ) {
-		$page_text = $normalize( $page['text'] ?? '' );
-		foreach ( $headings as $heading ) {
-			if ( ! is_array( $heading ) ) continue;
-			$candidate = sanitize_text_field( $heading['text'] ?? ( $heading['label'] ?? '' ) );
-			if ( 'small business' !== $normalize( $candidate ) || false === strpos( $page_text, '99' ) ) continue;
-			$prefix = substr( (string) $message, 0, (int) $relative[0][1] );
-			$matches[] = array( 'label' => $candidate, 'position' => strlen( $normalize( $prefix ) ), 'length' => strlen( $normalize( $candidate ) ) );
-			if ( ! $label ) $label = $candidate;
-			break;
-		}
+		$relative_label = sanitize_text_field( $relative[0][0] ?? '' );
+		$prefix = substr( (string) $message, 0, (int) $relative[0][1] );
+		$matches[] = array( 'label' => $relative_label, 'position' => strlen( $normalize( $prefix ) ), 'length' => strlen( $normalize( $relative_label ) ) );
+		if ( ! $label ) $label = $relative_label;
 	}
 	// Prefer the longest label when two published targets begin at the same
 	// words, then keep distinct targets in the order they occur in the request.

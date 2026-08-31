@@ -463,9 +463,21 @@ function directHighlightAction(message, current, pages) {
   for (const target of (Array.isArray(current.headings) ? current.headings : [])) {
     const label = text(target?.text, 180);
     const normalized = normalizeTarget(label);
-    const position = normalized.length < 3 ? -1 : targetMessage.indexOf(normalized);
+    const isPrice = /(?:[$£€₦]|USD\s*)\s*[\d,.]+/iu.test(label);
+    const position = normalized.length < 3 && !isPrice ? -1 : targetMessage.indexOf(normalized);
     if (position < 0) continue;
     matches.push({ label, position, length: normalized.length });
+  }
+  const contextQualifier = targetMessage.match(/\b(?:in|inside|within)\b.+\b(?:package|card|plan|section)\b/iu);
+  if (contextQualifier?.index >= 0) {
+    const contextualStart = contextQualifier.index;
+    for (let index = matches.length - 1; index >= 0; index--) {
+      if (matches[index].position >= contextualStart) matches.splice(index, 1);
+    }
+  }
+  const relativePrice = targetMessage.match(/\b(?:cheapest|lowest)\s+(?:option|price|plan)\b/iu);
+  if (relativePrice?.index >= 0) {
+    matches.push({ label: relativePrice[0], position: relativePrice.index, length: normalizeTarget(relativePrice[0]).length });
   }
   matches.sort((a, b) => a.position - b.position || b.length - a.length);
   const ordered = [];

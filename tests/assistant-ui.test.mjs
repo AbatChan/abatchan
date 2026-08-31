@@ -58,12 +58,14 @@ console.log('\n=== guided highlight is one synchronized state ===');
 check('one cleanup removes both border and title pill',assistant.includes("document.querySelectorAll('.assist-guided-target')")&&assistant.includes("document.querySelectorAll('.assist-guide-marker')"));
 check('one timer clears the complete guidance state',assistant.includes('guidanceTimer=setTimeout(clearGuidance,GUIDANCE_DURATION)'));
 check('compound journeys expose one clickable fallback per target',assistant.includes("journey.steps:[journey]")&&assistant.includes('destinations.forEach(destination=>')&&assistant.includes('section_requested:destination.section_requested===true'));
-check('highlight rings adapt to the computed page background',assistant.includes('effectiveTargetBackground')&&assistant.includes('luminance<.42')&&assistant.includes("dark?'#ffffff':'#312e81'"));
+check('highlight rings adapt to the surface outside the target',assistant.includes('effectiveTargetBackground(node,false)')&&assistant.includes('luminance<.42')&&assistant.includes("dark?'#ffffff':'#312e81'"));
 check('adaptive highlight styles are removed with the guidance state',assistant.includes('clearAdaptiveGuidance(node)')&&assistant.includes("removeProperty(name)"));
 check('theme-important control styles cannot suppress the adaptive ring',assistant.includes("setProperty('outline',`3px solid ${border}`,'important')")&&assistant.includes("setProperty('outline-offset','6px','important')")&&assistant.includes('guidanceInlineRestore'));
-check('compact controls do not receive a duplicate floating label',assistant.includes("!visualTarget.matches('button,a[href],input,select,textarea,[role=\"button\"],[role=\"link\"],[role=\"tab\"]')"));
+check('compact controls do not receive a duplicate floating label',assistant.includes("!visualTarget.matches('button,a[href],input,select,textarea,h1,h2,h3,h4,h5,h6,[role=\"button\"],[role=\"link\"],[role=\"tab\"],[role=\"heading\"]')"));
 check('the page footer root itself is a first-class semantic highlight target',assistant.includes("node.matches('footer,[role=\"contentinfo\"]')")&&assistant.includes("document.querySelectorAll('footer,[role=\"contentinfo\"]')")&&assistant.includes("root.matches?.(selector)?[root]:[]"));
-check('relative price requests resolve locally from headings and prices',assistant.includes('const relativePriceTarget=label=>')&&assistant.includes('afterAddOns')&&assistant.includes("if(relative)return relative"));
+check('relative price requests resolve to the actual price heading',assistant.includes('const relativePriceTarget=label=>')&&assistant.includes('node:heading,labelNode')&&assistant.includes("if(relative)return relative"));
+check('named plans and sections promote headings to meaningful visual containers',assistant.includes('const semanticVisualTarget=(target,label)=>')&&assistant.includes('const isPlan=')&&assistant.includes('const isSection=')&&assistant.includes('semanticVisualTarget(target,label)'));
+check('headings do not receive a duplicate marker inside their text',assistant.includes('textarea,h1,h2,h3,h4,h5,h6,[role="button"]'));
 
 console.log('\n=== difficult elements are indexed locally before AI ===');
 check('semantic controls and fields join the safe target registry',assistant.includes('button,a[href],input:not([type="hidden"]),select,textarea')&&assistant.includes("node.labels?.[0]")&&assistant.includes("node.getAttribute('aria-label')"));
@@ -71,7 +73,7 @@ check('open shadow roots can register and paint their own targets',assistant.inc
 check('void form controls highlight a safe visual wrapper',assistant.includes("target.matches('input,select,textarea,img,option')")&&assistant.includes("target.closest('label,.field,[role=\"group\"],fieldset')"));
 check('specific field placeholders can identify hard controls',assistant.includes("node.matches('input,select,textarea')?(node.getAttribute('aria-label')||node.getAttribute('placeholder')||labelled?.textContent||node.getAttribute('name'))"));
 check('an inaccessible exact target never falls back to the whole page',assistant.includes("if(ranked?.score>=.6)return ranked.node;\n          return null;"));
-check('targets moved into frames are discarded before success',assistant.includes('const targetReachable=node=>')&&assistant.includes('owner===document&&node.isConnected')&&assistant.includes('.filter(targetReachable)'));
+check('detached hidden and zero-size targets are discarded before success',assistant.includes('owner!==document||!node.isConnected')&&assistant.includes('node.getClientRects().length>0&&rect.width>1&&rect.height>1')&&assistant.includes('.filter(targetReachable)'));
 check('unverified actions never reuse an optimistic arrival sentence',assistant.includes("result?.outcome==='completed'")&&assistant.includes("I couldn't find or highlight"));
 check('the browser sends compact labels and kinds, never page HTML',assistant.includes(".slice(0,80)")&&assistant.includes('kind:targetKind(node)')&&!assistant.includes('outerHTML'));
 
@@ -101,7 +103,7 @@ console.log('\n=== manual navigation keeps what the visitor supplied ===');
 // Dropping the whole journey turn also deleted the message carrying the
 // visitor's own details, so a later "put those back" had nothing to work from
 // and the server could not verify the values either.
-check('the journey turn is kept, not deleted',assistant.includes("journeyRoute:false}")&&assistant.includes('Done, at the time it was asked.'));
+check('the journey turn is kept with neutral conversational history',assistant.includes("journeyRoute:false}")&&assistant.includes('That request was completed earlier.')&&!assistant.includes('live route check is the only authority'));
 // Keeping the reply's own wording, departure included, reads as a location
 // claim and made "where am I" answer with the old destination.
 check('no wording from the journey reply survives',!assistant.includes("String(item.content||'').split('\\n')[0]"));

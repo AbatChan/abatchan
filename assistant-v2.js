@@ -98,7 +98,9 @@
   const targetReachable=node=>{
     try{
       const owner=node?.ownerDocument;
-      return Boolean(owner===document&&node.isConnected);
+      if(owner!==document||!node.isConnected||node.hidden||node.getAttribute?.('aria-hidden')==='true')return false;
+      const style=getComputedStyle(node),rect=node.getBoundingClientRect();
+      return style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity||1)>.01&&node.getClientRects().length>0&&rect.width>1&&rect.height>1;
     }catch{return false}
   };
   const targetText=node=>{
@@ -114,8 +116,8 @@
   const targetKind=node=>node.matches('input,select,textarea')?'field':node.matches('button,[role="button"]')?'button':node.matches('a[href],[role="link"]')?'link':node.matches('form,fieldset')?'form':node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?'heading':node.matches('details,summary')?'details':node.matches('img,[alt]')?'media':node.matches('footer,[role="contentinfo"],section,article,[role="region"],[role="tabpanel"]')?'section':'content';
   const targetPriority=node=>node.hasAttribute('data-assist-target')&&!node.hasAttribute('data-assist-auto')?8:['field','button','link','form'].includes(targetKind(node))?7:targetKind(node)==='heading'?6:['details','section'].includes(targetKind(node))?5:targetKind(node)==='media'?4:2;
   const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:3px solid var(--assist-guide-border,#312e81)!important;outline-offset:6px!important;border-radius:16px!important;box-shadow:0 0 0 10px var(--assist-guide-glow,rgba(49,46,129,.22))!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;padding:7px 10px!important;border:2px solid var(--assist-guide-marker-border,#fff)!important;border-radius:999px!important;color:var(--assist-guide-marker-text,#fff)!important;background:var(--assist-guide-marker-bg,#312e81)!important;box-shadow:0 10px 30px var(--assist-guide-glow,rgba(49,46,129,.34))!important;font:650 11px/1.2 system-ui,sans-serif!important;pointer-events:none!important}';
-  const effectiveTargetBackground=node=>{
-    for(let current=node;current&&current.nodeType===1;current=current.parentElement){
+  const effectiveTargetBackground=(node,includeSelf=true)=>{
+    for(let current=includeSelf?node:node?.parentElement;current&&current.nodeType===1;current=current.parentElement){
       const style=getComputedStyle(current);
       const match=style.backgroundColor.match(/rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)/i);
       if(match&&Number(match[4]??1)>.18)return match.slice(1,4).map(Number);
@@ -125,7 +127,10 @@
   const guidanceInlineRestore=new WeakMap();
   const guidanceInlineProperties=['outline','outline-offset','box-shadow'];
   const applyAdaptiveGuidance=node=>{
-    const [r,g,b]=effectiveTargetBackground(node).map(value=>value/255);
+    // The outline is painted outside the element, so contrast it against the
+    // surrounding surface rather than a button's own fill. A white ring around
+    // a red button disappeared as soon as it crossed onto a white pricing card.
+    const [r,g,b]=effectiveTargetBackground(node,false).map(value=>value/255);
     const linear=value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
     const luminance=.2126*linear(r)+.7152*linear(g)+.0722*linear(b);
     const dark=luminance<.42;
@@ -812,7 +817,7 @@
       // So keep the turn, keep their message, and replace the reply with a
       // stand-in that carries no destination and defers to the live route.
       return budget(recent.map(item=>item.journeyRoute
-        ? {...item,content:'Done, at the time it was asked. This turn says nothing about which page the visitor is on now; the live route check is the only authority on that.',journeyRoute:false}
+        ? {...item,content:'That request was completed earlier.',journeyRoute:false}
         : item
       ));
     };
@@ -862,10 +867,33 @@
           if(/\b(?:month|year|one[ -]?time)\b/i.test(scopedText)&&scopedText.length>text.length)break;
         }
         if(/per\s+location/i.test(context))amount*=2;
-        prices.push({node:labelNode,amount,afterAddOns});
+        prices.push({node:heading,labelNode,amount,afterAddOns});
       });
       const primary=prices.filter(item=>!item.afterAddOns&&Number.isFinite(item.amount));
-      return (primary.length?primary:prices).sort((a,b)=>a.amount-b.amount)[0]?.node||null;
+      const cheapest=(primary.length?primary:prices).sort((a,b)=>a.amount-b.amount)[0];
+      return cheapest?(/\bprice\b/i.test(String(label||''))?cheapest.node:cheapest.labelNode):null;
+    };
+    const semanticVisualTarget=(target,label)=>{
+      if(!target?.matches?.('h1,h2,h3,h4,h5,h6,[role="heading"]'))return target;
+      const request=String(label||'').toLowerCase();
+      const ownText=targetText(target);
+      // Price and title requests are intentionally precise. Named plans and
+      // named sections, however, should outline the visual unit the heading
+      // introduces instead of squeezing a badge into the heading itself.
+      if(/\b(?:price|heading|title)\b/.test(request)||/(?:[$£€₦]|USD\s*)\s*[\d,.]+/i.test(ownText))return target;
+      for(let node=target.parentElement,depth=0;node&&depth<7&& !node.matches('main,body,html');node=node.parentElement,depth++){
+        if(!targetReachable(node))continue;
+        const rect=node.getBoundingClientRect();
+        if(rect.width>innerWidth*.96||rect.height>innerHeight*1.6)continue;
+        const content=(node.innerText||'').replace(/\s+/g,' ').trim();
+        const headings=node.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]').length;
+        const controls=node.querySelectorAll('button,a[href],input,select,textarea').length;
+        const listItems=node.querySelectorAll('li').length;
+        const isPlan=headings<=3&&controls>0&&/(?:[$£€₦]|USD\s*)\s*[\d,.]+/i.test(content);
+        const isSection=headings<=4&&listItems>=2;
+        if(isPlan||isSection)return node;
+      }
+      return target;
     };
     const targetFor=(url,label,preferExact=false)=>{
       installAutomaticTargets();
@@ -915,7 +943,8 @@
       if(!target)return {found:false,highlighted:false,label:String(label||'')};
       const visualTarget=target.matches('input,select,textarea,img,option')
         ? (target.closest('label,.field,[role="group"],fieldset')||target.parentElement||target)
-        : target;
+        : semanticVisualTarget(target,label);
+      if(!targetReachable(visualTarget))return {found:false,highlighted:false,label:String(label||'')};
       const pageTop=!url.hash&&!preferExact;
       // The border and title pill are one guide state. Clearing an older
       // target must remove both immediately; previously a second reveal could
@@ -928,7 +957,7 @@
       // Interactive controls already have a visible or accessible name. A
       // second pill on a compact button duplicates that label and can cover
       // adjacent copy, so controls use the ring alone.
-      if(!visualTarget.matches('button,a[href],input,select,textarea,[role="button"],[role="link"],[role="tab"]')){
+      if(!visualTarget.matches('button,a[href],input,select,textarea,h1,h2,h3,h4,h5,h6,[role="button"],[role="link"],[role="tab"],[role="heading"]')){
         const marker=document.createElement('span');
         marker.className='assist-guide-marker';
         marker.textContent=label||'Here';

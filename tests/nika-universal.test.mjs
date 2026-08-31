@@ -32,6 +32,8 @@ const checks = [
   ['excluded pages are blocked before visible context reaches AI', server.includes("return send(res, 403, { error: 'Nika is not available on this excluded page.'")],
   ['current-location answers do not depend on model obedience', server.includes('currentLocationAnswer(message, current)')],
   ['exact and compound highlights resolve locally without AI tokens', server.includes('function directHighlightAction(') && server.indexOf('const directAction = config.navigation ? directHighlightAction') < server.indexOf('const limited = rateAllowed') && server.includes('steps\n  };')],
+  ['short currency prices remain exact local targets', server.includes('const isPrice =') && server.includes('normalized.length < 3 && !isPrice')],
+  ['a package name used as context is not treated as a second highlight', server.includes('const contextQualifier =') && server.includes('matches[index].position >= contextualStart')],
   ['nested semantic labels collapse to the longest requested control', server.includes('item.position + item.length <= kept.position + kept.length')],
   ['explicit published-page navigation resolves locally without AI tokens', server.includes('function directNavigationAction(') && server.includes('directHighlightAction(message, current, pages) || directNavigationAction(message, current, pages)') && server.indexOf('const directAction = config.navigation ?') < server.indexOf('const limited = rateAllowed')],
   ['footer and cross-page highlights retain their target intent', server.includes("normalizedMessage.includes('footer')") && server.includes('const highlightLabel =') && server.includes('section_requested: Boolean(highlightLabel)')],
