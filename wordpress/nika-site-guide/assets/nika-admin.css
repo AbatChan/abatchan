@@ -334,13 +334,23 @@
 .nika-help::after { content: ""; position: absolute; inset: -14px; }
 .nika-help:hover, .nika-help:focus-visible { border-color: var(--nika-accent, #6366f1); color: var(--nika-accent, #6366f1); }
 .nika-help:focus-visible { outline: 2px solid var(--nika-accent, #6366f1); outline-offset: 2px; }
+/* Above the mark and centred on it, so it points at what it explains and never
+   covers the input below. The card does not clip, so upward has room. */
+.nika-help-wrap { position: relative; display: inline-flex; }
 .nika-help-note {
-  position: absolute; left: 0; top: calc(100% + 8px); z-index: 30; width: max-content; max-width: 260px;
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(100% + 9px);
+  z-index: 30; width: max-content; max-width: min(260px, 60vw);
   padding: 8px 10px; border-radius: 8px; background: #1f2030; color: #f4f4f7;
-  font: 400 12px/1.45 inherit; box-shadow: 0 10px 26px rgba(20, 20, 40, .22);
+  font: 400 12px/1.45 inherit; text-align: left; font-weight: 400;
+  box-shadow: 0 10px 26px rgba(20, 20, 40, .22);
 }
-.nika-help-note::before { content: ""; position: absolute; left: 14px; top: -4px; width: 8px; height: 8px; background: inherit; transform: rotate(45deg); }
+.nika-help-note::before { content: ""; position: absolute; left: 50%; margin-left: -4px; bottom: -4px; width: 8px; height: 8px; background: inherit; transform: rotate(45deg); }
+/* On a narrow screen a centred bubble runs off the side, so pin it to the mark. */
+@media (max-width: 782px) {
+  .nika-help-note { left: auto; right: -8px; transform: none; max-width: min(260px, 78vw); }
+  .nika-help-note::before { left: auto; right: 12px; margin-left: 0; }
+}
 .nika-help:hover + .nika-help-note,
 .nika-help:focus + .nika-help-note { display: block !important; }
 @media (prefers-reduced-motion: no-preference) { .nika-help-note { animation: nikaHelpIn .12s ease both } }
-@keyframes nikaHelpIn { from { opacity: 0; transform: translateY(-2px) } to { opacity: 1; transform: none } }
+@keyframes nikaHelpIn { from { opacity: 0 } to { opacity: 1 } }

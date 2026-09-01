@@ -29,6 +29,9 @@ check('it opens by click and by keyboard focus, hover only an accelerator',admin
 check('focus reveal lives in CSS, where a label cannot undo it',adminJs.includes('A <label> forwards focus to the control it wraps')&&adminJs.includes(".closest?.('.nika-help, .nika-help-note')"));
 check('a click on the mark cannot toggle the field it describes',adminJs.includes('event.preventDefault();')&&adminJs.includes('event.stopPropagation();')&&adminJs.includes('a checkbox would toggle just'));
 check('escape closes it and it is described to assistive tech',adminJs.includes("if (event.key === 'Escape') closeAll();")&&adminJs.includes("setAttribute('aria-describedby', note.id)")&&php.includes('aria-expanded="false"'));
+check('the note is anchored to the mark, not the label row',php.includes("'<span class=\"nika-help-wrap\">'")&&adminCss.includes('.nika-help-wrap { position: relative; display: inline-flex; }')&&php.includes('landed on top'));
+check('it opens above the mark so it never covers the input',adminCss.includes('bottom: calc(100% + 9px)')&&!adminCss.includes('top: calc(100% + 8px)')&&adminCss.includes('.nika-help-note::before')&&adminCss.includes('bottom: -4px'));
+check('a narrow screen pins it inside the viewport',adminCss.includes('@media (max-width: 782px)')&&adminCss.includes('max-width: min(260px, 78vw)'));
 check('the small mark still has a full touch target',adminCss.includes('.nika-help::after { content: ""; position: absolute; inset: -14px; }'));
 
 console.log('=== the dashboard controls every colour the guide paints ===');

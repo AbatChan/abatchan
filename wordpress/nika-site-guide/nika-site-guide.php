@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.4.9
+ * Version:           1.5.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.4.9';
+const NIKA_VERSION = '1.5.0';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -197,9 +197,14 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
  * stop a mistake it is not on screen to prevent.
  */
 function nika_help( $text ) {
-	return '<button type="button" class="nika-help" aria-expanded="false" aria-label="'
+	// Wrapped so the note can be positioned against the mark itself. Anchored to
+	// the label row instead, it opened wherever that row began and landed on top
+	// of the input it was describing.
+	return '<span class="nika-help-wrap">'
+		. '<button type="button" class="nika-help" aria-expanded="false" aria-label="'
 		. esc_attr__( 'What is this?', 'nika-site-guide' ) . '"><span aria-hidden="true">?</span></button>'
-		. '<span class="nika-help-note" role="tooltip" hidden>' . esc_html( $text ) . '</span>';
+		. '<span class="nika-help-note" role="tooltip" hidden>' . esc_html( $text ) . '</span>'
+		. '</span>';
 }
 
 function nika_settings_page() {
