@@ -827,10 +827,13 @@
       button.setAttribute('aria-describedby', note.id);
     }
   });
+  // A <label> forwards focus to the control it wraps, so focusing the mark can
+  // land on the field a moment later. Revealing on focus is therefore done in
+  // CSS, where it cannot be undone by the next event; this only closes a note
+  // that was opened by click once focus genuinely leaves it.
   document.addEventListener('focusin', (event) => {
-    const button = event.target.closest?.('.nika-help');
-    if (button) noteFor(button)?.removeAttribute('hidden');
-    else closeAll();
+    if (event.target.closest?.('.nika-help, .nika-help-note')) return;
+    closeAll();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeAll();
