@@ -157,7 +157,10 @@
         <div class="adm-group">
           <div class="adm-group-head">
             <h3>Starter suggestions</h3>
-            <button class="btn sm" id="generateAssistantSuggestions" type="button">generate with AI</button>
+            <div class="adm-ai-actions">
+              <button class="btn sm" id="generateAssistantSuggestions" type="button">improve with AI</button>
+              <button class="btn sm" id="freshAssistantSuggestions" type="button">start afresh</button>
+            </div>
           </div>
           <p class="adm-field-help">Visitors see these before their first message. Each title becomes the question.</p>
           <fieldset class="adm-suggestions">
@@ -187,7 +190,10 @@
           <input type="text" id="a-model" placeholder="deepseek-v4-flash">
           <div class="adm-group-head">
             <label for="a-system">website instructions</label>
-            <button class="btn sm" id="draftAssistantInstructions" type="button">draft with AI</button>
+            <div class="adm-ai-actions">
+              <button class="btn sm" id="draftAssistantInstructions" type="button">improve with AI</button>
+              <button class="btn sm" id="freshAssistantInstructions" type="button">start afresh</button>
+            </div>
           </div>
           <textarea id="a-system" style="min-height:180px"></textarea>
           <p class="adm-field-help" id="a-instructions-status" role="status" aria-live="polite">Write for this site: services, audience, tone, important facts, and hard boundaries.</p>

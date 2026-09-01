@@ -1149,3 +1149,4 @@ html body .adm-group-head{
   display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
 }
 html body .adm-group-head h3,html body .adm-group-head label{margin:0}
+html body .adm-ai-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

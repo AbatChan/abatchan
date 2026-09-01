@@ -948,6 +948,7 @@
       const exempt = assistantRows['assistant.exempt_ips'];
       q('#a-exempt').value = Array.isArray(exempt) ? exempt.join('\n') : String(exempt || '');
       syncAssistantIp();
+      syncAssistantAiLabels();
       qa('#assistantForm input,#assistantForm textarea').forEach(el => {
         if (el === q('#a-enabled') || el === q('#a-test')) return;
         el.addEventListener('input', () => {
@@ -997,29 +998,37 @@
     }
   });
 
-  async function generateAssistantDraft(kind, button, status) {
+  const syncAssistantAiLabels = () => {
+    q('#generateAssistantSuggestions').textContent = readSuggestions().length ? 'improve with AI' : 'generate with AI';
+    q('#draftAssistantInstructions').textContent = q('#a-system').value.trim() ? 'improve with AI' : 'draft with AI';
+  };
+
+  async function generateAssistantDraft(kind, mode, button, status) {
     pending(button, true, kind === 'suggestions' ? 'generating' : 'drafting');
     status.textContent = kind === 'suggestions'
-      ? 'Reading official Abatchan content and creating three suggestions.'
-      : 'Reading official Abatchan content and drafting instructions.';
+      ? `${mode === 'refine' ? 'Improving the current suggestions with' : 'Creating three new suggestions from'} official Abatchan content.`
+      : `${mode === 'refine' ? 'Improving the current instructions with' : 'Drafting new instructions from'} official Abatchan content.`;
     try {
+      const currentSuggestions = readSuggestions();
+      const currentDraft = q('#a-system').value.trim();
       const response = await fetch('/api/admin-assistant-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sb.session.token || ''}` },
-        body: JSON.stringify({ kind, model: q('#a-model').value.trim() })
+        body: JSON.stringify({ kind, mode, currentSuggestions, currentDraft, model: q('#a-model').value.trim() })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error?.message || 'The draft could not be generated.');
       if (kind === 'suggestions') {
         paintSuggestions(data.suggestions);
-        status.textContent = 'New suggestions are ready. Review them, then save changes.';
+        status.textContent = `${mode === 'refine' ? 'Improved' : 'New'} suggestions are ready. Review them, then save changes.`;
       } else {
         q('#a-system').value = String(data.instructions || '');
         q('#a-system').dispatchEvent(new Event('input', { bubbles: true }));
-        status.textContent = 'Draft ready. Review it, then save changes.';
+        status.textContent = `${mode === 'refine' ? 'Improved draft' : 'New draft'} ready. Review it, then save changes.`;
       }
       dirty.add('assistant');
       saveState(q('#saveAssistant'), true);
+      syncAssistantAiLabels();
     } catch (err) {
       status.textContent = err.message;
       toast(err.message, true);
@@ -1028,8 +1037,12 @@
     }
   }
 
-  q('#generateAssistantSuggestions').addEventListener('click', event => generateAssistantDraft('suggestions', event.currentTarget, q('#a-suggestions-status')));
-  q('#draftAssistantInstructions').addEventListener('click', event => generateAssistantDraft('instructions', event.currentTarget, q('#a-instructions-status')));
+  q('#generateAssistantSuggestions').addEventListener('click', event => generateAssistantDraft('suggestions', 'refine', event.currentTarget, q('#a-suggestions-status')));
+  q('#freshAssistantSuggestions').addEventListener('click', event => generateAssistantDraft('suggestions', 'fresh', event.currentTarget, q('#a-suggestions-status')));
+  q('#draftAssistantInstructions').addEventListener('click', event => generateAssistantDraft('instructions', 'refine', event.currentTarget, q('#a-instructions-status')));
+  q('#freshAssistantInstructions').addEventListener('click', event => generateAssistantDraft('instructions', 'fresh', event.currentTarget, q('#a-instructions-status')));
+  qa('#assistantForm input,#assistantForm textarea').forEach(el => el.addEventListener('input', syncAssistantAiLabels));
+  syncAssistantAiLabels();
 
   q('#testAssistant').addEventListener('click', async () => {
     const message = q('#a-test').value.trim();

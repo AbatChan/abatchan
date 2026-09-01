@@ -40,7 +40,7 @@ if (role !== golden.ROLE) {
 }
 check('facts carry over unchanged', composeFacts(abatchan) === golden.GUIDE, true);
 check('commercial sheet carries over unchanged', composeCommercial(abatchan) === golden.COMMERCIAL_GUIDE, true);
-check('Business is the explicit smallest fit for branding removal on up to five sites',composeCommercial(abatchan).includes('Removing Nika branding alone is included in Business')&&composeCommercial(abatchan).includes('more than 5 and up to 25 websites'),true);
+check('Business is the explicit smallest fit for branding removal on up to five sites',composeCommercial(abatchan).includes('Removing Nika branding alone is included in Business')&&composeCommercial(abatchan).includes('more than 5 and up to 50 production websites'),true);
 
 console.log('\n=== the destination directory derives from the tenant ===');
 const map = composePageMap(abatchan);

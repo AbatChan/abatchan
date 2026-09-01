@@ -322,6 +322,10 @@ check('IP lookup errors are visually distinct',admin.includes("classList.add('is
 check('IP add action stays hidden until lookup succeeds',adminCss.includes('.adm-ip-actions [hidden]{display:none!important}'));
 check('connections that do not count explain the permanent Vercel floor',adminHtml.includes('Connections not counted')&&adminHtml.includes('Addresses set in Vercel always stay exempt'));
 check('Abatchan admin generation stays server-side and requires a signed-in user',adminHtml.includes('generateAssistantSuggestions')&&adminHtml.includes('draftAssistantInstructions')&&admin.includes('/api/admin-assistant-generate')&&adminGenerator.includes('signedIn(req.headers.authorization)')&&adminGenerator.includes('process.env.DEEPSEEK_API_KEY'));
+check('AI controls distinguish improving current input from starting afresh',adminHtml.includes('freshAssistantSuggestions')&&adminHtml.includes('freshAssistantInstructions')&&admin.includes("generateAssistantDraft('instructions', 'refine'")&&admin.includes("generateAssistantDraft('instructions', 'fresh'"));
+check('current suggestions and instructions are sent only as generation context',admin.includes('currentSuggestions, currentDraft')&&adminGenerator.includes('currentSuggestions')&&adminGenerator.includes('currentDraft'));
+check('AI generation retries empty or invalid output once',adminGenerator.includes('GENERATION_ATTEMPTS = 2')&&adminGenerator.includes('retryGeneration'));
+check('invalid AI output cannot replace existing admin fields',admin.indexOf("if (!response.ok) throw")<admin.indexOf('paintSuggestions(data.suggestions)')&&admin.indexOf("if (!response.ok) throw")<admin.indexOf("q('#a-system').value"));
 check('Abatchan admin never receives the provider key',!admin.includes('DEEPSEEK_API_KEY')&&!adminGenerator.includes('key: process.env.DEEPSEEK_API_KEY'));
 check('mobile keeps the sign-out control',adminCss.includes('.adm-side footer #signOut{display:inline-flex'));
 check('long mobile tab labels have short variants',adminHtml.includes('<span class="adm-nav-narrow">copy</span>')&&adminHtml.includes('<span class="adm-nav-narrow">guide</span>'));
