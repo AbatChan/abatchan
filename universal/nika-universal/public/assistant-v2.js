@@ -187,7 +187,11 @@
   // The guide's own panel and launcher must stay crisp and readable: they are
   // what the visitor is reading the answer in.
   const SCRIM_ABOVE='2147482600';
-  let guidanceScrim=null,guidanceScrimFrame=0,guidanceScrimRaised=[];
+  let guidanceScrim=null,guidanceScrimFrame=0;
+  // Additive, because guide surfaces can appear after the scrim is already up:
+  // the reply bubble is created when an answer lands, which on a phone happens
+  // after the sheet has minimized and while the highlight is still showing.
+  const guidanceScrimRaised=new Map();
   const scrimCutout=node=>{
     if(!guidanceScrim)return;
     const rect=node?.getBoundingClientRect?.();
@@ -199,17 +203,17 @@
     guidanceScrim.style.setProperty('-webkit-clip-path',path);
   };
   const raiseGuideSurfaces=()=>{
+    if(!guidanceScrim)return;
     const scope=uiScope();
-    const surfaces=[...(scope.querySelectorAll?.('.assist-panel,.assist-launch,.assist-backdrop')||[])];
-    guidanceScrimRaised=surfaces.map(node=>{
-      const previous=[node.style.getPropertyValue('z-index'),node.style.getPropertyPriority('z-index')];
+    for(const node of scope.querySelectorAll?.('.assist-panel,.assist-launch,.assist-backdrop,.assist-reply-peek')||[]){
+      if(guidanceScrimRaised.has(node))continue;
+      guidanceScrimRaised.set(node,[node.style.getPropertyValue('z-index'),node.style.getPropertyPriority('z-index')]);
       node.style.setProperty('z-index',SCRIM_ABOVE,'important');
-      return [node,previous];
-    });
+    }
   };
   const restoreGuideSurfaces=()=>{
-    guidanceScrimRaised.forEach(([node,[value,priority]])=>value?node.style.setProperty('z-index',value,priority):node.style.removeProperty('z-index'));
-    guidanceScrimRaised=[];
+    guidanceScrimRaised.forEach(([value,priority],node)=>value?node.style.setProperty('z-index',value,priority):node.style.removeProperty('z-index'));
+    guidanceScrimRaised.clear();
   };
   const showGuidanceScrim=node=>{
     // A browser without even-odd clip paths would paint the scrim straight
@@ -1220,27 +1224,32 @@
       guidanceTimer=setTimeout(clearGuidance,GUIDANCE_DURATION);
       return {found:true,highlighted:true,label:String(label||targetText(target)).slice(0,120),id:String(target.id||'').slice(0,100)};
     };
-    const waitForTarget=(url,label,preferExact=false,request='')=>{
+    // `settled` says the page is already the one the visitor is looking at, so
+    // nothing is still on its way. Waiting for a late anchor then costs a
+    // second of dead time before a target this page can already resolve — the
+    // commonest case, since an authored anchor is the exception, not the rule.
+    const waitForTarget=(url,label,preferExact=false,request='',settled=false)=>{
       const ready=allowFallback=>{
         const target=targetFor(url,label,preferExact,allowFallback,request);
         return targetReachable(visualTargetFor(target,label))?target:null;
       };
-      const immediate=ready(!url.hash);
+      const immediate=ready(settled||!url.hash);
       if(immediate)return Promise.resolve(immediate);
       return new Promise(resolve=>{
-        let settled=false,allowFallback=!url.hash;
-        const finish=target=>{if(settled)return;settled=true;observer.disconnect();clearTimeout(fallbackTimer);clearTimeout(ceiling);resolve(target||null)};
+        let done=false,allowFallback=settled||!url.hash;
+        const finish=target=>{if(done)return;done=true;observer.disconnect();clearTimeout(fallbackTimer);clearTimeout(ceiling);resolve(target||null)};
         const attempt=()=>{const target=ready(allowFallback);if(target)finish(target)};
         const observer=new MutationObserver(attempt);
         observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['id','hidden','aria-hidden','aria-label','aria-labelledby','data-nika-target','data-nika-label','data-assist-target']});
-        // Give a destination with a named anchor time to render that exact ID
-        // before considering a semantic fallback. This covers hydrated SPAs,
-        // builders and asynchronously inserted WordPress blocks.
-        const fallbackTimer=setTimeout(()=>{allowFallback=true;attempt()},url.hash?1100:0);
-        const ceiling=setTimeout(()=>finish(ready(true)),1900);
+        // On arrival, give a destination with a named anchor time to render that
+        // exact ID before considering a semantic fallback. This covers hydrated
+        // SPAs, builders and asynchronously inserted WordPress blocks. On a
+        // page that is already settled there is nothing to wait for.
+        const fallbackTimer=setTimeout(()=>{allowFallback=true;attempt()},settled||!url.hash?0:1100);
+        const ceiling=setTimeout(()=>finish(ready(true)),settled?450:1900);
       });
     };
-    const revealTargetWhenReady=async(url,label,preferExact=false,request='')=>revealResolvedTarget(await waitForTarget(url,label,preferExact,request),url,label,preferExact);
+    const revealTargetWhenReady=async(url,label,preferExact=false,request='',settled=false)=>revealResolvedTarget(await waitForTarget(url,label,preferExact,request,settled),url,label,preferExact);
 
     const clearFormGuidance=form=>{
       clearTimeout(formGuidanceTimer);
@@ -1306,7 +1315,12 @@
       const current=pagePath();
       rememberJourney({from:current,to:destination+url.hash,label:label||'the section',at:Date.now()});
       if(destination===current){
-        void revealTargetWhenReady(url,label,Boolean(handoff?.section_requested),handoff?.request||'');
+        // On phones the sheet fills the viewport, so a highlight behind it is
+        // invisible. The journey path already minimizes for this; a saved
+        // action link reaches the same reveal and needs the same courtesy —
+        // and only once the browser confirms something was actually painted.
+        void revealTargetWhenReady(url,label,Boolean(handoff?.section_requested),handoff?.request||'',true)
+          .then(result=>{if(result?.found&&matchMedia('(max-width:640px)').matches&&panel.classList.contains('is-open'))launch.click()});
         prepareProjectForm(handoff);
         return false;
       }
@@ -1860,7 +1874,7 @@
             const step=sequence[index];
             let stepUrl;try{stepUrl=new URL(step.href,location.href)}catch{return}
             if(index>0)journeyStep(bubble,step.status);
-            lastReveal=await revealTargetWhenReady(stepUrl,step.label,step.section_requested===true,journey.request||'');
+            lastReveal=await revealTargetWhenReady(stepUrl,step.label,step.section_requested===true,journey.request||'',true);
             allFound=allFound&&lastReveal.found===true;
             if(index===0&&matchMedia('(max-width:640px)').matches&&panel.classList.contains('is-open'))launch.click();
             let settled=false,ceiling=0;
@@ -1883,7 +1897,7 @@
           clearTimeout(ceiling);
           completeJourney(bubble,journey,actionResultFor(journey,revealResult,formResult));
         };
-        revealResult=await revealTargetWhenReady(url,journey.label,journey.section_requested===true,journey.request||'');
+        revealResult=await revealTargetWhenReady(url,journey.label,journey.section_requested===true,journey.request||'',true);
         formResult=prepareProjectForm(journey);
         // On phones the sheet fills the viewport. Minimize it after a verified
         // same-page action as well, otherwise the visitor cannot see the exact
@@ -2018,7 +2032,7 @@
       const close=peek.lastElementChild;
       close.addEventListener('click',e=>{e.stopPropagation();peek.remove()});
       peek.addEventListener('click',()=>{clearUnread();launch.click()});
-      uiHome().appendChild(peek);requestAnimationFrame(()=>peek.classList.add('is-on'));
+      uiHome().appendChild(peek);raiseGuideSurfaces();requestAnimationFrame(()=>peek.classList.add('is-on'));
       peekTimer=setTimeout(()=>peek.remove(),7000);chime();
     };
 

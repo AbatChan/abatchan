@@ -485,7 +485,16 @@ html[data-theme="light"] .assist-reply-peek{background:rgba(248,248,246,.96);col
   }
   .assist-reply-peek{
     right:12px!important;
-    bottom:82px!important;
+    /* Clear of the launcher, which sits in this corner on a phone: the bubble
+       covered the very control it is telling the visitor to tap. */
+    bottom:150px!important;
+  }
+  /* The visible cross stays small; the tap target does not. */
+  .assist-reply-peek button{
+    width:44px!important;
+    height:44px!important;
+    right:2px!important;
+    top:2px!important;
   }}
 
 

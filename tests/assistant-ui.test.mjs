@@ -83,6 +83,13 @@ check('context is decided by contents, not by tag name',assistant.includes('Whet
 check('leaf controls still carry no surrounding context',assistant.includes("if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role=\"heading\"],[role=\"button\"],[role=\"link\"]'))return '';"));
 check('the model still receives a capped, compact index',assistant.includes('.slice(0,80)')&&assistant.includes('kind:targetKind(node)'));
 
+console.log('\n=== a settled page does not wait for an anchor that is not coming ===');
+check('the grace period is skipped once the page is settled',assistant.includes("const waitForTarget=(url,label,preferExact=false,request='',settled=false)=>")&&assistant.includes('const fallbackTimer=setTimeout(()=>{allowFallback=true;attempt()},settled||!url.hash?0:1100);'));
+check('the arrival ceiling is short on a settled page',assistant.includes('const ceiling=setTimeout(()=>finish(ready(true)),settled?450:1900);'));
+check('every same-page reveal is marked settled',assistant.includes("handoff?.request||'',true)")&&assistant.includes("journey.request||'',true)"));
+check('a cross-page arrival keeps the full grace',assistant.includes("revealTargetWhenReady(url,handoff.label,handoff.section_requested===true,handoff.request||'')")&&assistant.includes('On arrival, give a destination with a named anchor time'));
+check('the resolved flag no longer shadows the settled flag',assistant.includes('let done=false,allowFallback=settled||!url.hash;')&&assistant.includes('const finish=target=>{if(done)return;done=true;'));
+
 console.log('\n=== the page steps back so the answer reads as the answer ===');
 check('a scrim dims the rest of the page with the highlight',assistant.includes("guidanceScrim.className='assist-guide-scrim'")&&assistantCss.includes('.assist-guide-scrim{')&&assistantCss.includes('.assist-guide-scrim.is-on{opacity:1}'));
 check('the scrim never intercepts a click',assistant.includes('pointer-events:none')&&assistantCss.includes('.assist-guide-scrim{position:fixed;inset:0;z-index:2147482000;pointer-events:none'));
@@ -90,7 +97,9 @@ check('the scrim recedes the page on dark palettes too',assistantCss.includes('b
 check('the scrim styles inline too, for embeds without the stylesheet',assistant.includes('const SCRIM_STYLE=')&&assistant.includes('guidanceScrim.style.cssText=SCRIM_STYLE'));
 check('the target is cut out of the scrim, not raised above it',assistant.includes('const scrimCutout=node=>')&&assistant.includes('polygon(evenodd, 0px 0px,')&&!assistant.includes('is-guide-lifted'));
 check('the cutout asks nothing of the page stacking context',assistant.includes('Clipping asks')&&!assistant.includes("guidanceInlineProperties=['outline','outline-offset','z-index']")&&!assistant.includes('appendChild(visualTarget)'));
-check('the guide panel and launcher stay above the scrim',assistant.includes("const SCRIM_ABOVE='2147482600'")&&assistant.includes("scope.querySelectorAll?.('.assist-panel,.assist-launch,.assist-backdrop')")&&assistant.includes('restoreGuideSurfaces()'));
+check('the guide panel and launcher stay above the scrim',assistant.includes("const SCRIM_ABOVE='2147482600'")&&assistant.includes("scope.querySelectorAll?.('.assist-panel,.assist-launch,.assist-backdrop,.assist-reply-peek')")&&assistant.includes('restoreGuideSurfaces()'));
+check('a reply bubble born after the scrim is raised too',assistant.includes('const guidanceScrimRaised=new Map();')&&assistant.includes('if(guidanceScrimRaised.has(node))continue;')&&assistant.includes('uiHome().appendChild(peek);raiseGuideSurfaces();'));
+check('every raised surface keeps its own original z-index',assistant.includes('guidanceScrimRaised.set(node,[node.style.getPropertyValue(\'z-index\'),node.style.getPropertyPriority(\'z-index\')]);')&&assistant.includes('guidanceScrimRaised.clear();'));
 check('the hole follows the target through the scroll',assistant.includes('guidanceScrimFrame=requestAnimationFrame(track)')&&assistant.includes('cancelAnimationFrame(guidanceScrimFrame)'));
 check('a browser without even-odd clipping shows no scrim at all',assistant.includes("CSS?.supports?.('clip-path','polygon(evenodd, 0px 0px, 1px 0px, 1px 1px)')"));
 check('the scrim, its tracking frame and the raised panels are all released',assistant.includes('hideGuidanceScrim()')&&assistant.includes('restoreGuideSurfaces();')&&assistant.includes('guidanceScrimFrame=0;'));
@@ -115,7 +124,7 @@ check('ids Nika mints are marked as its own suggestion',assistant.includes("node
 check('a generated anchor loses to a clearly better answer',assistant.includes('if(raw&&preferExact&&label){')&&assistant.includes('ranked.score>targetMatch(label,raw,request)+.15'));
 check('a generated anchor still wins when nothing beats it',assistant.includes("ranked.node!==raw&&")&&assistant.indexOf('ranked.score>targetMatch(label,raw,request)+.15')<assistant.indexOf('if(raw)return raw;'));
 check('fuzzy confidence is based on target evidence, not page position',assistant.includes('const targetMatch=(label,node,request=\'\')=>')&&assistant.includes('b.score-a.score||b.priority-a.priority||a.area-b.area')&&!assistant.includes("node.closest('main,[role=\"main\"]')?0.25:0"));
-check('dynamic destinations wait for live DOM mutations before falling back',assistant.includes('const waitForTarget=')&&assistant.includes('new MutationObserver(attempt)')&&assistant.includes("url.hash?1100:0")&&assistant.includes('revealTargetWhenReady'));
+check('dynamic destinations wait for live DOM mutations before falling back',assistant.includes('const waitForTarget=')&&assistant.includes('new MutationObserver(attempt)')&&assistant.includes("settled||!url.hash?0:1100")&&assistant.includes('revealTargetWhenReady'));
 check('detached hidden and zero-size targets are discarded before success',assistant.includes('owner!==document||!node.isConnected')&&assistant.includes('node.getClientRects().length>0&&rect.width>1&&rect.height>1')&&assistant.includes('.filter(node=>targetReachable(node))'));
 check('the reachability filter never receives the array index as a flag',!assistant.includes('.filter(targetReachable)')&&assistant.includes('.filter(node=>targetReachable(node))'));
 check('a scroll-reveal target is not disqualified for being transparent',assistant.includes('const targetReachable=(node,requireOpaque=false)=>')&&assistant.includes("if(requireOpaque&&!(Number(style.opacity||1)>.01))return false;")&&assistant.includes('Scroll-triggered reveal animations are everywhere'));
@@ -180,6 +189,14 @@ const labelOnly=kind.targetKindHint('Business')||kind.targetKindHint('Highlight 
 check('a summarised label still resolves to a card request',labelOnly==='card');
 const summarised=targetScore('Business',planCard)*.84+.5;
 check('the card outranks its buy button even from a bare label',summarised>targetScore('Business','buy Business')*.55);
+
+console.log('\n=== the reply bubble is usable on a phone ===');
+check('the bubble clears the launcher it points at',assistantCss.includes('bottom:150px!important;')&&assistantCss.includes('covered the very control it is telling the visitor to tap'));
+check('the dismiss target meets the touch minimum',assistantCss.includes('.assist-reply-peek button{')&&assistantCss.includes('width:44px!important;')&&assistantCss.includes('height:44px!important;'));
+
+console.log('\n=== a phone sheet never covers what it just highlighted ===');
+check('a saved action link minimizes the sheet like a journey does',assistant.includes("matchMedia('(max-width:640px)').matches&&panel.classList.contains('is-open'))launch.click()")&&assistant.includes('needs the same courtesy'));
+check('the sheet only minimizes once a target was really painted',assistant.includes('.then(result=>{if(result?.found&&'));
 
 console.log('\n=== mobile cross-page arrival keeps the target visible ===');
 check('phone handoff stays minimized',assistant.includes("const keepPageVisible=matchMedia('(max-width:640px)').matches")&&assistant.includes("if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click()"));
