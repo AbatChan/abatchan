@@ -118,7 +118,7 @@
   const targetSlug=text=>text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,58)||'content';
   const targetKind=node=>node.matches('input,select,textarea')?'field':node.matches('button,[role="button"]')?'button':node.matches('a[href],[role="link"]')?'link':node.matches('form,fieldset')?'form':node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?'heading':node.matches('details,summary')?'details':node.matches('img,[alt]')?'media':node.matches('footer,[role="contentinfo"],section,article,[role="region"],[role="tabpanel"]')?'section':'content';
   const targetPriority=node=>(node.hasAttribute('data-nika-target')||node.hasAttribute('data-nika-label')||node.hasAttribute('data-assist-target')&&!node.hasAttribute('data-assist-auto'))?8:['field','button','link','form'].includes(targetKind(node))?7:targetKind(node)==='heading'?6:['details','section'].includes(targetKind(node))?5:targetKind(node)==='media'?4:2;
-  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:3px solid var(--assist-guide-border,#312e81)!important;outline-offset:6px!important;border-radius:var(--assist-guide-radius,16px)!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;display:inline-flex!important;align-items:center!important;gap:7px!important;padding:6px 10px!important;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent)!important;border-radius:999px!important;color:var(--assist-guide-marker-text,#fff)!important;background:var(--assist-guide-marker-bg,#6366f1)!important;box-shadow:none!important;font:650 11px/1.2 system-ui,sans-serif!important;letter-spacing:.015em!important;pointer-events:none!important}.assist-guide-marker::before{content:""!important;width:6px!important;height:6px!important;flex:0 0 6px!important;border:1px solid currentColor!important;border-radius:50%!important;background:transparent!important;opacity:.82!important}';
+  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:2px solid var(--assist-guide-border,#312e81)!important;outline-offset:var(--assist-guide-offset,4px)!important;border-radius:var(--assist-guide-radius,16px)!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;display:inline-flex!important;align-items:center!important;gap:7px!important;padding:6px 10px!important;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent)!important;border-radius:999px!important;color:var(--assist-guide-marker-text,#fff)!important;background:var(--assist-guide-marker-bg,#6366f1)!important;box-shadow:none!important;font:650 11px/1.2 system-ui,sans-serif!important;letter-spacing:.015em!important;pointer-events:none!important}.assist-guide-marker::before{content:""!important;width:6px!important;height:6px!important;flex:0 0 6px!important;border:1px solid currentColor!important;border-radius:50%!important;background:transparent!important;opacity:.82!important}';
   const effectiveTargetBackground=(node,includeSelf=true)=>{
     for(let current=includeSelf?node:node?.parentElement;current&&current.nodeType===1;current=current.parentElement){
       const style=getComputedStyle(current);
@@ -142,6 +142,20 @@
     const linear=channel=>{const normalized=channel/255;return normalized<=.04045?normalized/12.92:((normalized+.055)/1.055)**2.4};
     return .2126*linear(rgb[0])+.7152*linear(rgb[1])+.0722*linear(rgb[2]);
   };
+  // WCAG relative contrast, so the accent is kept whenever it is genuinely
+  // legible against the surface behind the ring and swapped only when it is not.
+  const contrastRatio=(a,b)=>{const hi=Math.max(a,b),lo=Math.min(a,b);return (hi+.05)/(lo+.05)};
+  // An outline is painted outside the border box, so an ancestor that clips its
+  // overflow cuts off whichever edges sit flush against it — the case that left
+  // a card ringed on its left and right only. Drawing the ring inside the box
+  // instead is immune to that, and costs nothing anywhere else.
+  const clippedByAncestor=node=>{
+    for(let current=node?.parentElement,depth=0;current&&depth<6&&current!==document.body;current=current.parentElement,depth++){
+      const style=getComputedStyle(current);
+      if(style.overflowX!=='visible'||style.overflowY!=='visible')return true;
+    }
+    return false;
+  };
   const guidanceInlineProperties=['outline','outline-offset'];
   const applyAdaptiveGuidance=node=>{
     // The outline is painted outside the element, so contrast it against the
@@ -151,8 +165,11 @@
     const linear=value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4;
     const luminance=.2126*linear(r)+.7152*linear(g)+.0722*linear(b);
     const dark=luminance<.42;
-    const border=dark?'#ffffff':'#312e81';
     const accent=configuredGuideAccent();
+    // The brand colour leads. It only steps aside when it would be hard to see
+    // against this particular surface, which a dark accent on a dark card or a
+    // pale one on paper genuinely is.
+    const border=contrastRatio(colourLuminance(accent),luminance)>=2.4?accent:(dark?'#ffffff':'#312e81');
     const naturalRadius=getComputedStyle(node).borderRadius;
     const radius=parseFloat(naturalRadius)>0?naturalRadius:(node.matches('button,a[href],input,select,textarea')?'10px':'16px');
     if(!guidanceInlineRestore.has(node))guidanceInlineRestore.set(node,guidanceInlineProperties.map(name=>[name,node.style.getPropertyValue(name),node.style.getPropertyPriority(name)]));
@@ -164,8 +181,10 @@
     // Some WordPress themes declare button outlines as !important. An inline
     // important guide wins that conflict without changing the site's own
     // control style after the highlight is cleared.
-    node.style.setProperty('outline',`3px solid ${border}`,'important');
-    node.style.setProperty('outline-offset','6px','important');
+    const offset=clippedByAncestor(node)?'-2px':'4px';
+    node.style.setProperty('--assist-guide-offset',offset);
+    node.style.setProperty('outline',`2px solid ${border}`,'important');
+    node.style.setProperty('outline-offset',offset,'important');
   };
   // The rest of the page steps back so the answer reads as the answer. The
   // scrim never takes pointer events, so the page stays fully usable, and the
@@ -187,14 +206,32 @@
   // The guide's own panel and launcher must stay crisp and readable: they are
   // what the visitor is reading the answer in.
   const SCRIM_ABOVE='2147482600';
-  let guidanceScrim=null,guidanceScrimFrame=0;
+  // A dimmed page with no way out is a trap, and the auto-release is invisible
+  // until it happens. The dismiss is a fixed chip pinned to the cutout rather
+  // than a child of the target: appending to the visitor's own button or link
+  // would nest interactive elements, and a control target never gets a label
+  // pill to put it in. It is the one part of the overlay that takes clicks.
+  const DISMISS_STYLE='position:fixed;z-index:2147482550;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent);border-radius:999px;color:var(--assist-guide-marker-text,#fff);background:var(--assist-guide-marker-bg,#6366f1);line-height:0;cursor:pointer;pointer-events:auto;opacity:0;transition:opacity .2s ease';
+  let guidanceScrim=null,guidanceScrimFrame=0,guidanceDismiss=null;
   // Additive, because guide surfaces can appear after the scrim is already up:
   // the reply bubble is created when an answer lands, which on a phone happens
   // after the sheet has minimized and while the highlight is still showing.
   const guidanceScrimRaised=new Map();
+  const placeGuidanceDismiss=rect=>{
+    if(!guidanceDismiss)return;
+    // Centred on the cutout's top-right corner, like a badge, so it never sits
+    // on the label pill that occupies the inside of that same corner. Clamped
+    // so a target running past an edge cannot push it off screen.
+    const size=guidanceDismiss.offsetWidth||28;
+    const left=Math.min(Math.max(6,rect.right+SCRIM_PAD-size/2),innerWidth-size-6);
+    const top=Math.min(Math.max(6,rect.top-SCRIM_PAD-size/2),innerHeight-size-6);
+    guidanceDismiss.style.left=`${Math.round(left)}px`;
+    guidanceDismiss.style.top=`${Math.round(top)}px`;
+  };
   const scrimCutout=node=>{
-    if(!guidanceScrim)return;
     const rect=node?.getBoundingClientRect?.();
+    if(rect&&rect.width>=1&&rect.height>=1)placeGuidanceDismiss(rect);
+    if(!guidanceScrim)return;
     if(!rect||rect.width<1||rect.height<1){guidanceScrim.style.removeProperty('clip-path');guidanceScrim.style.removeProperty('-webkit-clip-path');return}
     const left=Math.max(0,rect.left-SCRIM_PAD),top=Math.max(0,rect.top-SCRIM_PAD);
     const right=Math.min(innerWidth,rect.right+SCRIM_PAD),bottom=Math.min(innerHeight,rect.bottom+SCRIM_PAD);
@@ -215,7 +252,26 @@
     guidanceScrimRaised.forEach(([value,priority],node)=>value?node.style.setProperty('z-index',value,priority):node.style.removeProperty('z-index'));
     guidanceScrimRaised.clear();
   };
-  const showGuidanceScrim=node=>{
+  const showGuidanceScrim=(node,dismiss)=>{
+    // The dismiss exists even where the scrim cannot: the highlight itself is
+    // still something the visitor may want gone before it releases on its own.
+    if(!guidanceDismiss||!guidanceDismiss.isConnected){
+      guidanceDismiss=document.createElement('button');
+      guidanceDismiss.type='button';
+      guidanceDismiss.className='assist-guide-dismiss';
+      guidanceDismiss.setAttribute('aria-label','Dismiss highlight');
+      guidanceDismiss.innerHTML='<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true" focusable="false" style="display:block"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+      guidanceDismiss.style.cssText=DISMISS_STYLE;
+      guidanceDismiss.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();dismiss?.()});
+      document.body.appendChild(guidanceDismiss);
+      requestAnimationFrame(()=>{if(guidanceDismiss)guidanceDismiss.style.opacity='1'});
+    }
+    // The chip and the hole are pinned to the same rect, so one loop tracks
+    // both through the smooth scroll and any layout the page settles into.
+    const track=()=>{scrimCutout(node);guidanceScrimFrame=requestAnimationFrame(track)};
+    cancelAnimationFrame(guidanceScrimFrame);
+    scrimCutout(node);
+    guidanceScrimFrame=requestAnimationFrame(track);
     // A browser without even-odd clip paths would paint the scrim straight
     // over the target, which is worse than no scrim at all.
     if(!CSS?.supports?.('clip-path','polygon(evenodd, 0px 0px, 1px 0px, 1px 1px)'))return;
@@ -230,11 +286,6 @@
     }
     scrimCutout(node);
     raiseGuideSurfaces();
-    // The hole has to follow the target through the smooth scroll that is
-    // still running, and through any layout the page settles into after it.
-    const track=()=>{scrimCutout(node);guidanceScrimFrame=requestAnimationFrame(track)};
-    cancelAnimationFrame(guidanceScrimFrame);
-    guidanceScrimFrame=requestAnimationFrame(track);
     // One frame before the class lands, so the fade actually plays.
     requestAnimationFrame(()=>{guidanceScrim?.classList.add('is-on');if(guidanceScrim)guidanceScrim.style.opacity='1'});
   };
@@ -244,9 +295,11 @@
     restoreGuideSurfaces();
     guidanceScrim?.remove();
     guidanceScrim=null;
+    guidanceDismiss?.remove();
+    guidanceDismiss=null;
   };
   const clearAdaptiveGuidance=node=>{
-    ['--assist-guide-border','--assist-guide-radius','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text'].forEach(name=>node.style?.removeProperty(name));
+    ['--assist-guide-border','--assist-guide-radius','--assist-guide-offset','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text'].forEach(name=>node.style?.removeProperty(name));
     const restore=guidanceInlineRestore.get(node);
     if(!restore)return;
     restore.forEach(([name,value,priority])=>value?node.style.setProperty(name,value,priority):node.style.removeProperty(name));
@@ -1163,7 +1216,7 @@
     // background. Sites signal the change in three ways and none of them is
     // reliably the same one, so all three are watched and the ring is simply
     // recomputed in place — no re-reveal, no scroll, no flicker.
-    let guidanceThemeWatch=null;
+    let guidanceThemeWatch=null,guidanceReleaseWatch=null;
     const repaintGuidance=()=>{guidedVisualTargets.forEach(node=>{if(node.isConnected)applyAdaptiveGuidance(node)})};
     const watchGuidanceTheme=()=>{
       if(guidanceThemeWatch)return;
@@ -1179,9 +1232,31 @@
       guidanceThemeWatch.scheme.removeEventListener?.('change',repaintGuidance);
       guidanceThemeWatch=null;
     };
+    // The highlight releases itself, but a visitor who is finished should not
+    // have to wait for it. Escape is the standard exit, and any deliberate
+    // press on the page reads as "got it" — the press is never swallowed, so
+    // the page behaves exactly as it would have.
+    const watchGuidanceRelease=()=>{
+      if(guidanceReleaseWatch)return;
+      const onKey=event=>{if(event.key==='Escape')clearGuidance()};
+      const onPress=()=>clearGuidance();
+      addEventListener('keydown',onKey);
+      // Armed a frame late so the very click that asked for the highlight
+      // cannot immediately dismiss it.
+      const arm=requestAnimationFrame(()=>{addEventListener('pointerdown',onPress,{passive:true})});
+      guidanceReleaseWatch={onKey,onPress,arm};
+    };
+    const unwatchGuidanceRelease=()=>{
+      if(!guidanceReleaseWatch)return;
+      cancelAnimationFrame(guidanceReleaseWatch.arm);
+      removeEventListener('keydown',guidanceReleaseWatch.onKey);
+      removeEventListener('pointerdown',guidanceReleaseWatch.onPress);
+      guidanceReleaseWatch=null;
+    };
     const clearGuidance=()=>{
       clearTimeout(guidanceTimer);
       unwatchGuidanceTheme();
+      unwatchGuidanceRelease();
       hideGuidanceScrim();
       document.querySelectorAll('.assist-guided-target').forEach(node=>{node.classList.remove('assist-guided-target');clearAdaptiveGuidance(node)});
       document.querySelectorAll('.assist-guide-marker').forEach(marker=>marker.remove());
@@ -1207,8 +1282,9 @@
       clearGuidance();
       applyAdaptiveGuidance(visualTarget);
       visualTarget.classList.add('assist-guided-target');guidedVisualTargets.add(visualTarget);
-      showGuidanceScrim(visualTarget);
+      showGuidanceScrim(visualTarget,clearGuidance);
       watchGuidanceTheme();
+      watchGuidanceRelease();
       if(pageTop)scrollTo({top:0,left:0,behavior:'auto'});
       else visualTarget.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
       // Interactive controls already have a visible or accessible name. A

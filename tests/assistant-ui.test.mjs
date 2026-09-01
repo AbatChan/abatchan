@@ -61,8 +61,12 @@ check('compound journeys expose one clickable fallback per target',assistant.inc
 check('fallback links preserve a complete cross-page handoff',assistant.includes('const completeLinkHandoff=')&&assistant.includes('status:String(target.status')&&assistant.includes('arrival:String(target.arrival'));
 check('an existing answer link inherits the verified journey target',assistant.includes('alreadyLinked.__nikaHandoff=completeLinkHandoff(destination,href,label)')&&assistant.includes('link.__nikaHandoff||'));
 check('highlight rings adapt to the surface outside the target',assistant.includes('effectiveTargetBackground(node,false)')&&assistant.includes('luminance<.42')&&assistant.includes("dark?'#ffffff':'#312e81'"));
+check('the brand accent is the ring until it is unreadable',assistant.includes('const contrastRatio=(a,b)=>')&&assistant.includes('contrastRatio(colourLuminance(accent),luminance)>=2.4?accent:'));
+check('the ring is drawn inside anything that clips its overflow',assistant.includes('const clippedByAncestor=node=>')&&assistant.includes("style.overflowX!=='visible'||style.overflowY!=='visible'")&&assistant.includes("clippedByAncestor(node)?'-2px':'4px'"));
+check('the ring is a thin 2px line in every copy',assistant.includes('`2px solid ${border}`')&&assistant.includes('outline:2px solid var(--assist-guide-border,#312e81)!important')&&assistantCss.includes('outline:2px solid var(--assist-guide-border,rgba(129,132,255,.78))'));
+check('the offset travels with the rest of the guide variables',assistant.includes("'--assist-guide-offset'")&&assistant.includes("node.style.setProperty('--assist-guide-offset',offset)"));
 check('adaptive highlight styles are removed with the guidance state',assistant.includes('clearAdaptiveGuidance(node)')&&assistant.includes("removeProperty(name)"));
-check('theme-important control styles cannot suppress the adaptive ring',assistant.includes("setProperty('outline',`3px solid ${border}`,'important')")&&assistant.includes("setProperty('outline-offset','6px','important')")&&assistant.includes('guidanceInlineRestore'));
+check('theme-important control styles cannot suppress the adaptive ring',assistant.includes("setProperty('outline',`2px solid ${border}`,'important')")&&assistant.includes("setProperty('outline-offset',offset,'important')")&&assistant.includes('guidanceInlineRestore'));
 check('guided outlines are rounded without adding a glow shadow',assistant.includes("setProperty('--assist-guide-radius',radius)")&&!assistant.includes("setProperty('box-shadow',`0 0 0 7px"));
 check('the title pill uses the saved accent with readable text',assistant.includes('const accent=configuredGuideAccent()')&&assistant.includes("setProperty('--assist-guide-marker-bg',accent)")&&assistant.includes('colourLuminance(accent)>.48'));
 check('the title pill is compact and shadow-free',assistantCss.includes('.assist-guide-marker{')&&assistantCss.includes('border-radius:999px')&&assistantCss.includes('box-shadow:none')&&assistantCss.includes('.assist-guide-marker::before'));
@@ -82,6 +86,19 @@ check('a block identity is not limited to semantic containers',assistant.include
 check('context is decided by contents, not by tag name',assistant.includes('Whether a node is a composed block is a question about its contents')&&!assistant.includes("if(!node.matches('article,section,[role=\"region\"],[role=\"tabpanel\"],details,form,fieldset,[class$=\"-card\"]"));
 check('leaf controls still carry no surrounding context',assistant.includes("if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role=\"heading\"],[role=\"button\"],[role=\"link\"]'))return '';"));
 check('the model still receives a capped, compact index',assistant.includes('.slice(0,80)')&&assistant.includes('kind:targetKind(node)'));
+
+console.log('\n=== the visitor can end the highlight early ===');
+check('a dismiss control is pinned to the cutout, not nested in the target',assistant.includes('const DISMISS_STYLE=')&&assistant.includes("guidanceDismiss.className='assist-guide-dismiss'")&&assistant.includes('const placeGuidanceDismiss=rect=>'));
+check('the dismiss sits on the corner, clear of the label pill',assistant.includes('never sits')&&assistant.includes('rect.right+SCRIM_PAD-size/2')&&assistant.includes('rect.top-SCRIM_PAD-size/2'));
+check('it cannot be pushed off screen by an oversized target',assistant.includes('innerWidth-size-6')&&assistant.includes('innerHeight-size-6'));
+check('the dismiss exists even where the scrim cannot',assistant.indexOf('guidanceDismiss=document.createElement')<assistant.indexOf("if(!CSS?.supports?.('clip-path'"));
+check('it is the one part of the overlay that takes clicks',assistant.includes('pointer-events:auto')&&assistant.includes('the one part of the overlay that takes clicks'));
+check('escape and a deliberate press also release it',assistant.includes("if(event.key==='Escape')clearGuidance()")&&assistant.includes("addEventListener('pointerdown',onPress,{passive:true})"));
+check('the press listener is armed a frame late',assistant.includes('cannot immediately dismiss it')&&assistant.includes('const arm=requestAnimationFrame('));
+check('releasing tears down its own listeners',assistant.includes('unwatchGuidanceRelease();')&&assistant.includes("removeEventListener('pointerdown',guidanceReleaseWatch.onPress)")&&assistant.includes('guidanceDismiss=null;'));
+check('the dismiss is a thumb target on a phone',assistantCss.includes('.assist-guide-dismiss{')&&assistantCss.includes('width:40px!important;'));
+check('the cross is drawn, not typed, so it centres exactly',assistant.includes('<svg viewBox="0 0 16 16" width="11" height="11"')&&assistant.includes('M4.5 4.5l7 7M11.5 4.5l-7 7')&&!assistant.includes("guidanceDismiss.textContent='\\u00d7'"));
+check('the drawn cross is centred by the flex box, not a line box',assistant.includes('line-height:0;cursor:pointer')&&assistantCss.includes('.assist-guide-dismiss svg{display:block;width:11px;height:11px}'));
 
 console.log('\n=== a settled page does not wait for an anchor that is not coming ===');
 check('the grace period is skipped once the page is settled',assistant.includes("const waitForTarget=(url,label,preferExact=false,request='',settled=false)=>")&&assistant.includes('const fallbackTimer=setTimeout(()=>{allowFallback=true;attempt()},settled||!url.hash?0:1100);'));

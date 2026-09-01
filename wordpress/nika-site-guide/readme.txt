@@ -109,6 +109,8 @@ The site owner controls the pre-chat starter suggestions, per-visitor hourly and
 * Rank targets by the kind of thing named in the request, so "the Business package" highlights the whole card instead of its buy button.
 * Dim the rest of the page while a highlight is up, so the answer reads as the answer.
 * Repaint the highlight ring in real time when the site switches between light and dark.
+* Let the visitor dismiss a highlight early with a close control, the Escape key, or a press on the page.
+* Draw the highlight ring in the brand accent, thinner, and inside anything that clips its overflow.
 
 = 1.4.0 =
 * Use a clean rounded highlight outline without an added glow shadow.
