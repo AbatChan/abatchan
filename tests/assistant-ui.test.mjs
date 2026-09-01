@@ -148,7 +148,8 @@ check('specific field placeholders can identify hard controls',assistant.include
 check('an inaccessible exact target never falls back to the whole page',assistant.includes("if(ranked?.score>=.6)return ranked.node;\n          return null;"));
 check('authored anchors outrank conversational wording',assistant.includes('if(raw&&!raw.dataset.assistGeneratedId)return raw;')&&assistant.includes('never throw away a real')&&!assistant.includes("targetScore(label,targetText(raw))<.6"));
 check('ids Nika mints are marked as its own suggestion',assistant.includes("node.dataset.assistGeneratedId='true'")&&assistant.includes('Minted here, not authored by the site'));
-check('a generated anchor loses to a clearly better answer',assistant.includes('if(raw&&preferExact&&label){')&&assistant.includes('ranked.score>targetMatch(label,raw,request)+.15'));
+check('a generated anchor loses to a clearly better answer',assistant.includes('if(raw&&label){')&&assistant.includes('ranked.score>targetMatch(label,raw,request)+.15'));
+check('that check does not depend on the action being flagged a section',!assistant.includes('if(raw&&preferExact&&label){'));
 check('a generated anchor still wins when nothing beats it',assistant.includes("ranked.node!==raw&&")&&assistant.indexOf('ranked.score>targetMatch(label,raw,request)+.15')<assistant.indexOf('if(raw)return raw;'));
 check('fuzzy confidence is based on target evidence, not page position',assistant.includes('const targetMatch=(label,node,request=\'\')=>')&&assistant.includes('b.score-a.score||b.priority-a.priority||a.area-b.area')&&!assistant.includes("node.closest('main,[role=\"main\"]')?0.25:0"));
 check('dynamic destinations wait for live DOM mutations before falling back',assistant.includes('const waitForTarget=')&&assistant.includes('new MutationObserver(attempt)')&&assistant.includes("settled||!url.hash?0:1100")&&assistant.includes('revealTargetWhenReady'));
@@ -161,7 +162,7 @@ check('the browser sends compact labels and kinds, never page HTML',assistant.in
 
 console.log('\n=== a named kind ranks targets instead of diluting the match ===');
 check('kind words are read as structure, not as content',assistant.includes('const targetKindHint=label=>')&&assistant.includes('const withoutKindWords=label=>')&&assistant.includes('const hint=targetKindHint(label)||targetKindHint(request)'));
-check('structure only reorders targets that already matched on content',assistant.includes('if(!hint||!base)return base;')&&assistant.includes('targetKindAgrees(node,hint)?base+.5:targetKindConflicts(node,hint)?base*.55:base'));
+check('structure only reorders targets that already matched on content',assistant.includes('if(!hint||!scored)return scored;')&&assistant.includes('targetKindAgrees(node,hint)?scored+.5:targetKindConflicts(node,hint)?scored*.55:scored'));
 check('container shape is judged structurally, not by class vocabulary',assistant.includes('const structuralContainer=node=>')&&assistant.includes('headings>=1&&headings<=3&&(controls>0||node.querySelectorAll(\'li\').length>=2)'));
 check('headings are never a conflict for container requests',assistant.includes("card:['button','link','field','media']")&&assistant.includes("section:['button','link','field','media']"));
 
@@ -203,6 +204,12 @@ const namedByEyebrow=targetScore(query,'Business')+.5;
 const mentionsInProse=targetScore(query,'01 Select the installer at checkout Personal includes one platform. Business includes both.')*.84+.5;
 check('the card named Business outranks one that only mentions it',namedByEyebrow>mentionsInProse);
 check('the old scoring really did miss this target',targetScore('Business package',planCard)*.84<0.6);
+
+console.log('\n=== navigation chrome does not stand in for content ===');
+check('chrome is found by landmark, not by page position',assistant.includes("const CHROME_LANDMARKS='nav,[role=\"navigation\"],header,[role=\"banner\"],footer,[role=\"contentinfo\"]'")&&assistant.includes('const inChrome=node=>')&&!assistant.includes("node.closest('main,[role=\"main\"]')?0.25:0"));
+check('only links and buttons inside chrome are demoted',assistant.includes("['link','button'].includes(targetKind(node))")&&assistant.includes('base*.45'));
+check('the landmark itself is never demoted',assistant.includes('return Boolean(landmark)&&landmark!==node;')&&assistant.includes('asking for the footer still finds the footer'));
+check('asking for a link or a menu turns the rule off',assistant.includes('const CHROME_WORDS=')&&assistant.includes('CHROME_WORDS.test(`${label} ${request}`)'));
 
 console.log('\n=== the visitor\'s own wording survives the model summary ===');
 check('the live question is attached to the validated action only',assistant.includes("if(navigation.action)navigation.action.request=String(text||'')")&&assistant.includes('never sent anywhere and never becomes visible copy'));

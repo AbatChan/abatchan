@@ -1108,6 +1108,18 @@
       if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role="heading"],[role="button"],[role="link"]'))return '';
       return String(node.innerText||'').replace(/\s+/g,' ').trim().slice(0,420);
     };
+    // A site's navigation, header and footer repeat the page's own labels: a
+    // menu entry reading "Small Business" is a route to the plan, not the plan.
+    // This is a question about landmarks rather than page position — the same
+    // rule holds wherever a theme puts its chrome. The landmark element itself
+    // is never penalised, so asking for the footer still finds the footer, and
+    // asking for a link or a menu turns the rule off.
+    const CHROME_LANDMARKS='nav,[role="navigation"],header,[role="banner"],footer,[role="contentinfo"]';
+    const inChrome=node=>{
+      const landmark=node?.closest?.(CHROME_LANDMARKS);
+      return Boolean(landmark)&&landmark!==node;
+    };
+    const CHROME_WORDS=/\b(?:nav|navigation|menu|header|footer|link|links|breadcrumb)\b/i;
     const targetMatch=(label,node,request='')=>{
       // The model's label is a summary and often drops the structural noun the
       // visitor actually used ("Business" for "the Business package"). The
@@ -1120,8 +1132,11 @@
       const base=Math.max(direct,contextual);
       // Structure only ranks targets that already matched on content, so a
       // named kind can never invent a highlight out of an unrelated element.
-      if(!hint||!base)return base;
-      return targetKindAgrees(node,hint)?base+.5:targetKindConflicts(node,hint)?base*.55:base;
+      const chrome=base&&inChrome(node)&&['link','button'].includes(targetKind(node))
+        &&!CHROME_WORDS.test(`${label} ${request}`);
+      const scored=chrome?base*.45:base;
+      if(!hint||!scored)return scored;
+      return targetKindAgrees(node,hint)?scored+.5:targetKindConflicts(node,hint)?scored*.55:scored;
     };
     const closestTarget=(label,request='')=>[...automaticTargetNodes.values()].filter(node=>targetReachable(node))
       .map(node=>({node,score:targetMatch(label,node,request),priority:targetPriority(node),area:node.getBoundingClientRect().width*node.getBoundingClientRect().height}))
@@ -1204,7 +1219,7 @@
         // compact index, and it routinely lands on a control that merely
         // repeats the name ("buy Business") instead of the thing named. Keep it
         // unless this page holds a clearly better answer to the same words.
-        if(raw&&preferExact&&label){
+        if(raw&&label){
           const ranked=closestTarget(label,request);
           if(ranked?.node&&ranked.node!==raw&&ranked.score>targetMatch(label,raw,request)+.15)return ranked.node;
         }
