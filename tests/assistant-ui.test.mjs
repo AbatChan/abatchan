@@ -87,6 +87,11 @@ check('context is decided by contents, not by tag name',assistant.includes('Whet
 check('leaf controls still carry no surrounding context',assistant.includes("if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role=\"heading\"],[role=\"button\"],[role=\"link\"]'))return '';"));
 check('the model still receives a capped, compact index',assistant.includes('.slice(0,80)')&&assistant.includes('kind:targetKind(node)'));
 
+console.log('\n=== every guide surface follows the configured colour ===');
+check('the close control inherits nothing, so the accent is copied to it',assistant.includes("for(const name of ['--assist-guide-marker-bg','--assist-guide-marker-text'])")&&assistant.includes('inherits none of them'));
+check('links follow a link colour, falling back to the accent',shell.includes('linkColour')&&shell.includes("set('--signal-ink',cfg.linkColour||cfg.accent)"));
+check('no built-in indigo is left hard-coded on links',!assistantCss.includes('a.assist-action-link{color:#4f46e5}')&&assistantCss.includes('html[data-theme="light"] .assist-msg.bot a.assist-action-link{color:var(--signal-ink)}')&&assistantCss.includes('a.assist-action-link:focus-visible{outline:2px solid currentColor'));
+
 console.log('\n=== the visitor can end the highlight early ===');
 check('a dismiss control is pinned to the cutout, not nested in the target',assistant.includes('const DISMISS_STYLE=')&&assistant.includes("guidanceDismiss.className='assist-guide-dismiss'")&&assistant.includes('const placeGuidanceDismiss=rect=>'));
 check('the dismiss sits on the corner, clear of the label pill',assistant.includes('never sits')&&assistant.includes('rect.right+SCRIM_PAD-size/2')&&assistant.includes('rect.top-SCRIM_PAD-size/2'));

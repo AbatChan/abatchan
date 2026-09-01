@@ -2,9 +2,18 @@
   "enabled": true,
   "name": "Nika",
   "suggestions": [
-    { "label": "Find the right service", "description": "See what fits your needs" },
-    { "label": "How does it work?", "description": "Review the process" },
-    { "label": "Compare the options", "description": "See plans or packages" }
+    {
+      "label": "Find the right service",
+      "description": "See what fits your needs"
+    },
+    {
+      "label": "How does it work?",
+      "description": "Review the process"
+    },
+    {
+      "label": "Compare the options",
+      "description": "See plans or packages"
+    }
   ],
   "placeholder": "Ask about this website...",
   "instructions": "Explain our services clearly and guide visitors only to published pages.",
@@ -12,6 +21,7 @@
   "dictation": true,
   "dictationLanguage": "en-US",
   "accent": "#6366f1",
+  "linkColour": "",
   "position": "right",
   "contextCharacters": 12000,
   "historyTurns": 10,
@@ -20,5 +30,8 @@
   "exemptIps": [],
   "temperature": 0.2,
   "maxTokens": 900,
-  "excludedPaths": ["/privacy", "/account"]
+  "excludedPaths": [
+    "/privacy",
+    "/account"
+  ]
 }

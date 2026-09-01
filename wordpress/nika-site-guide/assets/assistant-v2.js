@@ -266,6 +266,14 @@
       document.body.appendChild(guidanceDismiss);
       requestAnimationFrame(()=>{if(guidanceDismiss)guidanceDismiss.style.opacity='1'});
     }
+    // The variables that colour the guide are written onto the target, and the
+    // chip is a child of <body>, so it inherits none of them. Copy them over on
+    // every reveal, otherwise the close control keeps the built-in indigo while
+    // the rest of the guide follows the site's configured accent.
+    for(const name of ['--assist-guide-marker-bg','--assist-guide-marker-text']){
+      const value=node?.style?.getPropertyValue?.(name);
+      if(value)guidanceDismiss.style.setProperty(name,value);
+    }
     // The chip and the hole are pinned to the same rect, so one loop tracks
     // both through the smooth scroll and any layout the page settles into.
     const track=()=>{scrimCutout(node);guidanceScrimFrame=requestAnimationFrame(track)};

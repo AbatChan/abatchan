@@ -41,6 +41,7 @@ export async function mountGuideShell(options = {}) {
     shadowColour: '',
     textColour: '',
     iconColour: '',
+    linkColour: '',
     customCss: '',
     attachments: true,
     logoSize: null,
@@ -78,6 +79,10 @@ export async function mountGuideShell(options = {}) {
     const set=(name,value)=>value?element.style.setProperty(name,value):element.style.removeProperty(name);
     element.classList.toggle('assist-left',cfg.position==='left');
     set('--signal',cfg.accent);
+    // Links in answers had their own built-in indigo, so a site that set every
+    // other colour still saw an indigo action link. They now follow the link
+    // colour when one is set, and the accent otherwise.
+    set('--signal-ink',cfg.linkColour||cfg.accent);
     set('--assist-launch-from',cfg.gradientFrom);
     set('--assist-launch-to',cfg.gradientTo);
     const surface=hexToRgb(cfg.panelColour);
