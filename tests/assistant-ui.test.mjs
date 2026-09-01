@@ -91,6 +91,9 @@ console.log('\n=== the guide states its own box model ===');
 check('the note pins its own margin against theme and UA defaults',assistantCss.includes('.assist-note{padding:0 16px;')&&assistantCss.includes('margin:0 0 6px!important'));
 check('the reasoning names the user-agent default, not just themes',assistantCss.includes('Margin is not inherited')&&assistantCss.includes('What it does not block is the user-agent default'));
 check('the conversation keeps the spacing its markdown needs',assistantCss.includes('The conversation itself is excluded')&&!assistantCss.includes('.assist-log p{margin:0!important}'));
+// The reset is more specific than the note's own rule, so listing the note in
+// it silently replaced the 6px the note asks for with 0.
+check('the reset does not overwrite the margin the note declares',!assistantCss.includes('.assist-panel .assist-note,')&&assistantCss.includes('listing it here would override the value it asks for'));
 
 console.log('\n=== every guide surface follows the configured colour ===');
 check('the close control inherits nothing, so the accent is copied to it',assistant.includes("for(const name of ['--assist-guide-marker-bg','--assist-guide-marker-text'])")&&assistant.includes('inherits none of them'));

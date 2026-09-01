@@ -218,11 +218,12 @@ html[data-theme="light"] .assist-msg-attachment{background:rgba(21,21,25,.035)}
    So the guide's chrome states its own box model, marked important because a
    theme rule targeting a bare tag would otherwise win on the cascade.
    The conversation itself is excluded: message markdown relies on the spacing
-   the rules below give it. */
+   the rules below give it, and so is .assist-note, which states its own
+   margin above — listing it here would override the value it asks for. */
 .assist-panel .assist-head p,.assist-panel .assist-head h1,.assist-panel .assist-head h2,.assist-panel .assist-head h3,
 .assist-panel .assist-composer p,.assist-panel .assist-chips p,.assist-panel .assist-chips h1,.assist-panel .assist-chips h2,
 .assist-panel .assist-chips h3,.assist-panel .assist-chips ul,.assist-panel .assist-chips ol,.assist-panel .assist-chips li,
-.assist-panel .assist-note,.assist-panel .assist-empty p{margin:0!important;padding-block:0!important}
+.assist-panel .assist-empty p{margin:0!important;padding-block:0!important}
 .assist-panel .assist-chips ul,.assist-panel .assist-chips ol{list-style:none!important;padding-inline-start:0!important}
 
 /* Navigation and reset feedback belongs to the interface, not the transcript. */
