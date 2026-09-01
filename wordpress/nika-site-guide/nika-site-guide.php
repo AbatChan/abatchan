@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.4.3
+ * Version:           1.4.4
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.4.3';
+const NIKA_VERSION = '1.4.4';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
 
@@ -37,7 +37,7 @@ function nika_defaults() {
 		'dictation_language' => 'en-US', 'accent' => '#6366f1', 'position' => 'right',
 		'avatar' => '', 'launcher_icon' => '',
 		'panel_colour' => '#0f0f12', 'panel_opacity' => 72,
-		'gradient_from' => '#8184ff', 'gradient_to' => '#4338ca', 'scrollbar_colour' => '#6366f1', 'shadow_colour' => '#4f46e5', 'text_colour' => '#f5f5f3', 'icon_colour' => '#ffffff', 'link_colour' => '', 'custom_css' => '',
+		'gradient_from' => '#8184ff', 'gradient_to' => '#4338ca', 'scrollbar_colour' => '#6366f1', 'shadow_colour' => '#4f46e5', 'text_colour' => '#f5f5f3', 'icon_colour' => '#ffffff', 'custom_css' => '',
 		'logo_size' => 26, 'mark_size' => 24,
 		'disclaimer' => "Answers use this website's configured content. Review important information.",
 		'context_characters' => 12000, 'history_turns' => 10, 'excluded_paths' => '',
@@ -130,7 +130,6 @@ function nika_sanitize_settings( $input ) {
 		'shadow_colour' => sanitize_hex_color( $input['shadow_colour'] ?? '#4f46e5' ) ?: '#4f46e5',
 		'text_colour' => sanitize_hex_color( $input['text_colour'] ?? '#f5f5f3' ) ?: '#f5f5f3',
 		'icon_colour' => sanitize_hex_color( $input['icon_colour'] ?? '#ffffff' ) ?: '#ffffff',
-		'link_colour' => sanitize_hex_color( $input['link_colour'] ?? '' ) ?: '',
 		'custom_css' => nika_sanitize_custom_css( $input['custom_css'] ?? '' ),
 		'logo_size' => min( 64, max( 14, absint( $input['logo_size'] ?? 26 ) ) ),
 		'mark_size' => min( 44, max( 14, absint( $input['mark_size'] ?? 24 ) ) ),
@@ -215,7 +214,7 @@ function nika_settings_page() {
 				<section class="nika-card" id="nika-identity">
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Assistant', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Name and appearance', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Set the assistant name, message field, position, and colour.', 'nika-site-guide' ); ?></p></div><div class="nika-card__actions"><button type="button" class="nika-generate" id="nika-match-theme" hidden><svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true" focusable="false"><path d="M10 2.6a7.4 7.4 0 1 0 0 14.8c1 0 1.6-.7 1.6-1.5 0-.9-.7-1.4-.7-2.1 0-.6.5-1.1 1.2-1.1h1.4A4 4 0 0 0 17.4 8c0-3-3.3-5.4-7.4-5.4Z" fill="none" stroke="currentColor" stroke-width="1.6"></path><circle cx="7" cy="8" r="1.1" fill="currentColor"></circle><circle cx="10.4" cy="6" r="1.1" fill="currentColor"></circle></svg><span><?php esc_html_e( 'Match site theme', 'nika-site-guide' ); ?></span></button><button type="button" class="nika-generate" id="nika-reset-appearance" data-nika-defaults="<?php
 					$defaults = nika_defaults();
-					echo esc_attr( wp_json_encode( array_intersect_key( $defaults, array_flip( array( 'accent', 'position', 'avatar', 'launcher_icon', 'panel_colour', 'panel_opacity', 'gradient_from', 'gradient_to', 'scrollbar_colour', 'shadow_colour', 'text_colour', 'icon_colour', 'link_colour', 'logo_size', 'mark_size', 'disclaimer', 'placeholder' ) ) ) ) );
+					echo esc_attr( wp_json_encode( array_intersect_key( $defaults, array_flip( array( 'accent', 'position', 'avatar', 'launcher_icon', 'panel_colour', 'panel_opacity', 'gradient_from', 'gradient_to', 'scrollbar_colour', 'shadow_colour', 'text_colour', 'icon_colour', 'logo_size', 'mark_size', 'disclaimer', 'placeholder' ) ) ) ) );
 					?>"><svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true" focusable="false"><path d="M4 10a6 6 0 1 1 1.8 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path><path d="M4 5.6V10h4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg><span><?php esc_html_e( 'Reset appearance', 'nika-site-guide' ); ?></span></button></div></div>
 					<div class="nika-grid nika-grid--2">
 						<label class="nika-field"><span><?php esc_html_e( 'Assistant name', 'nika-site-guide' ); ?></span><input id="nika-name" name="<?php echo esc_attr( NIKA_OPTION ); ?>[name]" value="<?php echo esc_attr( $s['name'] ); ?>"></label>
@@ -252,7 +251,6 @@ function nika_settings_page() {
 						<label class="nika-field"><span><?php esc_html_e( 'Icon colour', 'nika-site-guide' ); ?></span><span class="nika-colour"><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[icon_colour]" type="color" value="<?php echo esc_attr( $s['icon_colour'] ); ?>"><code><?php echo esc_html( strtoupper( $s['icon_colour'] ) ); ?></code></span><small><?php esc_html_e( 'The composer glyphs: attach, microphone, send.', 'nika-site-guide' ); ?></small></label>
 						<label class="nika-field"><span><?php esc_html_e( 'Bubble shadow colour', 'nika-site-guide' ); ?></span><span class="nika-colour"><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[shadow_colour]" type="color" value="<?php echo esc_attr( $s['shadow_colour'] ); ?>"><code><?php echo esc_html( strtoupper( $s['shadow_colour'] ) ); ?></code></span><small><?php esc_html_e( 'The glow cast by the closed bubble.', 'nika-site-guide' ); ?></small></label>
 						<label class="nika-field"><span><?php esc_html_e( 'Scrollbar colour', 'nika-site-guide' ); ?></span><span class="nika-colour"><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[scrollbar_colour]" type="color" value="<?php echo esc_attr( $s['scrollbar_colour'] ); ?>"><code><?php echo esc_html( strtoupper( $s['scrollbar_colour'] ) ); ?></code></span><small><?php esc_html_e( 'The conversation scrollbar.', 'nika-site-guide' ); ?></small></label>
-						<label class="nika-field"><span><?php esc_html_e( 'Link colour', 'nika-site-guide' ); ?></span><span class="nika-colour"><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[link_colour]" type="color" value="<?php echo esc_attr( $s['link_colour'] ?: $s['accent'] ); ?>"><code><?php echo esc_html( strtoupper( $s['link_colour'] ?: $s['accent'] ) ); ?></code></span><small><?php esc_html_e( 'Links inside answers, including the guided action link. Leave as the accent to follow it.', 'nika-site-guide' ); ?></small></label>
 						<label class="nika-field nika-grid__wide"><span><?php esc_html_e( 'Note under the message box', 'nika-site-guide' ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[disclaimer]" maxlength="160" value="<?php echo esc_attr( $s['disclaimer'] ); ?>" placeholder="<?php esc_attr_e( "Answers use this website's configured content. Review important information.", 'nika-site-guide' ); ?>"><small><?php esc_html_e( 'Leave empty to keep the default note.', 'nika-site-guide' ); ?></small></label>
 					</div>
 				</section>
@@ -1402,7 +1400,6 @@ add_action( 'wp_enqueue_scripts', function () {
 		'shadowColour' => $s['shadow_colour'],
 		'textColour' => $s['text_colour'],
 		'iconColour' => $s['icon_colour'],
-		'linkColour' => $s['link_colour'],
 		'customCss' => $s['custom_css'],
 		'logoSize' => (int) $s['logo_size'],
 		'markSize' => (int) $s['mark_size'],

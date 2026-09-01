@@ -22,9 +22,7 @@ let failed=false;
 const check=(label,value)=>{const pass=Boolean(value);console.log(`${pass?'PASS':'FAIL'}  ${label}`);if(!pass)failed=true;};
 
 console.log('=== the dashboard controls every colour the guide paints ===');
-check('link colour is a saved, sanitized setting',php.includes("'link_colour' => ''")&&php.includes("'link_colour' => sanitize_hex_color( $input['link_colour'] ?? '' ) ?: ''"));
-check('an empty link colour means follow the accent',php.includes("$s['link_colour'] ?: $s['accent']")&&php.includes('Leave as the accent to follow it'));
-check('it reaches the widget and the reset defaults',php.includes("'linkColour' => $s['link_colour']")&&php.includes("'icon_colour', 'link_colour', 'logo_size'"));
+check('links take the accent rather than a hard-coded colour',!php.includes('link_colour')&&!php.includes('linkColour'));
 
 console.log('=== self-hosted WordPress adapter ===');
 check('plugin is GPL licensed',php.includes('License:           GPL-2.0-or-later'));

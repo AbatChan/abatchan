@@ -97,7 +97,7 @@ check('the reset does not overwrite the margin the note declares',!assistantCss.
 
 console.log('\n=== every guide surface follows the configured colour ===');
 check('the close control inherits nothing, so the accent is copied to it',assistant.includes("for(const name of ['--assist-guide-marker-bg','--assist-guide-marker-text'])")&&assistant.includes('inherits none of them'));
-check('links follow a link colour, falling back to the accent',shell.includes('linkColour')&&shell.includes("set('--signal-ink',cfg.linkColour||cfg.accent)"));
+check('links follow the accent, with no separate setting to keep in step',shell.includes("set('--signal-ink',cfg.accent)")&&!shell.includes('linkColour'));
 check('no built-in indigo is left hard-coded on links',!assistantCss.includes('a.assist-action-link{color:#4f46e5}')&&assistantCss.includes('html[data-theme="light"] .assist-msg.bot a.assist-action-link{color:var(--signal-ink)}')&&assistantCss.includes('a.assist-action-link:focus-visible{outline:2px solid currentColor'));
 
 console.log('\n=== the visitor can end the highlight early ===');

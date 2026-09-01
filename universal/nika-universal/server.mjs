@@ -116,7 +116,6 @@ function siteData() {
       dictation: config.dictation !== false,
       dictationLanguage: text(config.dictationLanguage, 20),
       accent: /^#[0-9a-f]{6}$/i.test(config.accent || '') ? config.accent : '#6366f1',
-      linkColour: /^#[0-9a-f]{6}$/i.test(config.linkColour || '') ? config.linkColour : '',
       avatar: imageUrl(config.avatar),
       panelColour: /^#[0-9a-f]{6}$/i.test(config.panelColour || '') ? config.panelColour : '#0f0f12',
       panelOpacity: numberBetween(config.panelOpacity, 20, 100, 72),
@@ -233,7 +232,6 @@ function saveAdminConfig(input) {
     dictation: input.dictation !== false,
     dictationLanguage: text(input.dictationLanguage, 20) || 'en-US',
     accent: /^#[0-9a-f]{6}$/i.test(input.accent || '') ? input.accent : '#6366f1',
-    linkColour: /^#[0-9a-f]{6}$/i.test(input.linkColour || '') ? input.linkColour : '',
     avatar: imageUrl(input.avatar),
     panelColour: /^#[0-9a-f]{6}$/i.test(input.panelColour || '') ? input.panelColour : '#0f0f12',
     panelOpacity: numberBetween(input.panelOpacity, 20, 100, 72),
@@ -706,7 +704,7 @@ const server = createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/nika/config') {
     const { config, pages } = siteData();
     const directory = pages.map(({ path, title }) => ({ path, title }));
-    return send(res, 200, { enabled: config.enabled, name: config.name, subtitle: 'website guide', avatar: config.avatar || '/nika/nika-logo.png', launcherIcon: config.launcherIcon, disclaimer: config.disclaimer || "Answers use this website's configured content. Review important information.", panelColour: config.panelColour, panelOpacity: config.panelOpacity, gradientFrom: config.gradientFrom, gradientTo: config.gradientTo, scrollbarColour: config.scrollbarColour, shadowColour: config.shadowColour, textColour: config.textColour, iconColour: config.iconColour, linkColour: config.linkColour, customCss: config.customCss, logoSize: config.logoSize, markSize: config.markSize, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
+    return send(res, 200, { enabled: config.enabled, name: config.name, subtitle: 'website guide', avatar: config.avatar || '/nika/nika-logo.png', launcherIcon: config.launcherIcon, disclaimer: config.disclaimer || "Answers use this website's configured content. Review important information.", panelColour: config.panelColour, panelOpacity: config.panelOpacity, gradientFrom: config.gradientFrom, gradientTo: config.gradientTo, scrollbarColour: config.scrollbarColour, shadowColour: config.shadowColour, textColour: config.textColour, iconColour: config.iconColour, customCss: config.customCss, logoSize: config.logoSize, markSize: config.markSize, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
   }
   if (req.method === 'POST' && url.pathname === '/nika/chat') {
     try { return await chat(req, res); } catch (error) { return send(res, error.status || 500, { error: error.status ? 'Invalid request.' : 'Nika encountered a server error.' }); }

@@ -21,7 +21,6 @@
   "dictation": true,
   "dictationLanguage": "en-US",
   "accent": "#6366f1",
-  "linkColour": "",
   "position": "right",
   "contextCharacters": 12000,
   "historyTurns": 10,
