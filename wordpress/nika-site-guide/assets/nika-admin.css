@@ -354,3 +354,9 @@
 .nika-help:focus + .nika-help-note { display: block !important; }
 @media (prefers-reduced-motion: no-preference) { .nika-help-note { animation: nikaHelpIn .12s ease both } }
 @keyframes nikaHelpIn { from { opacity: 0 } to { opacity: 1 } }
+
+/* The exempt-IP actions sit under their textarea rather than beside the label.
+   Up in the label row they read as part of the heading; under the field they
+   read as things you do to it, which is what they are. */
+.nika-exemptions .nika-field__actions { justify-content: flex-start; margin-top: 2px; }
+.nika-exemptions .nika-field__head { justify-content: flex-start; }
