@@ -23,7 +23,7 @@
   border:0;border-radius:50%;color:#fff;
   background:linear-gradient(150deg,var(--assist-launch-from,#8184ff),var(--signal) 55%,var(--assist-launch-to,#4338ca));
   box-shadow:0 0 0 1px rgba(255,255,255,.14),0 16px 34px var(--assist-launch-glow,rgba(79,70,229,.42))}
-.assist-launch:hover{box-shadow:0 0 0 1px rgba(255,255,255,.2),0 22px 44px rgba(79,70,229,.5)}
+.assist-launch:hover{box-shadow:0 0 0 1px rgba(255,255,255,.2),0 22px 44px var(--assist-launch-glow-hover,rgba(79,70,229,.5))}
 .assist-launch:focus-visible{outline:2px solid var(--paper);outline-offset:3px}
 .assist-launch .assist-launch-mark{position:absolute;width:var(--assist-mark-size,28px);height:var(--assist-mark-size,28px);object-fit:contain;border-radius:8px}
 .assist-launch svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--ease),opacity .2s}

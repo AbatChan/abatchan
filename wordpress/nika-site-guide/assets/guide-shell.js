@@ -107,6 +107,10 @@ export async function mountGuideShell(options = {}) {
     set('--assist-icon',cfg.iconColour||(surfaceLight?'#15151a':''));
     const glow=hexToRgb(cfg.shadowColour);
     set('--assist-launch-glow',glow?`rgba(${glow.join(',')},.42)`:'');
+    // The hover state lifts the same glow rather than carrying its own colour,
+    // which is how it kept the built-in indigo while the resting shadow
+    // followed the configured one.
+    set('--assist-launch-glow-hover',glow?`rgba(${glow.join(',')},.5)`:'');
     if(cfg.iconColour)set('--assist-send-icon',cfg.iconColour);
     const bar=hexToRgb(cfg.scrollbarColour);
     set('--assist-scrollbar',bar?`rgba(${bar.join(',')},.56)`:'');

@@ -87,6 +87,10 @@ check('context is decided by contents, not by tag name',assistant.includes('Whet
 check('leaf controls still carry no surrounding context',assistant.includes("if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role=\"heading\"],[role=\"button\"],[role=\"link\"]'))return '';"));
 check('the model still receives a capped, compact index',assistant.includes('.slice(0,80)')&&assistant.includes('kind:targetKind(node)'));
 
+console.log('\n=== the launcher glow follows its setting in every state ===');
+check('hover lifts the configured glow instead of a built-in one',assistantCss.includes('.assist-launch:hover{box-shadow:0 0 0 1px rgba(255,255,255,.2),0 22px 44px var(--assist-launch-glow-hover,')&&shell.includes("set('--assist-launch-glow-hover'"));
+check('resting and hover glow come from the same setting',shell.includes('const glow=hexToRgb(cfg.shadowColour);')&&shell.includes("rgba(${glow.join(',')},.5)")&&shell.includes('The hover state lifts the same glow'));
+
 console.log('\n=== an isolated guide still styles what it puts on the page ===');
 check('the page gets the target stylesheet when the guide is isolated',assistant.includes('const ensurePageTargetStyle=()=>')&&assistant.includes('if(uiScope()===document)return;')&&assistant.includes('ensurePageTargetStyle();'));
 check('it is injected once, and not where the page already has the rules',assistant.includes("if(document.querySelector('style[data-assist-target-style]'))return;"));
