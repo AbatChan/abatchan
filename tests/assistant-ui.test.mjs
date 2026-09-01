@@ -99,6 +99,11 @@ check('both definitions of the pill agree on its stacking',assistant.includes('a
 check('the pill is positioned out of flow, so it adds no layout space',assistant.includes('.assist-guide-marker{position:absolute!important')&&assistant.includes('.assist-guided-target{position:relative!important'));
 check('the same definition serves nested shadow roots and the page',assistant.includes('style.textContent=TARGET_STYLE')&&assistant.split('style.textContent=TARGET_STYLE').length===3);
 
+console.log('\n=== generated starters cover the site, not one product ===');
+check('each of the three questions takes a different angle',adminGenerator.includes('const chosen = angles.slice().sort(() => Math.random() - 0.5).slice(0, 3);')&&adminGenerator.includes('Each question must cover a different subject'));
+check('no single angle can claim all three cards',!adminGenerator.includes('const angle = angles[Math.floor(Math.random() * angles.length)];')&&adminGenerator.includes('No two questions may be about the same product or page'));
+check('the reason is recorded next to the fix',adminGenerator.includes('a quarter of the time that ground was a single product')||adminGenerator.includes('quarter of the time'));
+
 console.log('\n=== the guide states its own box model ===');
 check('the note pins its own margin against theme and UA defaults',assistantCss.includes('.assist-note{padding:0 16px;')&&assistantCss.includes('margin:0 0 6px!important'));
 check('the reasoning names the user-agent default, not just themes',assistantCss.includes('Margin is not inherited')&&assistantCss.includes('What it does not block is the user-agent default'));

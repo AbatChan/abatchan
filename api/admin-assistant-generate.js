@@ -76,9 +76,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ instructions });
     }
     if (kind === 'suggestions') {
-      const angles = ['services and fit', 'Nika setup and plans', 'process and published work', 'common buying questions'];
-      const angle = angles[Math.floor(Math.random() * angles.length)];
-      const prompt = `Create exactly three distinct starter questions for the Abatchan website using only the official content below. Focus this variation on ${angle}. Each item must have a complete visitor question in "label" (70 characters maximum) and useful supporting text in "description" (95 characters maximum). Avoid filler, repeated ideas, hype, or invented facts. Return JSON only: {"suggestions":[{"label":"...","description":"..."}]}.\n\nOFFICIAL CONTENT:\n${content}`;
+      // One angle across all three made every card cover the same ground, and a
+      // quarter of the time that ground was a single product. These three cards
+      // are a visitor's first impression of the whole site, so each one takes a
+      // different angle and the order is shuffled for variety between runs.
+      const angles = ['the services offered and who they suit', 'how a project runs and the published work', 'the Nika product, its plans and setup', 'practical buying questions such as cost, timelines and getting started'];
+      const chosen = angles.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+      const brief = chosen.map((item, index) => `${index + 1}. ${item}`).join('\n');
+      const prompt = `Create exactly three distinct starter questions for the Abatchan website using only the official content below. Each question must cover a different subject, in this order:\n${brief}\n\nNo two questions may be about the same product or page. Each item must have a complete visitor question in "label" (70 characters maximum) and useful supporting text in "description" (95 characters maximum). Avoid filler, repeated ideas, hype, or invented facts. Return JSON only: {"suggestions":[{"label":"...","description":"..."}]}.\n\nOFFICIAL CONTENT:\n${content}`;
       const raw = await completion([
         { role: 'system', content: 'Write concise, factual website starter questions. Return valid JSON only.' },
         { role: 'user', content: prompt }
