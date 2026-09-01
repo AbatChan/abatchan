@@ -111,6 +111,10 @@ check('development and staging never consume an activation',licence.includes("fu
 check('being over the limit is reported, not refused',licence.includes('const overLimit =')&&licence.includes('ok: valid || overLimit')&&licence.includes('not a shutdown'));
 check('the key itself is never stored or logged',licence.includes('const keyTail = key.slice(-8);')&&licence.includes('Never log or echo the key itself'));
 check('control characters are stripped but hyphens survive',licence.includes('Licence keys contain hyphens'));
+// An object literal keyed on unset env vars collapses to one '' entry holding
+// the last value, which made every unidentifiable key resolve as Agency.
+check('unset variants cannot collapse into one generous tier',licence.includes('Object.fromEntries([')&&licence.includes('.filter(([id]) => id)')&&licence.includes('const UNKNOWN_TIER'));
+check('an unrecognised variant falls back to the smallest package',licence.includes('|| UNKNOWN_TIER')&&licence.includes("{ tier: 'personal', sites: 2 };")&&licence.includes('should never widen someone'));
 
 console.log('\n=== the guide states its own box model ===');
 check('the note pins its own margin against theme and UA defaults',assistantCss.includes('.assist-note{padding:0 16px;')&&assistantCss.includes('margin:0 0 6px!important'));
