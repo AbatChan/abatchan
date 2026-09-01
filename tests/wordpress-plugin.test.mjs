@@ -36,6 +36,14 @@ check('the remaining descriptive notes moved behind the mark too',php.includes("
 check('the exempt-IP actions sit under the field, not in its heading',php.indexOf('nika-field__actions')>php.indexOf('id="nika-exempt-ips"')&&adminCss.includes('.nika-exemptions .nika-field__actions { justify-content: flex-start;'));
 check('the small mark still has a full touch target',adminCss.includes('.nika-help::after { content: ""; position: absolute; inset: -14px; }'));
 
+console.log('=== a licence brings updates, and never gates the guide ===');
+check('the key is a saved, sanitized setting',php.includes("'licence_key' => ''")&&php.includes("preg_replace( '/[^A-Za-z0-9\\-]/'")&&php.includes('const NIKA_LICENCE_API'));
+check('an unreachable licence service keeps the last known state',php.includes('// Unreachable is not invalid. Keep whatever was last known, and say so.')&&php.includes("'degraded'")&&php.includes("HOUR_IN_SECONDS"));
+check('over the site count is reported, never enforced',php.includes("'over-limit'")&&php.includes('Nika keeps working here'));
+check('development installs are named as not counting',php.includes('does not use one of your sites')&&php.includes('Development and staging installs are not counted'));
+check('no licence state can stop the guide rendering',!php.includes("nika_licence_state()['state'] !== 'valid'")&&php.includes('Nika runs with or without a key'));
+check('a changed key is rechecked at once, not from cache',php.includes("add_action( 'update_option_' . NIKA_OPTION")&&php.includes('nika_licence_forget();'));
+
 console.log('=== the dashboard controls every colour the guide paints ===');
 check('links take the accent rather than a hard-coded colour',!php.includes('link_colour')&&!php.includes('linkColour'));
 

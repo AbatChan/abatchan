@@ -104,6 +104,14 @@ check('each of the three questions takes a different angle',adminGenerator.inclu
 check('no single angle can claim all three cards',!adminGenerator.includes('const angle = angles[Math.floor(Math.random() * angles.length)];')&&adminGenerator.includes('No two questions may be about the same product or page'));
 check('the reason is recorded next to the fix',adminGenerator.includes('a quarter of the time that ground was a single product')||adminGenerator.includes('quarter of the time'));
 
+console.log('\n=== the licence endpoint answers, it never blocks ===');
+const licence=readFileSync(new URL('../api/licence.js',import.meta.url),'utf8');
+check('a failure tells the caller to carry on',licence.includes('ok: true,')&&licence.includes('degraded: true')&&licence.includes('Nika continues to run unchanged'));
+check('development and staging never consume an activation',licence.includes("function siteKind")&&licence.includes("kind === 'production'")&&licence.includes("staging|stage|dev|test|preview|sandbox|uat|qa"));
+check('being over the limit is reported, not refused',licence.includes('const overLimit =')&&licence.includes('ok: valid || overLimit')&&licence.includes('not a shutdown'));
+check('the key itself is never stored or logged',licence.includes('const keyTail = key.slice(-8);')&&licence.includes('Never log or echo the key itself'));
+check('control characters are stripped but hyphens survive',licence.includes('Licence keys contain hyphens'));
+
 console.log('\n=== the guide states its own box model ===');
 check('the note pins its own margin against theme and UA defaults',assistantCss.includes('.assist-note{padding:0 16px;')&&assistantCss.includes('margin:0 0 6px!important'));
 check('the reasoning names the user-agent default, not just themes',assistantCss.includes('Margin is not inherited')&&assistantCss.includes('What it does not block is the user-agent default'));

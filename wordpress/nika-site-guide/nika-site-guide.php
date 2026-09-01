@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.5.1
+ * Version:           1.5.2
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,9 +16,10 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.5.1';
+const NIKA_VERSION = '1.5.2';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
+const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
 
 function nika_defaults() {
 	return array(
@@ -37,7 +38,7 @@ function nika_defaults() {
 		'dictation_language' => 'en-US', 'accent' => '#6366f1', 'position' => 'right',
 		'avatar' => '', 'launcher_icon' => '',
 		'panel_colour' => '#0f0f12', 'panel_opacity' => 72,
-		'gradient_from' => '#8184ff', 'gradient_to' => '#4338ca', 'scrollbar_colour' => '#6366f1', 'shadow_colour' => '#4f46e5', 'text_colour' => '#f5f5f3', 'icon_colour' => '#ffffff', 'custom_css' => '',
+		'gradient_from' => '#8184ff', 'gradient_to' => '#4338ca', 'scrollbar_colour' => '#6366f1', 'shadow_colour' => '#4f46e5', 'text_colour' => '#f5f5f3', 'icon_colour' => '#ffffff', 'licence_key' => '', 'custom_css' => '',
 		'logo_size' => 26, 'mark_size' => 24,
 		'disclaimer' => "Answers use this website's configured content. Review important information.",
 		'context_characters' => 12000, 'history_turns' => 10, 'excluded_paths' => '',
@@ -130,6 +131,8 @@ function nika_sanitize_settings( $input ) {
 		'shadow_colour' => sanitize_hex_color( $input['shadow_colour'] ?? '#4f46e5' ) ?: '#4f46e5',
 		'text_colour' => sanitize_hex_color( $input['text_colour'] ?? '#f5f5f3' ) ?: '#f5f5f3',
 		'icon_colour' => sanitize_hex_color( $input['icon_colour'] ?? '#ffffff' ) ?: '#ffffff',
+		'licence_key' => preg_replace( '/[^A-Za-z0-9\-]/', '', substr( (string) ( $input['licence_key'] ?? '' ), 0, 120 ) ),
+		// The saved key is checked on the next page load, not from cache.
 		'custom_css' => nika_sanitize_custom_css( $input['custom_css'] ?? '' ),
 		'logo_size' => min( 64, max( 14, absint( $input['logo_size'] ?? 26 ) ) ),
 		'mark_size' => min( 44, max( 14, absint( $input['mark_size'] ?? 24 ) ) ),
@@ -187,6 +190,102 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 		'nonce' => wp_create_nonce( 'wp_rest' ),
 	) );
 } );
+
+add_action( 'update_option_' . NIKA_OPTION, function ( $old_value, $value ) {
+	$before = is_array( $old_value ) ? ( $old_value['licence_key'] ?? '' ) : '';
+	$after  = is_array( $value ) ? ( $value['licence_key'] ?? '' ) : '';
+	if ( $before !== $after ) {
+		nika_licence_forget();
+		// A newly entered key activates this site; a cleared one just forgets.
+		if ( '' !== $after ) nika_licence_state( true );
+	}
+}, 10, 2 );
+
+/**
+ * Ask abatchan.com what a licence key entitles this site to, and remember it.
+ *
+ * Called when the key changes and once a day thereafter. Three things it will
+ * never do, because they are commitments made to customers rather than
+ * implementation preferences: it never blocks the guide, it never treats being
+ * over the site count as a failure, and it never reports a development or
+ * staging install as consuming one of their sites.
+ */
+function nika_licence_state( $refresh = false ) {
+	$stored = get_site_transient( 'nika_licence_state_v1' );
+	if ( ! $refresh && is_array( $stored ) ) return $stored;
+
+	$settings = nika_settings();
+	$key      = (string) ( $settings['licence_key'] ?? '' );
+	if ( '' === $key ) {
+		$state = array( 'state' => 'none' );
+		set_site_transient( 'nika_licence_state_v1', $state, DAY_IN_SECONDS );
+		return $state;
+	}
+
+	$response = wp_remote_post( NIKA_LICENCE_API, array(
+		'timeout' => 8,
+		'headers' => array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ),
+		'body'    => wp_json_encode( array(
+			'action'     => $refresh ? 'activate' : 'validate',
+			'key'        => $key,
+			'site'       => wp_parse_url( home_url(), PHP_URL_HOST ),
+			'instanceId' => (string) ( is_array( $stored ) ? ( $stored['instanceId'] ?? '' ) : '' ),
+		) ),
+	) );
+
+	// Unreachable is not invalid. Keep whatever was last known, and say so.
+	if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+		$state = is_array( $stored ) ? $stored : array( 'state' => 'unreachable' );
+		$state['degraded'] = true;
+		set_site_transient( 'nika_licence_state_v1', $state, HOUR_IN_SECONDS );
+		return $state;
+	}
+
+	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	if ( ! is_array( $data ) ) return array( 'state' => 'unreachable', 'degraded' => true );
+
+	$entitlement = is_array( $data['entitlement'] ?? null ) ? $data['entitlement'] : array();
+	$state = array(
+		'state'        => ! empty( $data['valid'] ) ? 'valid' : ( ! empty( $data['overLimit'] ) ? 'over-limit' : 'invalid' ),
+		'degraded'     => ! empty( $data['degraded'] ),
+		'instanceId'   => (string) ( $data['instanceId'] ?? '' ),
+		'tier'         => sanitize_text_field( (string) ( $entitlement['tier'] ?? '' ) ),
+		'sitesAllowed' => (int) ( $entitlement['sitesAllowed'] ?? 0 ),
+		'sitesUsed'    => (int) ( $entitlement['sitesUsed'] ?? 0 ),
+		'updatesUntil' => sanitize_text_field( (string) ( $entitlement['updatesUntil'] ?? '' ) ),
+		'updatesActive'=> ! empty( $entitlement['updatesActive'] ),
+		'siteKind'     => sanitize_text_field( (string) ( $entitlement['siteKind'] ?? '' ) ),
+		'message'      => sanitize_text_field( (string) ( $data['message'] ?? '' ) ),
+	);
+	set_site_transient( 'nika_licence_state_v1', $state, DAY_IN_SECONDS );
+	return $state;
+}
+
+/** A saved key is worth checking immediately, so the owner sees the result at once. */
+function nika_licence_forget() {
+	delete_site_transient( 'nika_licence_state_v1' );
+}
+
+/** One sentence for the settings page, in the customer's terms rather than the API's. */
+function nika_licence_summary( $state ) {
+	switch ( $state['state'] ?? 'none' ) {
+		case 'valid':
+			if ( 'development' === ( $state['siteKind'] ?? '' ) ) {
+				return __( 'Active. This looks like a development or staging site, so it does not use one of your sites.', 'nika-site-guide' );
+			}
+			$until = $state['updatesUntil'] ? date_i18n( get_option( 'date_format' ), strtotime( $state['updatesUntil'] ) ) : '';
+			return $until
+				? sprintf( __( 'Active. Updates and support until %s.', 'nika-site-guide' ), $until )
+				: __( 'Active.', 'nika-site-guide' );
+		case 'over-limit':
+			return __( 'This key is on more sites than its plan covers. Nika keeps working here; contact Abat to add sites.', 'nika-site-guide' );
+		case 'unreachable':
+			return __( 'The licence service could not be reached. Nika is running normally and will check again later.', 'nika-site-guide' );
+		case 'invalid':
+			return __( 'This key was not recognised. Nika keeps working; check the key from your purchase email.', 'nika-site-guide' );
+	}
+	return __( 'No licence key yet. Nika runs without one; a key is what brings updates and support.', 'nika-site-guide' );
+}
 
 /**
  * A short explanation attached to a field's label rather than printed under it.
@@ -308,7 +407,14 @@ function nika_settings_page() {
 					<label class="nika-field nika-field--compact" data-nika-when="dictation" data-nika-checked="1"<?php echo $s['dictation'] ? '' : ' hidden'; ?>><span><?php esc_html_e( 'Dictation language', 'nika-site-guide' ); ?></span><input class="code" id="nika-language" name="<?php echo esc_attr( NIKA_OPTION ); ?>[dictation_language]" value="<?php echo esc_attr( $s['dictation_language'] ); ?>" placeholder="en-US"></label>
 				</section>
 
-				<section class="nika-card" id="nika-styles">
+				<section class="nika-card" id="nika-licence">
+					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Licence', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Updates and support', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Nika runs with or without a key. A key is what brings new versions and support, and it never affects what visitors see.', 'nika-site-guide' ); ?></p></div></div>
+					<label class="nika-field"><span><?php esc_html_e( 'Licence key', 'nika-site-guide' ); ?><?php echo nika_help( __( 'From your purchase email. One key covers both the WordPress plugin and the Universal installer.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[licence_key]" type="text" spellcheck="false" autocomplete="off" value="<?php echo esc_attr( $s['licence_key'] ); ?>" placeholder="0000-0000-0000-0000"><small><?php echo esc_html( nika_licence_summary( nika_licence_state() ) ); ?></small></label>
+					<?php $licence = nika_licence_state(); if ( 'valid' === ( $licence['state'] ?? '' ) && $licence['sitesAllowed'] ) : ?>
+					<p class="nika-field__note"><?php echo esc_html( sprintf( __( '%1$d of %2$d sites in use. Development and staging installs are not counted.', 'nika-site-guide' ), (int) $licence['sitesUsed'], (int) $licence['sitesAllowed'] ) ); ?></p>
+					<?php endif; ?>
+				</section>
+					<section class="nika-card" id="nika-styles">
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Advanced', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Custom CSS', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'For anything the settings above do not cover. These rules load inside the guide only, so they cannot affect the rest of your site.', 'nika-site-guide' ); ?></p></div></div>
 					<label class="nika-field"><span><?php esc_html_e( 'Your rules', 'nika-site-guide' ); ?></span><textarea class="code nika-css" rows="8" name="<?php echo esc_attr( NIKA_OPTION ); ?>[custom_css]" spellcheck="false" placeholder=".assist-panel { border-radius: 18px; }&#10;.assist-chips button { font-weight: 700; }"><?php echo esc_textarea( $s['custom_css'] ); ?></textarea><small><?php esc_html_e( 'Target the guide\'s own classes, such as .assist-panel, .assist-chips or .assist-composer-rail. Composer glyphs are painted, so tint one with the variable rather than colour: .assist-add { --assist-icon: #ff3b3b }. Changes appear in the preview as you type.', 'nika-site-guide' ); ?></small></label>
 				</section>
