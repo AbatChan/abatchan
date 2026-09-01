@@ -208,7 +208,22 @@ html[data-theme="light"] .assist-msg-attachment{background:rgba(21,21,25,.035)}
 .assist-send:hover{transform:translateY(-2px)}
 .assist-send:disabled{opacity:.45;transform:none;cursor:default}
 .assist-send img{width:18px;height:18px;filter:brightness(0) invert(1)!important;opacity:1}.assist-send.is-generating img{width:14px;height:14px}
-.assist-note{padding:0 16px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center}
+.assist-note{padding:0 16px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center;margin:0 0 6px!important}
+
+/* Margin is not inherited, so a shadow root already blocks a theme from
+   reaching these. What it does not block is the user-agent default: a <p> or
+   <ul> the guide owns still gets its 1em margin unless the guide says
+   otherwise. Outside a shadow root — the primary site, and any embed that
+   cannot isolate — the host page's own element rules apply on top of that.
+   So the guide's chrome states its own box model, marked important because a
+   theme rule targeting a bare tag would otherwise win on the cascade.
+   The conversation itself is excluded: message markdown relies on the spacing
+   the rules below give it. */
+.assist-panel .assist-head p,.assist-panel .assist-head h1,.assist-panel .assist-head h2,.assist-panel .assist-head h3,
+.assist-panel .assist-composer p,.assist-panel .assist-chips p,.assist-panel .assist-chips h1,.assist-panel .assist-chips h2,
+.assist-panel .assist-chips h3,.assist-panel .assist-chips ul,.assist-panel .assist-chips ol,.assist-panel .assist-chips li,
+.assist-panel .assist-note,.assist-panel .assist-empty p{margin:0!important;padding-block:0!important}
+.assist-panel .assist-chips ul,.assist-panel .assist-chips ol{list-style:none!important;padding-inline-start:0!important}
 
 /* Navigation and reset feedback belongs to the interface, not the transcript. */
 .assist-system-status{position:absolute;z-index:8;top:66px;left:50%;max-width:calc(100% - 28px);

@@ -105,6 +105,7 @@ The site owner controls the pre-chat starter suggestions, per-visitor hourly and
 = 1.4.2 =
 * Add a link colour setting so links inside answers follow your palette instead of the built-in indigo.
 * Colour the highlight's close control from the configured accent like every other guide surface.
+* Pin the guide's own margins so a theme or browser default cannot shift its chrome.
 
 = 1.4.1 =
 * Preserve complete navigation details so destination-page highlights run after a visitor clicks a saved action link.

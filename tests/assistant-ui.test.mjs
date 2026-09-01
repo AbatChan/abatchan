@@ -87,6 +87,11 @@ check('context is decided by contents, not by tag name',assistant.includes('Whet
 check('leaf controls still carry no surrounding context',assistant.includes("if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role=\"heading\"],[role=\"button\"],[role=\"link\"]'))return '';"));
 check('the model still receives a capped, compact index',assistant.includes('.slice(0,80)')&&assistant.includes('kind:targetKind(node)'));
 
+console.log('\n=== the guide states its own box model ===');
+check('the note pins its own margin against theme and UA defaults',assistantCss.includes('.assist-note{padding:0 16px;')&&assistantCss.includes('margin:0 0 6px!important'));
+check('the reasoning names the user-agent default, not just themes',assistantCss.includes('Margin is not inherited')&&assistantCss.includes('What it does not block is the user-agent default'));
+check('the conversation keeps the spacing its markdown needs',assistantCss.includes('The conversation itself is excluded')&&!assistantCss.includes('.assist-log p{margin:0!important}'));
+
 console.log('\n=== every guide surface follows the configured colour ===');
 check('the close control inherits nothing, so the accent is copied to it',assistant.includes("for(const name of ['--assist-guide-marker-bg','--assist-guide-marker-text'])")&&assistant.includes('inherits none of them'));
 check('links follow a link colour, falling back to the accent',shell.includes('linkColour')&&shell.includes("set('--signal-ink',cfg.linkColour||cfg.accent)"));
