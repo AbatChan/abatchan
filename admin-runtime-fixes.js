@@ -77,3 +77,12 @@
   };
   document.readyState==='loading'?addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();
+
+// The assistant tab is long enough that a save at the end of the form saves a
+// scroll back to the header. It is the same action, not a second one.
+(function () {
+  const bottom = document.getElementById('saveAssistantBottom');
+  const primary = document.getElementById('saveAssistant');
+  if (!bottom || !primary) return;
+  bottom.addEventListener('click', () => primary.click());
+})();
