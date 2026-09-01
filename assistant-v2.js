@@ -115,7 +115,7 @@
   const targetSlug=text=>text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,58)||'content';
   const targetKind=node=>node.matches('input,select,textarea')?'field':node.matches('button,[role="button"]')?'button':node.matches('a[href],[role="link"]')?'link':node.matches('form,fieldset')?'form':node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?'heading':node.matches('details,summary')?'details':node.matches('img,[alt]')?'media':node.matches('footer,[role="contentinfo"],section,article,[role="region"],[role="tabpanel"]')?'section':'content';
   const targetPriority=node=>node.hasAttribute('data-assist-target')&&!node.hasAttribute('data-assist-auto')?8:['field','button','link','form'].includes(targetKind(node))?7:targetKind(node)==='heading'?6:['details','section'].includes(targetKind(node))?5:targetKind(node)==='media'?4:2;
-  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:3px solid var(--assist-guide-border,#312e81)!important;outline-offset:6px!important;border-radius:16px!important;box-shadow:0 0 0 10px var(--assist-guide-glow,rgba(49,46,129,.22))!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;padding:7px 10px!important;border:2px solid var(--assist-guide-marker-border,#fff)!important;border-radius:999px!important;color:var(--assist-guide-marker-text,#fff)!important;background:var(--assist-guide-marker-bg,#312e81)!important;box-shadow:0 10px 30px var(--assist-guide-glow,rgba(49,46,129,.34))!important;font:650 11px/1.2 system-ui,sans-serif!important;pointer-events:none!important}';
+  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:3px solid var(--assist-guide-border,#312e81)!important;outline-offset:6px!important;border-radius:var(--assist-guide-radius,16px)!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;display:inline-flex!important;align-items:center!important;gap:7px!important;padding:6px 10px!important;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent)!important;border-radius:999px!important;color:var(--assist-guide-marker-text,#fff)!important;background:var(--assist-guide-marker-bg,#6366f1)!important;box-shadow:none!important;font:650 11px/1.2 system-ui,sans-serif!important;letter-spacing:.015em!important;pointer-events:none!important}.assist-guide-marker::before{content:""!important;width:6px!important;height:6px!important;flex:0 0 6px!important;border:1px solid currentColor!important;border-radius:50%!important;background:transparent!important;opacity:.82!important}';
   const effectiveTargetBackground=(node,includeSelf=true)=>{
     for(let current=includeSelf?node:node?.parentElement;current&&current.nodeType===1;current=current.parentElement){
       const style=getComputedStyle(current);
@@ -125,7 +125,21 @@
     return [255,255,255];
   };
   const guidanceInlineRestore=new WeakMap();
-  const guidanceInlineProperties=['outline','outline-offset','box-shadow'];
+  const configuredGuideAccent=()=>{
+    const scope=uiScope();
+    const source=scope instanceof ShadowRoot?scope.host:(scope.querySelector?.('.assist-panel')||document.documentElement);
+    const value=source?getComputedStyle(source).getPropertyValue('--signal').trim():'';
+    return /^(?:#[\da-f]{3,8}|rgba?\([^)]*\))$/i.test(value)?value:'#6366f1';
+  };
+  const colourLuminance=value=>{
+    const hex=String(value||'').trim().match(/^#([\da-f]{3}|[\da-f]{6})$/i);
+    const rgb=hex
+      ? (hex[1].length===3?hex[1].split('').map(part=>parseInt(part+part,16)):[0,2,4].map(index=>parseInt(hex[1].slice(index,index+2),16)))
+      : (String(value||'').match(/rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)/i)?.slice(1,4).map(Number)||[99,102,241]);
+    const linear=channel=>{const normalized=channel/255;return normalized<=.04045?normalized/12.92:((normalized+.055)/1.055)**2.4};
+    return .2126*linear(rgb[0])+.7152*linear(rgb[1])+.0722*linear(rgb[2]);
+  };
+  const guidanceInlineProperties=['outline','outline-offset'];
   const applyAdaptiveGuidance=node=>{
     // The outline is painted outside the element, so contrast it against the
     // surrounding surface rather than a button's own fill. A white ring around
@@ -135,23 +149,23 @@
     const luminance=.2126*linear(r)+.7152*linear(g)+.0722*linear(b);
     const dark=luminance<.42;
     const border=dark?'#ffffff':'#312e81';
-    const glow=dark?'rgba(255,255,255,.28)':'rgba(49,46,129,.22)';
+    const accent=configuredGuideAccent();
+    const naturalRadius=getComputedStyle(node).borderRadius;
+    const radius=parseFloat(naturalRadius)>0?naturalRadius:(node.matches('button,a[href],input,select,textarea')?'10px':'16px');
     if(!guidanceInlineRestore.has(node))guidanceInlineRestore.set(node,guidanceInlineProperties.map(name=>[name,node.style.getPropertyValue(name),node.style.getPropertyPriority(name)]));
     node.style.setProperty('--assist-guide-border',border);
-    node.style.setProperty('--assist-guide-glow',glow);
+    node.style.setProperty('--assist-guide-radius',radius);
     node.style.setProperty('--assist-guide-fill',dark?'rgba(255,255,255,.10)':'rgba(99,102,241,.13)');
-    node.style.setProperty('--assist-guide-marker-bg',dark?'#ffffff':'#312e81');
-    node.style.setProperty('--assist-guide-marker-text',dark?'#111827':'#ffffff');
-    node.style.setProperty('--assist-guide-marker-border',dark?'#111827':'#ffffff');
-    // Some WordPress themes declare button outlines and shadows as !important.
-    // An inline important guide wins that conflict without permanently
-    // changing the site's own control style.
+    node.style.setProperty('--assist-guide-marker-bg',accent);
+    node.style.setProperty('--assist-guide-marker-text',colourLuminance(accent)>.48?'#111827':'#ffffff');
+    // Some WordPress themes declare button outlines as !important. An inline
+    // important guide wins that conflict without changing the site's own
+    // control style after the highlight is cleared.
     node.style.setProperty('outline',`3px solid ${border}`,'important');
     node.style.setProperty('outline-offset','6px','important');
-    node.style.setProperty('box-shadow',`0 0 0 7px ${glow}`,'important');
   };
   const clearAdaptiveGuidance=node=>{
-    ['--assist-guide-border','--assist-guide-glow','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text','--assist-guide-marker-border'].forEach(name=>node.style?.removeProperty(name));
+    ['--assist-guide-border','--assist-guide-radius','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text'].forEach(name=>node.style?.removeProperty(name));
     const restore=guidanceInlineRestore.get(node);
     if(!restore)return;
     restore.forEach(([name,value,priority])=>value?node.style.setProperty(name,value,priority):node.style.removeProperty(name));
