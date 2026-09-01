@@ -794,3 +794,45 @@
     }
   });
 }());
+
+// Field help.
+//
+// Opens on click, tap and keyboard focus; hover is handled in CSS as an
+// accelerator only. The button sits inside a <label>, so a click would
+// otherwise activate the field it describes — a checkbox would toggle just
+// from someone reading its note.
+(function () {
+  const notes = () => document.querySelectorAll('.nika-help-note');
+  const closeAll = (except) => {
+    notes().forEach((note) => {
+      if (note === except) return;
+      note.hidden = true;
+      note.previousElementSibling?.setAttribute('aria-expanded', 'false');
+    });
+  };
+  const noteFor = (button) => button.nextElementSibling;
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest?.('.nika-help');
+    if (!button) { closeAll(); return; }
+    event.preventDefault();
+    event.stopPropagation();
+    const note = noteFor(button);
+    if (!note) return;
+    const open = note.hidden;
+    closeAll(note);
+    note.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    if (open && !note.id) {
+      note.id = 'nika-help-' + Math.random().toString(36).slice(2, 9);
+      button.setAttribute('aria-describedby', note.id);
+    }
+  });
+  document.addEventListener('focusin', (event) => {
+    const button = event.target.closest?.('.nika-help');
+    if (button) noteFor(button)?.removeAttribute('hidden');
+    else closeAll();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeAll();
+  });
+})();

@@ -21,6 +21,15 @@ const adminPage=php.slice(php.indexOf('function nika_settings_page()'),php.index
 let failed=false;
 const check=(label,value)=>{const pass=Boolean(value);console.log(`${pass?'PASS':'FAIL'}  ${label}`);if(!pass)failed=true;};
 
+console.log('=== a field explains itself without a line under every input ===');
+check('descriptive notes move behind a mark beside the label',php.includes('function nika_help( $text )')&&php.includes('class="nika-help"')&&php.includes("role=\"tooltip\""));
+check('notes that change what is typed stay visible',php.includes("esc_html_e( 'One path per line.'")&&php.includes("esc_html_e( 'Only required for an OpenAI-compatible provider.'")&&php.includes('cannot\n * stop a mistake it is not on screen to prevent'));
+check('the mark is a question, not a warning',php.includes('>?</span>')&&!php.includes('nika-help">!'));
+check('it opens by click and focus, with hover only an accelerator',adminJs.includes(".closest?.('.nika-help')")&&adminJs.includes("document.addEventListener('focusin'")&&adminCss.includes('.nika-help:hover + .nika-help-note'));
+check('a click on the mark cannot toggle the field it describes',adminJs.includes('event.preventDefault();')&&adminJs.includes('event.stopPropagation();')&&adminJs.includes('a checkbox would toggle just'));
+check('escape closes it and it is described to assistive tech',adminJs.includes("if (event.key === 'Escape') closeAll();")&&adminJs.includes("setAttribute('aria-describedby', note.id)")&&php.includes('aria-expanded="false"'));
+check('the small mark still has a full touch target',adminCss.includes('.nika-help::after { content: ""; position: absolute; inset: -14px; }'));
+
 console.log('=== the dashboard controls every colour the guide paints ===');
 check('links take the accent rather than a hard-coded colour',!php.includes('link_colour')&&!php.includes('linkColour'));
 

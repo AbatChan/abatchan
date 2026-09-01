@@ -317,3 +317,29 @@
   .nika-savebar .button-primary { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .nika-admin *, .nika-admin *::before, .nika-admin *::after { scroll-behavior: auto !important; transition: none !important; } }
+
+/* Field help
+   A note that only describes a control sits behind a question mark beside its
+   label instead of taking a line under every input. Hover is an accelerator,
+   never the way in: a tablet has no hover, and a keyboard reaches this by
+   focus. The mark is small but its hit area is not — the pseudo-element gives
+   it a 44px target without changing the row's height. */
+.nika-field > span:first-child { display: inline-flex; align-items: center; gap: 6px; position: relative; }
+.nika-help {
+  position: relative; flex: 0 0 auto; display: inline-grid; place-items: center;
+  width: 16px; height: 16px; padding: 0; border: 1px solid var(--nika-line, #d9dae4);
+  border-radius: 50%; background: transparent; color: var(--nika-muted, #6b6d80);
+  font: 700 10px/1 inherit; cursor: help;
+}
+.nika-help::after { content: ""; position: absolute; inset: -14px; }
+.nika-help:hover, .nika-help:focus-visible { border-color: var(--nika-accent, #6366f1); color: var(--nika-accent, #6366f1); }
+.nika-help:focus-visible { outline: 2px solid var(--nika-accent, #6366f1); outline-offset: 2px; }
+.nika-help-note {
+  position: absolute; left: 0; top: calc(100% + 8px); z-index: 30; width: max-content; max-width: 260px;
+  padding: 8px 10px; border-radius: 8px; background: #1f2030; color: #f4f4f7;
+  font: 400 12px/1.45 inherit; box-shadow: 0 10px 26px rgba(20, 20, 40, .22);
+}
+.nika-help-note::before { content: ""; position: absolute; left: 14px; top: -4px; width: 8px; height: 8px; background: inherit; transform: rotate(45deg); }
+.nika-help:hover + .nika-help-note { display: block !important; }
+@media (prefers-reduced-motion: no-preference) { .nika-help-note { animation: nikaHelpIn .12s ease both } }
+@keyframes nikaHelpIn { from { opacity: 0; transform: translateY(-2px) } to { opacity: 1; transform: none } }
