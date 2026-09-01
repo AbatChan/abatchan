@@ -611,6 +611,13 @@ html[data-theme="light"] .assist-text-action:hover{color:#151519}
 @keyframes assistJourneySpin{to{transform:rotate(1turn)}}
 @media(prefers-reduced-motion:reduce){.assist-journey-step.is-active i{animation:none;border-color:var(--signal)}.assist-journey-arrival.is-streaming::after{animation:none}}
 
+/* Everything except the answer steps back. The scrim is inert, so the page
+   stays fully usable while it is up, and the target is lifted above it rather
+   than being re-parented. */
+.assist-guide-scrim{position:fixed;inset:0;z-index:2147482000;pointer-events:none;background:rgba(9,9,17,.34);-webkit-backdrop-filter:blur(3px) brightness(.66);backdrop-filter:blur(3px) brightness(.66);opacity:0;transition:opacity .24s var(--ease)}
+.assist-guide-scrim.is-on{opacity:1}
+.assist-guided-target.is-guide-lifted{z-index:2147482500}
+@media(prefers-reduced-motion:reduce){.assist-guide-scrim{transition:none}}
 .assist-guided-target{position:relative;scroll-margin-block:120px;outline:2px solid rgba(129,132,255,.78);outline-offset:8px;border-radius:var(--assist-guide-radius,16px);animation:assistTargetPulse 1.15s var(--ease) 2}
 [data-assist-target].assist-guided-target{background:linear-gradient(90deg,rgba(99,102,241,.13),rgba(99,102,241,.035))}
 .assist-guide-marker{position:absolute;z-index:12;top:10px;right:10px;max-width:min(240px,70%);display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent);border-radius:999px;color:var(--assist-guide-marker-text,#fff);background:var(--assist-guide-marker-bg,var(--signal,#6366f1));box-shadow:none;font:650 11px/1.2 Geist,Inter,sans-serif;letter-spacing:.015em;pointer-events:none;animation:assistMarkerIn .35s var(--ease) both}

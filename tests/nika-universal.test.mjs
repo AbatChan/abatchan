@@ -14,6 +14,22 @@ const packagedCss = readFileSync(new URL('universal/nika-universal/public/assist
 const adminHtml = readFileSync(new URL('universal/nika-universal/public/admin.html', root), 'utf8');
 const adminJs = readFileSync(new URL('universal/nika-universal/public/admin.js', root), 'utf8');
 
+// A customer unzips only `nika-universal/`, and the Dockerfile copies only that
+// directory. Any import that escapes the package root resolves on a developer
+// machine and fails on every real install, so the package is checked for
+// self-containment rather than trusted.
+const packageFiles = ['server.mjs', 'site-index.mjs', 'index-static-site.mjs'];
+const escaping = [];
+for (const name of packageFiles) {
+  const source = readFileSync(new URL(`universal/nika-universal/${name}`, root), 'utf8');
+  for (const match of source.matchAll(/\bfrom\s+'([^']+)'/g)) {
+    const specifier = match[1];
+    if (specifier.startsWith('../')) escaping.push(`${name} -> ${specifier}`);
+  }
+}
+assert.deepEqual(escaping, [], `packaged modules must not import above the package root: ${escaping.join(', ')}`);
+assert.doesNotThrow(() => readFileSync(new URL('universal/nika-universal/lib/context-awareness.js', root), 'utf8'), 'shared server logic must be vendored into the package');
+
 const checks = [
   ['uses customer environment API key', server.includes('process.env.NIKA_AI_API_KEY')],
   ['protects the browser admin with a server token', server.includes('NIKA_ADMIN_TOKEN') && server.includes('timingSafeEqual') && adminJs.includes('Authorization:`Bearer ${token}`')],

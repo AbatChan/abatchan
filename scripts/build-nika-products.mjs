@@ -40,6 +40,13 @@ for (const target of [join(wordpress, 'assets'), join(universal, 'public')]) {
   for (const name of guideIcons) cpSync(join(root, 'assets', 'icons', name), join(target, 'assets', 'icons', name));
   for (const name of guideVendor) cpSync(join(root, 'assets', 'vendor', name), join(target, 'assets', 'vendor', name));
 }
+// Shared server logic is vendored into the package, not referenced above it.
+// A customer only ever unzips `nika-universal/`, and Docker copies only that
+// directory, so an import that escapes the package root cannot resolve in
+// either documented install path.
+mkdirSync(join(universal, 'lib'), { recursive: true });
+cpSync(join(root, 'lib', 'context-awareness.js'), join(universal, 'lib', 'context-awareness.js'));
+
 cpSync(join(brandAssets, 'abatchan-symbol-white-tight-504x308.png'), join(wordpress, 'assets', 'nika-admin-icon.png'));
 cpSync(join(brandAssets, 'abatchan-symbol-white-tight-504x308.png'), join(universal, 'public', 'nika-logo.png'));
 

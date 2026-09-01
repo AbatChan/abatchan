@@ -105,12 +105,15 @@
   const targetText=node=>{
     if(node.matches('footer,[role="contentinfo"]'))return node.getAttribute('aria-label')||'Footer';
     const heading=node.matches('h1,h2,h3,h4,h5,h6')?node:node.querySelector('h1,h2,h3,h4,h5,h6');
+    // Pages that predate sectioning elements title a block with bold text.
+    // Only a short one counts, so body copy in bold cannot become a title.
+    const boldTitle=[...node.querySelectorAll?.('b,strong')||[]].map(node=>String(node.textContent||'').replace(/\s+/g,' ').trim()).find(text=>text.length>=3&&text.length<=60);
     const labelled=node.matches('label')?node:(node.labels?.[0]||node.querySelector('label'));
     const labelledBy=(node.getAttribute('aria-labelledby')||'').split(/\s+/).filter(Boolean).map(id=>document.getElementById(id)?.textContent||'').join(' ');
     const summary=node.matches('summary')?node:node.querySelector('summary');
     const directText=node.matches('button,a[href],[role="button"],[role="link"],[role="tab"],option')?node.textContent:'';
     const fieldText=node.matches('input,select,textarea')?(node.getAttribute('aria-label')||node.getAttribute('placeholder')||labelled?.textContent||node.getAttribute('name')):'';
-    return (authoredTargetText(node)||fieldText||node.getAttribute('aria-label')||labelledBy||labelled?.textContent||heading?.textContent||summary?.textContent||directText||node.getAttribute('title')||node.getAttribute('alt')||node.getAttribute('placeholder')||node.getAttribute('name')||(node.matches('p')?node.textContent:'')||'').replace(/\s+/g,' ').trim().slice(0,120);
+    return (authoredTargetText(node)||fieldText||node.getAttribute('aria-label')||labelledBy||labelled?.textContent||heading?.textContent||boldTitle||summary?.textContent||directText||node.getAttribute('title')||node.getAttribute('alt')||node.getAttribute('placeholder')||node.getAttribute('name')||(node.matches('p')?node.textContent:'')||'').replace(/\s+/g,' ').trim().slice(0,120);
   };
   const targetSlug=text=>text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,58)||'content';
   const targetKind=node=>node.matches('input,select,textarea')?'field':node.matches('button,[role="button"]')?'button':node.matches('a[href],[role="link"]')?'link':node.matches('form,fieldset')?'form':node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?'heading':node.matches('details,summary')?'details':node.matches('img,[alt]')?'media':node.matches('footer,[role="contentinfo"],section,article,[role="region"],[role="tabpanel"]')?'section':'content';
@@ -139,7 +142,7 @@
     const linear=channel=>{const normalized=channel/255;return normalized<=.04045?normalized/12.92:((normalized+.055)/1.055)**2.4};
     return .2126*linear(rgb[0])+.7152*linear(rgb[1])+.0722*linear(rgb[2]);
   };
-  const guidanceInlineProperties=['outline','outline-offset'];
+  const guidanceInlineProperties=['outline','outline-offset','z-index'];
   const applyAdaptiveGuidance=node=>{
     // The outline is painted outside the element, so contrast it against the
     // surrounding surface rather than a button's own fill. A white ring around
@@ -164,16 +167,78 @@
     node.style.setProperty('outline',`3px solid ${border}`,'important');
     node.style.setProperty('outline-offset','6px','important');
   };
+  // The rest of the page steps back so the answer reads as the answer. The
+  // scrim never takes pointer events, so the page stays fully usable, and the
+  // target is lifted above it in place rather than being re-parented.
+  // Dimming alone is invisible on a dark site, where a black veil over a
+  // near-black page changes almost nothing. A small blur reads on any
+  // background, so the page recedes whatever palette it uses.
+  const SCRIM_STYLE='position:fixed;inset:0;z-index:2147482000;pointer-events:none;background:rgba(9,9,17,.34);-webkit-backdrop-filter:blur(3px) brightness(.66);backdrop-filter:blur(3px) brightness(.66);opacity:0;transition:opacity .24s ease';
+  let guidanceScrim=null;
+  const showGuidanceScrim=node=>{
+    if(!guidanceScrim||!guidanceScrim.isConnected){
+      guidanceScrim=document.createElement('div');
+      guidanceScrim.className='assist-guide-scrim';
+      guidanceScrim.setAttribute('aria-hidden','true');
+      // Inline as well as in the stylesheet: an embed on a site that never
+      // loaded the sheet, or a theme resetting div styles, must still dim.
+      guidanceScrim.style.cssText=SCRIM_STYLE;
+      document.body.appendChild(guidanceScrim);
+    }
+    // One frame before the class lands, so the fade actually plays.
+    requestAnimationFrame(()=>{guidanceScrim?.classList.add('is-on');if(guidanceScrim)guidanceScrim.style.opacity='1'});
+    node.classList.add('is-guide-lifted');
+    if(!getComputedStyle(node).zIndex||getComputedStyle(node).zIndex==='auto')node.style.setProperty('z-index','2147482500');
+  };
+  const hideGuidanceScrim=()=>{
+    guidanceScrim?.remove();
+    guidanceScrim=null;
+  };
   const clearAdaptiveGuidance=node=>{
     ['--assist-guide-border','--assist-guide-radius','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text'].forEach(name=>node.style?.removeProperty(name));
+    node.classList?.remove('is-guide-lifted');
     const restore=guidanceInlineRestore.get(node);
     if(!restore)return;
     restore.forEach(([name,value,priority])=>value?node.style.setProperty(name,value,priority):node.style.removeProperty(name));
     guidanceInlineRestore.delete(node);
   };
+  // Older sites carry their structure in table cells and opaque wrappers, so
+  // no tag or class name identifies a card. What survives that is repetition:
+  // a plan, row or listing is one of several siblings built the same way. This
+  // finds those blocks by shape alone, which works equally on a 1998 table and
+  // a modern grid.
+  // Older sites carry their structure in table cells and opaque wrappers, so
+  // no tag or class name identifies a card. What survives that is repetition:
+  // a plan, row or listing is one of several siblings built the same way. This
+  // finds those blocks by shape alone, which works equally on a 1998 table
+  // layout and a modern grid, and names no site.
+  const blockSignature=node=>`${node.tagName}.${[...node.classList].sort().join('.')}`;
+  const repeatedBlocks=root=>{
+    const blocks=[];
+    for(const parent of root.querySelectorAll?.('*')||[]){
+      if(parent.children.length<2||parent.children.length>24)continue;
+      const children=[...parent.children].filter(child=>{
+        if(child.matches('script,style,link,meta,br,hr,input,select,textarea,option,a[href],button'))return false;
+        const text=String(child.textContent||'').replace(/\s+/g,' ').trim();
+        return text.length>=12&&text.length<=900;
+      });
+      if(children.length<2)continue;
+      // Siblings built the same way are a set; a heading followed by a
+      // paragraph is not. Grouping by signature keeps mixed content out.
+      const groups=new Map();
+      for(const child of children){
+        const key=blockSignature(child);
+        groups.set(key,[...(groups.get(key)||[]),child]);
+      }
+      for(const group of groups.values()){
+        if(group.length>=2)blocks.push(...group);
+      }
+    }
+    return blocks;
+  };
   const collectTargetCandidates=root=>{
-    const selector='[data-nika-target],[data-nika-label],[data-assist-target],h1,h2,h3,h4,h5,h6,footer,[role="contentinfo"],article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[aria-labelledby],[title],img[alt],p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
-    const found=[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)];
+    const selector='[data-nika-target],[data-nika-label],[data-assist-target],h1,h2,h3,h4,h5,h6,footer,[role="contentinfo"],article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[aria-labelledby],[title],img[alt],p,td,th,li,dd,blockquote,figure,b,strong,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
+    const found=[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector),...repeatedBlocks(root)];
     for(const node of root.querySelectorAll('*')){
       if(node.shadowRoot){
         if(!node.shadowRoot.querySelector('style[data-assist-target-style]')){const style=document.createElement('style');style.dataset.assistTargetStyle='true';style.textContent=TARGET_STYLE;node.shadowRoot.prepend(style)}
@@ -896,8 +961,14 @@
     // portfolio"). It identifies a container far more reliably than the prose
     // inside it, where the same word may only be mentioned in passing.
     const containerIdentity=node=>{
-      if(!node?.matches?.('article,li,[role="listitem"],section,[role="region"],[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]'))return '';
-      for(const child of node.children){
+      if(!node?.children)return '';
+      if(node.matches('input,select,textarea,button,a[href],label,summary,img,h1,h2,h3,h4,h5,h6,[role="heading"],[role="button"],[role="link"]'))return '';
+      // A cell or positioning div wrapping one real block is the commonest
+      // legacy shape, so look through it rather than giving up at the wrapper.
+      let host=node,depth=0;
+      while(host.children.length===1&&depth++<2)host=host.children[0];
+      if(host.children.length<2)return '';
+      for(const child of host.children){
         const text=String(child.textContent||'').replace(/\s+/g,' ').trim();
         if(!text)continue;
         return !child.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')&&text.length<=40?text:'';
@@ -917,8 +988,13 @@
       ];
       return [...new Set(aliases.map(value=>String(value||'').replace(/\s+/g,' ').trim().slice(0,180)).filter(value=>value.length>=2))];
     };
+    // Whether a node is a composed block is a question about its contents, not
+    // its tag: a legacy table cell holds a plan just as an <article> does. Leaf
+    // controls and bare text keep no context, so a button can never win on the
+    // words that merely surround it.
     const targetContext=node=>{
-      if(!node.matches('article,section,[role="region"],[role="tabpanel"],details,form,fieldset,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]'))return '';
+      if(!node?.children||!node.children.length)return '';
+      if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role="heading"],[role="button"],[role="link"]'))return '';
       return String(node.innerText||'').replace(/\s+/g,' ').trim().slice(0,420);
     };
     const targetMatch=(label,node,request='')=>{
@@ -1032,8 +1108,31 @@
     };
 
     const guidedVisualTargets=new Set();
+    // The ring colour is computed from the surface behind the target, so a
+    // theme flip while the highlight is up leaves it painted for the old
+    // background. Sites signal the change in three ways and none of them is
+    // reliably the same one, so all three are watched and the ring is simply
+    // recomputed in place — no re-reveal, no scroll, no flicker.
+    let guidanceThemeWatch=null;
+    const repaintGuidance=()=>{guidedVisualTargets.forEach(node=>{if(node.isConnected)applyAdaptiveGuidance(node)})};
+    const watchGuidanceTheme=()=>{
+      if(guidanceThemeWatch)return;
+      const scheme=matchMedia('(prefers-color-scheme: dark)');
+      const observer=new MutationObserver(repaintGuidance);
+      [document.documentElement,document.body].filter(Boolean).forEach(root=>observer.observe(root,{attributes:true,attributeFilter:['class','style','data-theme','data-color-scheme','data-mode','color-scheme']}));
+      scheme.addEventListener?.('change',repaintGuidance);
+      guidanceThemeWatch={observer,scheme};
+    };
+    const unwatchGuidanceTheme=()=>{
+      if(!guidanceThemeWatch)return;
+      guidanceThemeWatch.observer.disconnect();
+      guidanceThemeWatch.scheme.removeEventListener?.('change',repaintGuidance);
+      guidanceThemeWatch=null;
+    };
     const clearGuidance=()=>{
       clearTimeout(guidanceTimer);
+      unwatchGuidanceTheme();
+      hideGuidanceScrim();
       document.querySelectorAll('.assist-guided-target').forEach(node=>{node.classList.remove('assist-guided-target');clearAdaptiveGuidance(node)});
       document.querySelectorAll('.assist-guide-marker').forEach(marker=>marker.remove());
       guidedVisualTargets.forEach(node=>{node.classList?.remove('assist-guided-target');clearAdaptiveGuidance(node);node.querySelectorAll?.('.assist-guide-marker').forEach(marker=>marker.remove())});
@@ -1058,6 +1157,8 @@
       clearGuidance();
       applyAdaptiveGuidance(visualTarget);
       visualTarget.classList.add('assist-guided-target');guidedVisualTargets.add(visualTarget);
+      showGuidanceScrim(visualTarget);
+      watchGuidanceTheme();
       if(pageTop)scrollTo({top:0,left:0,behavior:'auto'});
       else visualTarget.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
       // Interactive controls already have a visible or accessible name. A

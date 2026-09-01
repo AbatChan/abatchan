@@ -107,6 +107,8 @@ The site owner controls the pre-chat starter suggestions, per-visitor hourly and
 * Trust verified anchors, wait for dynamically rendered targets, and build the resolver from each site's live accessible DOM instead of customer-specific selector maps.
 * Support portable `data-nika-target` and `data-nika-label` labels for ambiguous custom components.
 * Rank targets by the kind of thing named in the request, so "the Business package" highlights the whole card instead of its buy button.
+* Dim the rest of the page while a highlight is up, so the answer reads as the answer.
+* Repaint the highlight ring in real time when the site switches between light and dark.
 
 = 1.4.0 =
 * Use a clean rounded highlight outline without an added glow shadow.

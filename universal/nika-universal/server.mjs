@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { indexStaticSite } from './site-index.mjs';
-import { currentLocationAnswer, historicalContext, normalizeCurrentPath } from '../../lib/context-awareness.js';
+import { currentLocationAnswer, historicalContext, normalizeCurrentPath } from './lib/context-awareness.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = numberBetween(process.env.NIKA_PORT, 1, 65535, 8787);

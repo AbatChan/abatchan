@@ -73,6 +73,31 @@ check('named plans and sections promote headings to meaningful visual containers
 check('generic card item step and row structures highlight as a unit',assistant.includes('const structuralCard=')&&assistant.includes('structuralCard&&headings<=4'));
 check('headings do not receive a duplicate marker inside their text',assistant.includes('textarea,h1,h2,h3,h4,h5,h6,[role="button"]'));
 
+console.log('\n=== sites without semantic markup are still indexed ===');
+check('repeated sibling blocks are found by shape, not by tag or class',assistant.includes('const repeatedBlocks=root=>')&&assistant.includes('const blockSignature=node=>')&&assistant.includes('...repeatedBlocks(root)'));
+check('only matching siblings count as a set',assistant.includes('if(group.length>=2)blocks.push(...group)')&&assistant.includes('a heading followed by a'));
+check('table cells and list items join the registry',assistant.includes('p,td,th,li,dd,blockquote,figure,b,strong'));
+check('bold text can title a block on pages older than sectioning',assistant.includes('const boldTitle=')&&assistant.includes('text.length>=3&&text.length<=60')&&assistant.includes('heading?.textContent||boldTitle'));
+check('a block identity is not limited to semantic containers',assistant.includes('let host=node,depth=0;')&&assistant.includes('while(host.children.length===1&&depth++<2)host=host.children[0];'));
+check('context is decided by contents, not by tag name',assistant.includes('Whether a node is a composed block is a question about its contents')&&!assistant.includes("if(!node.matches('article,section,[role=\"region\"],[role=\"tabpanel\"],details,form,fieldset,[class$=\"-card\"]"));
+check('leaf controls still carry no surrounding context',assistant.includes("if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role=\"heading\"],[role=\"button\"],[role=\"link\"]'))return '';"));
+check('the model still receives a capped, compact index',assistant.includes('.slice(0,80)')&&assistant.includes('kind:targetKind(node)'));
+
+console.log('\n=== the page steps back so the answer reads as the answer ===');
+check('a scrim dims the rest of the page with the highlight',assistant.includes("guidanceScrim.className='assist-guide-scrim'")&&assistantCss.includes('.assist-guide-scrim{')&&assistantCss.includes('.assist-guide-scrim.is-on{opacity:1}'));
+check('the scrim never intercepts a click',assistant.includes('pointer-events:none')&&assistantCss.includes('.assist-guide-scrim{position:fixed;inset:0;z-index:2147482000;pointer-events:none'));
+check('the scrim recedes the page on dark palettes too',assistantCss.includes('backdrop-filter:blur(3px) brightness(.66)')&&assistant.includes('Dimming alone is invisible on a dark site')&&assistantCss.includes('-webkit-backdrop-filter:blur(3px)'));
+check('the scrim styles inline too, for embeds without the stylesheet',assistant.includes('const SCRIM_STYLE=')&&assistant.includes('guidanceScrim.style.cssText=SCRIM_STYLE'));
+check('the target is lifted in place, never re-parented',assistant.includes("node.classList.add('is-guide-lifted')")&&assistantCss.includes('.assist-guided-target.is-guide-lifted{z-index:2147482500}')&&!assistant.includes('appendChild(visualTarget)'));
+check('the lift and its z-index are restored on clear',assistant.includes("const guidanceInlineProperties=['outline','outline-offset','z-index']")&&assistant.includes("node.classList?.remove('is-guide-lifted')")&&assistant.includes('hideGuidanceScrim()'));
+check('reduced motion drops the scrim fade',assistantCss.includes('@media(prefers-reduced-motion:reduce){.assist-guide-scrim{transition:none}}'));
+
+console.log('\n=== a theme flip repaints the ring while it is up ===');
+check('all three theme signals are watched, not just one',assistant.includes("matchMedia('(prefers-color-scheme: dark)')")&&assistant.includes("attributeFilter:['class','style','data-theme','data-color-scheme','data-mode','color-scheme']")&&assistant.includes("scheme.addEventListener?.('change',repaintGuidance)"));
+check('the ring is recomputed in place, without a re-reveal',assistant.includes('const repaintGuidance=()=>')&&assistant.includes('if(node.isConnected)applyAdaptiveGuidance(node)')&&!assistant.includes('repaintGuidance(){revealResolvedTarget'));
+check('the watcher is started with the highlight and stopped with it',assistant.includes('watchGuidanceTheme();')&&assistant.includes('unwatchGuidanceTheme();')&&assistant.indexOf('unwatchGuidanceTheme();')<assistant.indexOf('hideGuidanceScrim();'));
+check('the watcher is never installed twice',assistant.includes('if(guidanceThemeWatch)return;'));
+
 console.log('\n=== difficult elements are indexed locally before AI ===');
 check('semantic controls and fields join the safe target registry',assistant.includes('button,a[href],input:not([type="hidden"]),select,textarea')&&assistant.includes("node.labels?.[0]")&&assistant.includes("node.getAttribute('aria-label')"));
 check('owner labels are portable across arbitrary site structures',assistant.includes('[data-nika-target],[data-nika-label]')&&assistant.includes("node.getAttribute?.('data-nika-target')")&&assistant.includes("node.getAttribute?.('data-nika-label')"));
