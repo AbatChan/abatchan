@@ -90,6 +90,8 @@ check('the model still receives a capped, compact index',assistant.includes('.sl
 console.log('\n=== an isolated guide still styles what it puts on the page ===');
 check('the page gets the target stylesheet when the guide is isolated',assistant.includes('const ensurePageTargetStyle=()=>')&&assistant.includes('if(uiScope()===document)return;')&&assistant.includes('ensurePageTargetStyle();'));
 check('it is injected once, and not where the page already has the rules',assistant.includes("if(document.querySelector('style[data-assist-target-style]'))return;"));
+check('the pill never rides above the conversation',assistant.includes('assist-guide-marker{position:absolute!important;z-index:12!important;')&&assistantCss.includes('.assist-guide-marker{position:absolute;z-index:12')&&!assistant.includes('z-index:2147483000'));
+check('both definitions of the pill agree on its stacking',assistant.includes('a near-maximum z-index made it float over the conversation instead'));
 check('the pill is positioned out of flow, so it adds no layout space',assistant.includes('.assist-guide-marker{position:absolute!important')&&assistant.includes('.assist-guided-target{position:relative!important'));
 check('the same definition serves nested shadow roots and the page',assistant.includes('style.textContent=TARGET_STYLE')&&assistant.split('style.textContent=TARGET_STYLE').length===3);
 
