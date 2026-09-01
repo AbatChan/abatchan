@@ -158,6 +158,7 @@ check('generated FAQ fields have associated labels',faqAdmin.includes('for="faq-
 check('generated review fields associate their labels',reviewsAdmin.includes('label.htmlFor=field.id'));
 
 console.log('\n=== the shell has one implementation, shared with the embed ===');
+check('the primary site mounts interface layers in the body, never on Document',assistant.includes('return root===document?document.body:root;'));
 check('script.js no longer builds it',!script.includes("panel.className='assist-panel'"));
 check('the shell module does',shell.includes("panel.className='assist-panel is-empty'"));
 check('the site still mounts it',script.includes('mountGuideShell('));

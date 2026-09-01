@@ -23,7 +23,15 @@
   const uiScope=()=>(typeof window!=='undefined'&&window.__guideRoot)||document;
   // The backdrop and the peek are styled by the guide's own stylesheet, so they
   // must land inside the same root as the panel or they arrive unstyled.
-  const uiHome=()=>(typeof window!=='undefined'&&window.__guideRoot)||document.body;
+  const uiHome=()=>{
+    const root=(typeof window!=='undefined'&&window.__guideRoot)||document;
+    // The primary Abatchan site deliberately uses the document as its UI
+    // scope. A Document may only contain its existing html element, so adding
+    // the backdrop or reply peek directly to it throws and aborts Nika before
+    // the real composer is wired up. Isolated installs keep their ShadowRoot;
+    // the primary site mounts these interface elements in the body.
+    return root===document?document.body:root;
+  };
   // Cross-origin calls carry no cookies, so the site key is the only thing
   // identifying which tenant is asking.
   const HOST_HEADERS=EMBED.headers&&typeof EMBED.headers==='object'
