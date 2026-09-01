@@ -347,6 +347,22 @@
     }
     return blocks;
   };
+  // The ring is written inline, so it survives anywhere. The label pill is not:
+  // it is a real element appended to the page, and it needs a stylesheet. On
+  // the primary site assistant.css is in the page and covers it. Wherever the
+  // guide is isolated in a shadow root — every WordPress and Universal install
+  // — that sheet is inside the shadow, out of reach of a pill sitting in the
+  // page, which left it an unstyled span taking up layout space. These are the
+  // same rules already given to nested shadow roots, so one definition serves
+  // both. Injected once, and only where the page does not already have them.
+  const ensurePageTargetStyle=()=>{
+    if(uiScope()===document)return;
+    if(document.querySelector('style[data-assist-target-style]'))return;
+    const style=document.createElement('style');
+    style.dataset.assistTargetStyle='true';
+    style.textContent=TARGET_STYLE;
+    (document.head||document.documentElement).appendChild(style);
+  };
   const collectTargetCandidates=root=>{
     const selector='[data-nika-target],[data-nika-label],[data-assist-target],h1,h2,h3,h4,h5,h6,footer,[role="contentinfo"],article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[aria-labelledby],[title],img[alt],p,td,th,li,dd,blockquote,figure,b,strong,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
     const found=[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector),...repeatedBlocks(root)];
@@ -361,6 +377,7 @@
   const installAutomaticTargets=()=>{
     const main=document.querySelector('main,[role="main"]')||document.body;
     if(!main)return;
+    ensurePageTargetStyle();
     const used=new Set([...document.querySelectorAll('[id]')].map(node=>node.id));
     automaticTargetNodes.forEach((node,id)=>{if(targetReachable(node))used.add(id);else automaticTargetNodes.delete(id)});
     const roots=[main,...document.querySelectorAll('footer,[role="contentinfo"]')].filter((node,index,list)=>list.indexOf(node)===index&&(node===main||!node.closest('main,[role="main"]')));

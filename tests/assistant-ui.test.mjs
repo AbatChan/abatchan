@@ -87,6 +87,12 @@ check('context is decided by contents, not by tag name',assistant.includes('Whet
 check('leaf controls still carry no surrounding context',assistant.includes("if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role=\"heading\"],[role=\"button\"],[role=\"link\"]'))return '';"));
 check('the model still receives a capped, compact index',assistant.includes('.slice(0,80)')&&assistant.includes('kind:targetKind(node)'));
 
+console.log('\n=== an isolated guide still styles what it puts on the page ===');
+check('the page gets the target stylesheet when the guide is isolated',assistant.includes('const ensurePageTargetStyle=()=>')&&assistant.includes('if(uiScope()===document)return;')&&assistant.includes('ensurePageTargetStyle();'));
+check('it is injected once, and not where the page already has the rules',assistant.includes("if(document.querySelector('style[data-assist-target-style]'))return;"));
+check('the pill is positioned out of flow, so it adds no layout space',assistant.includes('.assist-guide-marker{position:absolute!important')&&assistant.includes('.assist-guided-target{position:relative!important'));
+check('the same definition serves nested shadow roots and the page',assistant.includes('style.textContent=TARGET_STYLE')&&assistant.split('style.textContent=TARGET_STYLE').length===3);
+
 console.log('\n=== the guide states its own box model ===');
 check('the note pins its own margin against theme and UA defaults',assistantCss.includes('.assist-note{padding:0 16px;')&&assistantCss.includes('margin:0 0 6px!important'));
 check('the reasoning names the user-agent default, not just themes',assistantCss.includes('Margin is not inherited')&&assistantCss.includes('What it does not block is the user-agent default'));
