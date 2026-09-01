@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai chatbot, chatbot, ai assistant, customer support, live chat
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,7 +82,7 @@ Configuration is stored in the WordPress options table. Published content is rea
 
 Newly published or updated pages and posts are discovered automatically. Nika clears its bounded local content index whenever WordPress saves or deletes content. The live browser page is checked again for every question, including pages not yet present in the index. Excluded paths do not load Nika and are rejected by the chat endpoint, so their visible content is not sent for answers or navigation.
 
-For highlighting, the browser builds a compact semantic target list from rendered labels, roles and accessible attributes. It does not send raw page HTML. Conventional theme and page-builder output works automatically; authors can add `data-assist-target="Descriptive label"` when a custom component needs an explicit name. Open shadow roots are indexed, while closed shadow roots, cross-origin frames, canvas pixels and image-only text remain outside browser DOM access.
+For highlighting, the browser builds a compact semantic target list from rendered labels, roles and accessible attributes. It does not send raw page HTML. Conventional theme and page-builder output works automatically; authors can add `data-nika-target="Descriptive label"` when a custom component needs an explicit name. The older `data-assist-target` attribute remains supported. Open shadow roots are indexed, while closed shadow roots, cross-origin frames, canvas pixels and image-only text remain outside browser DOM access.
 
 = Does Abatchan receive my API key or conversations? =
 
@@ -101,6 +101,12 @@ No. Nika is read-only. It does not submit forms, access user accounts, or comple
 The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, every colour and size in the widget, the note under the message box, and custom CSS. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 1.4.1 =
+* Preserve complete navigation details so destination-page highlights run after a visitor clicks a saved action link.
+* Trust verified anchors, wait for dynamically rendered targets, and build the resolver from each site's live accessible DOM instead of customer-specific selector maps.
+* Support portable `data-nika-target` and `data-nika-label` labels for ambiguous custom components.
+* Rank targets by the kind of thing named in the request, so "the Business package" highlights the whole card instead of its buy button.
 
 = 1.4.0 =
 * Use a clean rounded highlight outline without an added glow shadow.

@@ -81,48 +81,40 @@
   const WHATSAPP='https://wa.me/2347041857921';
   const uid=()=>crypto.randomUUID?.()||`m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
 
-  // Stable destinations for conversational navigation. Existing authored IDs
-  // remain the source of truth; headings only receive an ID when the page did
-  // not already provide one. The model can therefore point at a real section
-  // without receiving arbitrary DOM control.
-  const SECTION_TITLES={
-    '/':{
-      'selected-work':'Interface to infrastructure.',
-      'services':'One connected delivery layer.',
-      'delivery-process':'Clean execution, end to end.',
-      'client-reviews':'Reviewed by the people who hired me.',
-      'start-project':'If it plugs in, I build it.'
-    },
-    '/about':{'name-explanation':'Name explanation','principles':'Connected by default.','capabilities':'Design, code, connect.','start-project':'Modern systems. Clean execution.'},
-    '/pricing':{'website':'Website','platform':'Platform','system':'System','quote-process':'Quote the work, not the hype.','client-reviews':'What clients say after delivery.','pricing-faq':'Useful details before we start.','start-project':'Tell me what needs to work.'},
-    '/reviews':{'start-project':'Tell me what needs to work.'},
-    '/brand':{'name':'One word, always lowercase.','voice':'What the brand says.','symbol':'Mirrored, open geometry.','downloads':'The short version.','start-project':'Need something not listed here?'}
-  };
-  const PRECISE_TARGETS={
-    '/about':{'name-explanation':{selector:'.about-copy>p:nth-of-type(2)',label:'name explanation'}},
-    '/pricing':{'monthly-support':{selector:'.scope-strip .scope-item:nth-child(3)',label:'Monthly support'}}
-  };
+  // Every installation builds this registry from its own live DOM. Authored
+  // IDs and labels win, but ordinary accessible HTML is indexed too, so the
+  // shared runtime never needs a customer-specific page or selector map.
   const automaticTargetNodes=new Map();
-  const targetReachable=node=>{
+  // Scroll-triggered reveal animations are everywhere, and they hold a real,
+  // laid-out element at opacity 0 until the visitor reaches it. Such an element
+  // is a perfectly good destination — scrolling to it is exactly what makes it
+  // appear — so transparency alone does not disqualify a candidate. It still
+  // must be attached, displayed, and occupy the page: elements deliberately
+  // hidden are already excluded by `hidden` and `aria-hidden`, both here and
+  // where the registry is built.
+  const targetReachable=(node,requireOpaque=false)=>{
     try{
       const owner=node?.ownerDocument;
       if(owner!==document||!node.isConnected||node.hidden||node.getAttribute?.('aria-hidden')==='true')return false;
       const style=getComputedStyle(node),rect=node.getBoundingClientRect();
-      return style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity||1)>.01&&node.getClientRects().length>0&&rect.width>1&&rect.height>1;
+      if(requireOpaque&&!(Number(style.opacity||1)>.01))return false;
+      return style.display!=='none'&&style.visibility!=='hidden'&&node.getClientRects().length>0&&rect.width>1&&rect.height>1;
     }catch{return false}
   };
+  const authoredTargetText=node=>node.getAttribute?.('data-nika-target')||node.getAttribute?.('data-nika-label')||node.dataset?.assistTarget||'';
   const targetText=node=>{
     if(node.matches('footer,[role="contentinfo"]'))return node.getAttribute('aria-label')||'Footer';
     const heading=node.matches('h1,h2,h3,h4,h5,h6')?node:node.querySelector('h1,h2,h3,h4,h5,h6');
     const labelled=node.matches('label')?node:(node.labels?.[0]||node.querySelector('label'));
+    const labelledBy=(node.getAttribute('aria-labelledby')||'').split(/\s+/).filter(Boolean).map(id=>document.getElementById(id)?.textContent||'').join(' ');
     const summary=node.matches('summary')?node:node.querySelector('summary');
     const directText=node.matches('button,a[href],[role="button"],[role="link"],[role="tab"],option')?node.textContent:'';
     const fieldText=node.matches('input,select,textarea')?(node.getAttribute('aria-label')||node.getAttribute('placeholder')||labelled?.textContent||node.getAttribute('name')):'';
-    return (node.dataset.assistTarget||fieldText||node.getAttribute('aria-label')||labelled?.textContent||heading?.textContent||summary?.textContent||directText||node.getAttribute('title')||node.getAttribute('alt')||node.getAttribute('placeholder')||node.getAttribute('name')||(node.matches('p')?node.textContent:'')||'').replace(/\s+/g,' ').trim().slice(0,120);
+    return (authoredTargetText(node)||fieldText||node.getAttribute('aria-label')||labelledBy||labelled?.textContent||heading?.textContent||summary?.textContent||directText||node.getAttribute('title')||node.getAttribute('alt')||node.getAttribute('placeholder')||node.getAttribute('name')||(node.matches('p')?node.textContent:'')||'').replace(/\s+/g,' ').trim().slice(0,120);
   };
   const targetSlug=text=>text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,58)||'content';
   const targetKind=node=>node.matches('input,select,textarea')?'field':node.matches('button,[role="button"]')?'button':node.matches('a[href],[role="link"]')?'link':node.matches('form,fieldset')?'form':node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?'heading':node.matches('details,summary')?'details':node.matches('img,[alt]')?'media':node.matches('footer,[role="contentinfo"],section,article,[role="region"],[role="tabpanel"]')?'section':'content';
-  const targetPriority=node=>node.hasAttribute('data-assist-target')&&!node.hasAttribute('data-assist-auto')?8:['field','button','link','form'].includes(targetKind(node))?7:targetKind(node)==='heading'?6:['details','section'].includes(targetKind(node))?5:targetKind(node)==='media'?4:2;
+  const targetPriority=node=>(node.hasAttribute('data-nika-target')||node.hasAttribute('data-nika-label')||node.hasAttribute('data-assist-target')&&!node.hasAttribute('data-assist-auto'))?8:['field','button','link','form'].includes(targetKind(node))?7:targetKind(node)==='heading'?6:['details','section'].includes(targetKind(node))?5:targetKind(node)==='media'?4:2;
   const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:3px solid var(--assist-guide-border,#312e81)!important;outline-offset:6px!important;border-radius:var(--assist-guide-radius,16px)!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}.assist-guide-marker{position:absolute!important;z-index:2147483000!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;display:inline-flex!important;align-items:center!important;gap:7px!important;padding:6px 10px!important;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent)!important;border-radius:999px!important;color:var(--assist-guide-marker-text,#fff)!important;background:var(--assist-guide-marker-bg,#6366f1)!important;box-shadow:none!important;font:650 11px/1.2 system-ui,sans-serif!important;letter-spacing:.015em!important;pointer-events:none!important}.assist-guide-marker::before{content:""!important;width:6px!important;height:6px!important;flex:0 0 6px!important;border:1px solid currentColor!important;border-radius:50%!important;background:transparent!important;opacity:.82!important}';
   const effectiveTargetBackground=(node,includeSelf=true)=>{
     for(let current=includeSelf?node:node?.parentElement;current&&current.nodeType===1;current=current.parentElement){
@@ -180,7 +172,7 @@
     guidanceInlineRestore.delete(node);
   };
   const collectTargetCandidates=root=>{
-    const selector='[data-assist-target],h1,h2,h3,h4,h5,h6,footer,[role="contentinfo"],article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[title],img[alt],p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
+    const selector='[data-nika-target],[data-nika-label],[data-assist-target],h1,h2,h3,h4,h5,h6,footer,[role="contentinfo"],article,section,[role="region"],[role="tabpanel"],details,summary,form,fieldset,label,button,a[href],input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="tab"],[aria-label],[aria-labelledby],[title],img[alt],p,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]';
     const found=[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)];
     for(const node of root.querySelectorAll('*')){
       if(node.shadowRoot){
@@ -207,6 +199,10 @@
         let id=base,index=2;
         while(used.has(id))id=`${base}-${index++}`;
         node.id=id;
+        // Minted here, not authored by the site. A generated id is only ever a
+        // suggestion drawn from the same index the model reads, so it must not
+        // carry the authority of an anchor the site's own author wrote.
+        node.dataset.assistGeneratedId='true';
       }
       used.add(node.id);automaticTargetNodes.set(node.id,node);
     });
@@ -241,23 +237,7 @@
   };
   syncNavigationState();
   addEventListener('pageshow',syncNavigationState);
-  const installSectionAnchors=()=>{
-    Object.entries(PRECISE_TARGETS[pagePath()]||{}).forEach(([id,target])=>{
-      const node=document.querySelector(target.selector);
-      if(!node)return;
-      node.id=id;
-      node.dataset.assistTarget=target.label;
-    });
-    const wanted=SECTION_TITLES[pagePath()]||{};
-    const headings=[...document.querySelectorAll('main h1,main h2,main h3')];
-    Object.entries(wanted).forEach(([id,title])=>{
-      if(document.getElementById(id))return;
-      const heading=headings.find(node=>node.textContent.trim()===title);
-      const target=heading?.closest('section,article')||heading;
-      if(target&&!target.id)target.id=id;
-    });
-    installAutomaticTargets();
-  };
+  const installSectionAnchors=()=>installAutomaticTargets();
   installSectionAnchors();
 
   const loadScript=src=>new Promise((resolve,reject)=>{
@@ -861,12 +841,107 @@
       const normalizedQuery=[...wanted].join(' '),normalizedCandidate=[...available].join(' ');
       return matches/wanted.size+(normalizedCandidate.includes(normalizedQuery)?1:0);
     };
-    const closestTarget=label=>[...automaticTargetNodes.values()].filter(targetReachable)
-      .map(node=>({node,score:targetScore(label,node.dataset.assistTarget)+(node.closest('main,[role="main"]')?0.25:0)+(targetKind(node)==='heading'?0.08:0)}))
-      .sort((a,b)=>b.score-a.score)[0];
+    // A request names what to find and usually what kind of thing it is: "the
+    // Business package", "the signup button", "the pricing section". That kind
+    // word almost never appears inside the element itself, so scoring it as
+    // content only dilutes the real match — "Business package" would score half
+    // against a card whose visible words are "Business". It is read as
+    // structure instead: the remaining words choose the target, the kind word
+    // decides which shape of target should win.
+    /* nika:kind-vocabulary:start */
+    const TARGET_KIND_WORDS={
+      card:['package','packages','plan','plans','tier','tiers','card','cards','bundle','bundles','product','products','option','options','item','items','tile','tiles','panel','panels'],
+      section:['section','sections','area','areas','block','blocks','part'],
+      button:['button','buttons','cta'],
+      link:['link','links'],
+      field:['field','fields','input','inputs','textbox'],
+      form:['form','forms'],
+      heading:['heading','headings','title','titles'],
+      media:['image','images','photo','photos','picture','pictures','logo','icon']
+    };
+    const TARGET_KINDS=new Map(Object.entries(TARGET_KIND_WORDS).flatMap(([kind,words])=>words.map(word=>[word,kind])));
+    const TARGET_STOPWORDS=new Set(['the','a','an','and','or','of','for','to','in','on','at','my','our','your','its','it','this','that','these','those','please','show','me','us','with','take']);
+    const targetKindHint=label=>{for(const token of targetTokens(label)){const kind=TARGET_KINDS.get(token);if(kind)return kind}return ''};
+    // Keep the original label when nothing but structure was named. "Highlight
+    // the packages" still deserves its ordinary literal match, because some
+    // sites really do title a section "Packages".
+    const withoutKindWords=label=>{
+      const kept=[...targetTokens(label)].filter(token=>!TARGET_KINDS.has(token)&&!TARGET_STOPWORDS.has(token));
+      return kept.length?kept.join(' '):String(label||'');
+    };
+    /* nika:kind-vocabulary:end */
+    // Container shape is judged structurally, never by a customer's class
+    // vocabulary: a repeated item element, or anything holding a heading with
+    // its own controls or list.
+    const structuralContainer=node=>{
+      if(!node?.matches)return false;
+      if(node.matches('article,li,[role="listitem"],[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"],[class*=" card "],[class*=" item "]'))return true;
+      if(node.matches('input,select,textarea,button,a[href],label,summary,img,p,span,h1,h2,h3,h4,h5,h6,[role="heading"],[role="button"],[role="link"]'))return false;
+      const headings=node.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]').length;
+      const controls=node.querySelectorAll('button,a[href],input,select,textarea').length;
+      return headings>=1&&headings<=3&&(controls>0||node.querySelectorAll('li').length>=2);
+    };
+    const targetKindAgrees=(node,hint)=>{
+      const kind=targetKind(node);
+      if(hint==='card')return structuralContainer(node);
+      if(hint==='section')return kind==='section'||structuralContainer(node);
+      return kind===hint;
+    };
+    // A heading is never counted as a conflict for container requests: the
+    // visual-container rule promotes it to the card it introduces anyway.
+    const TARGET_KIND_CONFLICTS={card:['button','link','field','media'],section:['button','link','field','media'],button:['field','section','media'],link:['field','section','media'],field:['section','heading','media'],form:['heading','media'],heading:['field','form','media'],media:['field','form','heading']};
+    const targetKindConflicts=(node,hint)=>(TARGET_KIND_CONFLICTS[hint]||[]).includes(targetKind(node));
+    // Cards routinely lead with a short eyebrow, kicker or badge above their
+    // heading, and that label is what names them ("Business" over "A growing
+    // portfolio"). It identifies a container far more reliably than the prose
+    // inside it, where the same word may only be mentioned in passing.
+    const containerIdentity=node=>{
+      if(!node?.matches?.('article,li,[role="listitem"],section,[role="region"],[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]'))return '';
+      for(const child of node.children){
+        const text=String(child.textContent||'').replace(/\s+/g,' ').trim();
+        if(!text)continue;
+        return !child.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')&&text.length<=40?text:'';
+      }
+      return '';
+    };
+    const targetAliases=node=>{
+      const labelledBy=(node.getAttribute('aria-labelledby')||'').split(/\s+/).filter(Boolean).map(id=>document.getElementById(id)?.textContent||'').join(' ');
+      const heading=node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?node:node.querySelector('h1,h2,h3,h4,h5,h6,[role="heading"]');
+      const label=node.matches('label')?node:(node.labels?.[0]||node.querySelector('label'));
+      const aliases=[
+        node.getAttribute('data-nika-target'),node.getAttribute('data-nika-label'),node.dataset.assistTarget,
+        node.getAttribute('aria-label'),labelledBy,label?.textContent,heading?.textContent,containerIdentity(node),
+        node.matches('summary')?node.textContent:node.querySelector('summary')?.textContent,
+        node.getAttribute('title'),node.getAttribute('alt'),node.getAttribute('placeholder'),node.getAttribute('name'),
+        node.id?.replace(/^assist-/,'').replace(/-/g,' ')
+      ];
+      return [...new Set(aliases.map(value=>String(value||'').replace(/\s+/g,' ').trim().slice(0,180)).filter(value=>value.length>=2))];
+    };
+    const targetContext=node=>{
+      if(!node.matches('article,section,[role="region"],[role="tabpanel"],details,form,fieldset,[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"]'))return '';
+      return String(node.innerText||'').replace(/\s+/g,' ').trim().slice(0,420);
+    };
+    const targetMatch=(label,node,request='')=>{
+      // The model's label is a summary and often drops the structural noun the
+      // visitor actually used ("Business" for "the Business package"). The
+      // original wording is kept as a secondary source for that kind alone; it
+      // never contributes content tokens, so it cannot pull the match onto an
+      // unrelated element.
+      const hint=targetKindHint(label)||targetKindHint(request),query=targetKindHint(label)?withoutKindWords(label):label;
+      const direct=targetAliases(node).reduce((best,alias)=>Math.max(best,targetScore(query,alias)),0);
+      const contextual=targetContext(node)?targetScore(query,targetContext(node))*.84:0;
+      const base=Math.max(direct,contextual);
+      // Structure only ranks targets that already matched on content, so a
+      // named kind can never invent a highlight out of an unrelated element.
+      if(!hint||!base)return base;
+      return targetKindAgrees(node,hint)?base+.5:targetKindConflicts(node,hint)?base*.55:base;
+    };
+    const closestTarget=(label,request='')=>[...automaticTargetNodes.values()].filter(node=>targetReachable(node))
+      .map(node=>({node,score:targetMatch(label,node,request),priority:targetPriority(node),area:node.getBoundingClientRect().width*node.getBoundingClientRect().height}))
+      .sort((a,b)=>b.score-a.score||b.priority-a.priority||a.area-b.area)[0];
     const relativePriceTarget=label=>{
       if(!/\b(?:cheapest|lowest)\b/.test(String(label||'').toLowerCase())||!/\b(?:price|plan|option)\b/.test(String(label||'').toLowerCase()))return null;
-      const headings=[...document.querySelectorAll('main h1,main h2,main h3,main h4,main h5,main h6')].filter(targetReachable);
+      const headings=[...document.querySelectorAll('main h1,main h2,main h3,main h4,main h5,main h6')].filter(node=>targetReachable(node));
       let afterAddOns=false;
       const prices=[];
       headings.forEach((heading,index)=>{
@@ -911,19 +986,20 @@
         const headings=node.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]').length;
         const controls=node.querySelectorAll('button,a[href],input,select,textarea').length;
         const listItems=node.querySelectorAll('li').length;
+        const structuralCard=node.matches('article,[role="listitem"],[class$="-card"],[class$="-item"],[class$="-step"],[class$="-row"],[class*=" card "],[class*=" item "]');
         const isPlan=headings<=3&&controls>0&&/(?:[$£€₦]|USD\s*)\s*[\d,.]+/i.test(content);
         const isSection=headings<=4&&listItems>=2;
-        if(isPlan||isSection)return node;
+        if(isPlan||isSection||(structuralCard&&headings<=4&&content.length>ownText.length))return node;
       }
       return target;
     };
-    const targetFor=(url,label,preferExact=false)=>{
+    const targetFor=(url,label,preferExact=false,allowFallback=true,request='')=>{
       installAutomaticTargets();
       if(!url.hash){
         if(preferExact&&label){
           const relative=relativePriceTarget(label);
           if(relative)return relative;
-          const ranked=closestTarget(label);
+          const ranked=closestTarget(label,request);
           if(ranked?.score>=.6)return ranked.node;
           return null;
         }
@@ -932,18 +1008,26 @@
       try{
         const id=decodeURIComponent(url.hash.slice(1));
         const raw=document.getElementById(id)||automaticTargetNodes.get(id);
-        // A model-supplied anchor must agree with the requested content. If it
-        // points at a different section, prefer the best matching safe target
-        // on this page rather than faithfully highlighting the wrong thing.
-        if(preferExact&&label&&(!raw||targetScore(label,targetText(raw))<.6)){
-          const ranked=closestTarget(label);
+        // An anchor the site itself authored is a stronger destination contract
+        // than a conversational label. Labels can be aliases ("product plans")
+        // while the visible heading is branded copy, so never throw away a real
+        // authored anchor merely because their words differ.
+        if(raw&&!raw.dataset.assistGeneratedId)return raw;
+        // A generated anchor has no such authority: the model chose it from the
+        // compact index, and it routinely lands on a control that merely
+        // repeats the name ("buy Business") instead of the thing named. Keep it
+        // unless this page holds a clearly better answer to the same words.
+        if(raw&&preferExact&&label){
+          const ranked=closestTarget(label,request);
+          if(ranked?.node&&ranked.node!==raw&&ranked.score>targetMatch(label,raw,request)+.15)return ranked.node;
+        }
+        if(raw)return raw;
+        if(!allowFallback)return null;
+        if(preferExact&&label){
+          const ranked=closestTarget(label,request);
           if(ranked?.score>=.6)return ranked.node;
         }
-        // Authored assistant targets are deliberately more precise than their
-        // containing section. Everything else keeps the safer section-level
-        // highlight used by the rest of the site.
-        if(raw?.matches('[data-assist-target]'))return raw;
-        return raw?.closest('section,article')||raw;
+        return null;
       }catch{return null}
     };
 
@@ -960,12 +1044,12 @@
       });
     };
 
-    const revealTarget=(url,label,preferExact=false)=>{
-      const target=targetFor(url,label,preferExact);
+    const visualTargetFor=(target,label)=>target?.matches('input,select,textarea,img,option')
+      ? (target.closest('label,.field,[role="group"],fieldset')||target.parentElement||target)
+      : semanticVisualTarget(target,label);
+    const revealResolvedTarget=(target,url,label,preferExact=false)=>{
       if(!target)return {found:false,highlighted:false,label:String(label||'')};
-      const visualTarget=target.matches('input,select,textarea,img,option')
-        ? (target.closest('label,.field,[role="group"],fieldset')||target.parentElement||target)
-        : semanticVisualTarget(target,label);
+      const visualTarget=visualTargetFor(target,label);
       if(!targetReachable(visualTarget))return {found:false,highlighted:false,label:String(label||'')};
       const pageTop=!url.hash&&!preferExact;
       // The border and title pill are one guide state. Clearing an older
@@ -989,6 +1073,27 @@
       guidanceTimer=setTimeout(clearGuidance,GUIDANCE_DURATION);
       return {found:true,highlighted:true,label:String(label||targetText(target)).slice(0,120),id:String(target.id||'').slice(0,100)};
     };
+    const waitForTarget=(url,label,preferExact=false,request='')=>{
+      const ready=allowFallback=>{
+        const target=targetFor(url,label,preferExact,allowFallback,request);
+        return targetReachable(visualTargetFor(target,label))?target:null;
+      };
+      const immediate=ready(!url.hash);
+      if(immediate)return Promise.resolve(immediate);
+      return new Promise(resolve=>{
+        let settled=false,allowFallback=!url.hash;
+        const finish=target=>{if(settled)return;settled=true;observer.disconnect();clearTimeout(fallbackTimer);clearTimeout(ceiling);resolve(target||null)};
+        const attempt=()=>{const target=ready(allowFallback);if(target)finish(target)};
+        const observer=new MutationObserver(attempt);
+        observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['id','hidden','aria-hidden','aria-label','aria-labelledby','data-nika-target','data-nika-label','data-assist-target']});
+        // Give a destination with a named anchor time to render that exact ID
+        // before considering a semantic fallback. This covers hydrated SPAs,
+        // builders and asynchronously inserted WordPress blocks.
+        const fallbackTimer=setTimeout(()=>{allowFallback=true;attempt()},url.hash?1100:0);
+        const ceiling=setTimeout(()=>finish(ready(true)),1900);
+      });
+    };
+    const revealTargetWhenReady=async(url,label,preferExact=false,request='')=>revealResolvedTarget(await waitForTarget(url,label,preferExact,request),url,label,preferExact);
 
     const clearFormGuidance=form=>{
       clearTimeout(formGuidanceTimer);
@@ -1054,7 +1159,7 @@
       const current=pagePath();
       rememberJourney({from:current,to:destination+url.hash,label:label||'the section',at:Date.now()});
       if(destination===current){
-        revealTarget(url,label,Boolean(handoff?.section_requested));
+        void revealTargetWhenReady(url,label,Boolean(handoff?.section_requested),handoff?.request||'');
         prepareProjectForm(handoff);
         return false;
       }
@@ -1081,6 +1186,18 @@
       return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>';
     };
 
+    const completeLinkHandoff=(destination,href,label)=>{
+      let url;try{url=new URL(href,location.href)}catch{return null}
+      const target=destination&&typeof destination==='object'?destination:{};
+      const wantsTarget=target.section_requested===true||Boolean(url.hash);
+      return {
+        ...target,href:publicPath(url)+url.hash,label,
+        section_requested:wantsTarget,
+        status:String(target.status||target.departure||(wantsTarget?`Finding ${label}.`:`Opening ${label}.`)).slice(0,240),
+        arrival:String(target.arrival||(wantsTarget?`${label} is highlighted.`:`${label} is open.`)).slice(0,240)
+      };
+    };
+
     // Guided actions keep a normal destination link in their conclusion. The
     // automation remains the first path, while the real href is a durable
     // fallback that can reopen or re-highlight the same place after reload.
@@ -1096,10 +1213,10 @@
         const label=String(destination.label||'destination').trim();
         const key=`${href}\n${label.toLowerCase()}`;
         if(seen.has(key))return;seen.add(key);
-        const alreadyLinked=[...arrival.querySelectorAll('a[href]')].some(link=>{
+        const alreadyLinked=[...arrival.querySelectorAll('a[href]')].find(link=>{
           try{const linked=new URL(link.getAttribute('href'),location.href);return publicPath(linked)+linked.hash===href&&link.textContent.includes(label)}catch{return false}
         });
-        if(alreadyLinked)return;
+        if(alreadyLinked){alreadyLinked.__nikaHandoff=completeLinkHandoff(destination,href,label);return}
         const link=document.createElement('a');
         link.className='assist-action-link assist-journey-fallback';
         link.href=href;
@@ -1107,7 +1224,7 @@
         link.addEventListener('click',event=>{
           if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
           event.preventDefault();
-          navigateTo(href,label,{section_requested:destination.section_requested===true,form_prefill:destination.form_prefill,replace_fields:destination.replace_fields});
+          navigateTo(href,label,completeLinkHandoff(destination,href,label));
         });
         host.append(document.createTextNode(' '),link);
       });
@@ -1129,7 +1246,7 @@
         link.innerHTML=`${actionIcon(href)}<span>${escapeText(label)}</span>`;
         link.addEventListener('click',event=>{
           if(event.button||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
-          event.preventDefault();navigateTo(href,label);
+          event.preventDefault();navigateTo(href,label,link.__nikaHandoff||(url.hash?completeLinkHandoff({},href,label):null));
         });
         internal.push({href,label});
       });
@@ -1585,18 +1702,18 @@
       // One paint so the progress row is visible, then start immediately. The
       // departure has already finished streaming, so anything longer than a
       // frame is delay the visitor feels for nothing.
-      afterPaint(()=>{
+      afterPaint(async()=>{
         if(publicPath(url)!==pagePath()){
           navigateTo(journey.href,journey.label,journey);
           return;
         }
         if(sequence.length>1){
           let index=0,allFound=true,lastReveal={found:false,highlighted:false};
-          const runNext=()=>{
+          const runNext=async()=>{
             const step=sequence[index];
             let stepUrl;try{stepUrl=new URL(step.href,location.href)}catch{return}
             if(index>0)journeyStep(bubble,step.status);
-            lastReveal=revealTarget(stepUrl,step.label,step.section_requested===true);
+            lastReveal=await revealTargetWhenReady(stepUrl,step.label,step.section_requested===true,journey.request||'');
             allFound=allFound&&lastReveal.found===true;
             if(index===0&&matchMedia('(max-width:640px)').matches&&panel.classList.contains('is-open'))launch.click();
             let settled=false,ceiling=0;
@@ -1619,7 +1736,7 @@
           clearTimeout(ceiling);
           completeJourney(bubble,journey,actionResultFor(journey,revealResult,formResult));
         };
-        revealResult=revealTarget(url,journey.label,journey.section_requested===true);
+        revealResult=await revealTargetWhenReady(url,journey.label,journey.section_requested===true,journey.request||'');
         formResult=prepareProjectForm(journey);
         // On phones the sheet fills the viewport. Minimize it after a verified
         // same-page action as well, otherwise the visitor cannot see the exact
@@ -1640,13 +1757,13 @@
       const handoff=JSON.parse(sessionStorage.getItem(NAV_STORE)||'null');
       if(handoff&&Date.now()-Number(handoff.at||0)<30000&&typeof handoff.status==='string'&&typeof handoff.arrival==='string'){
         sessionStorage.removeItem(NAV_STORE);
-        afterPaint(()=>{
+        afterPaint(async()=>{
           const keepPageVisible=matchMedia('(max-width:640px)').matches;
           if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);
           const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
           journeyStep(bubble,handoff.status);
-          const revealResult=revealTarget(url,handoff.label,handoff.section_requested===true);
+          const revealResult=await revealTargetWhenReady(url,handoff.label,handoff.section_requested===true,handoff.request||'');
           const formResult=prepareProjectForm(handoff);
           const transition=document.querySelector('.page-transition');
           let settled=false,ceiling=0;
@@ -1860,6 +1977,9 @@
         }
         answer+=decoder.decode();if(frame)cancelAnimationFrame(frame);frame=0;
         const navigation=readNavigation(answer,res.headers.get('X-Abatchan-Action-Token'));
+        // Carried only so the resolver can read the kind of thing the visitor
+        // named. It is never sent anywhere and never becomes visible copy.
+        if(navigation.action)navigation.action.request=String(text||'').replace(/\s+/g,' ').trim().slice(0,240);
         const rawAnswer=navigation.text;
         answer=readAnswerEnvelope(rawAnswer);
         if(!answer)throw new Error('The guide returned an empty response.');

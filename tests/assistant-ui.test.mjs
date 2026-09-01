@@ -57,7 +57,9 @@ check('escape and outside press dismiss the tooltip',assistant.includes("event.k
 console.log('\n=== guided highlight is one synchronized state ===');
 check('one cleanup removes both border and title pill',assistant.includes("document.querySelectorAll('.assist-guided-target')")&&assistant.includes("document.querySelectorAll('.assist-guide-marker')"));
 check('one timer clears the complete guidance state',assistant.includes('guidanceTimer=setTimeout(clearGuidance,GUIDANCE_DURATION)'));
-check('compound journeys expose one clickable fallback per target',assistant.includes("journey.steps:[journey]")&&assistant.includes('destinations.forEach(destination=>')&&assistant.includes('section_requested:destination.section_requested===true'));
+check('compound journeys expose one clickable fallback per target',assistant.includes("journey.steps:[journey]")&&assistant.includes('destinations.forEach(destination=>')&&assistant.includes('completeLinkHandoff(destination,href,label)'));
+check('fallback links preserve a complete cross-page handoff',assistant.includes('const completeLinkHandoff=')&&assistant.includes('status:String(target.status')&&assistant.includes('arrival:String(target.arrival'));
+check('an existing answer link inherits the verified journey target',assistant.includes('alreadyLinked.__nikaHandoff=completeLinkHandoff(destination,href,label)')&&assistant.includes('link.__nikaHandoff||'));
 check('highlight rings adapt to the surface outside the target',assistant.includes('effectiveTargetBackground(node,false)')&&assistant.includes('luminance<.42')&&assistant.includes("dark?'#ffffff':'#312e81'"));
 check('adaptive highlight styles are removed with the guidance state',assistant.includes('clearAdaptiveGuidance(node)')&&assistant.includes("removeProperty(name)"));
 check('theme-important control styles cannot suppress the adaptive ring',assistant.includes("setProperty('outline',`3px solid ${border}`,'important')")&&assistant.includes("setProperty('outline-offset','6px','important')")&&assistant.includes('guidanceInlineRestore'));
@@ -68,18 +70,87 @@ check('compact controls do not receive a duplicate floating label',assistant.inc
 check('the page footer root itself is a first-class semantic highlight target',assistant.includes("node.matches('footer,[role=\"contentinfo\"]')")&&assistant.includes("document.querySelectorAll('footer,[role=\"contentinfo\"]')")&&assistant.includes("root.matches?.(selector)?[root]:[]"));
 check('relative price requests resolve to the actual price heading',assistant.includes('const relativePriceTarget=label=>')&&assistant.includes('node:heading,labelNode')&&assistant.includes("if(relative)return relative"));
 check('named plans and sections promote headings to meaningful visual containers',assistant.includes('const semanticVisualTarget=(target,label)=>')&&assistant.includes('const isPlan=')&&assistant.includes('const isSection=')&&assistant.includes('semanticVisualTarget(target,label)'));
+check('generic card item step and row structures highlight as a unit',assistant.includes('const structuralCard=')&&assistant.includes('structuralCard&&headings<=4'));
 check('headings do not receive a duplicate marker inside their text',assistant.includes('textarea,h1,h2,h3,h4,h5,h6,[role="button"]'));
 
 console.log('\n=== difficult elements are indexed locally before AI ===');
 check('semantic controls and fields join the safe target registry',assistant.includes('button,a[href],input:not([type="hidden"]),select,textarea')&&assistant.includes("node.labels?.[0]")&&assistant.includes("node.getAttribute('aria-label')"));
+check('owner labels are portable across arbitrary site structures',assistant.includes('[data-nika-target],[data-nika-label]')&&assistant.includes("node.getAttribute?.('data-nika-target')")&&assistant.includes("node.getAttribute?.('data-nika-label')"));
+check('the shared resolver contains no customer-specific selector map',!assistant.includes('SECTION_TITLES')&&!assistant.includes('PRECISE_TARGETS')&&!assistant.includes("'.scope-strip .scope-item:nth-child(3)'"));
 check('open shadow roots can register and paint their own targets',assistant.includes('if(node.shadowRoot)')&&assistant.includes("style.dataset.assistTargetStyle='true'")&&assistant.includes('automaticTargetNodes.get(id)'));
-check('void form controls highlight a safe visual wrapper',assistant.includes("target.matches('input,select,textarea,img,option')")&&assistant.includes("target.closest('label,.field,[role=\"group\"],fieldset')"));
+check('void form controls highlight a safe visual wrapper',assistant.includes("target?.matches('input,select,textarea,img,option')")&&assistant.includes("target.closest('label,.field,[role=\"group\"],fieldset')"));
 check('specific field placeholders can identify hard controls',assistant.includes("node.matches('input,select,textarea')?(node.getAttribute('aria-label')||node.getAttribute('placeholder')||labelled?.textContent||node.getAttribute('name'))"));
 check('an inaccessible exact target never falls back to the whole page',assistant.includes("if(ranked?.score>=.6)return ranked.node;\n          return null;"));
-check('main content outranks duplicate footer and navigation labels',assistant.includes("node.closest('main,[role=\"main\"]')?0.25:0")&&assistant.includes("targetKind(node)==='heading'?0.08:0"));
-check('detached hidden and zero-size targets are discarded before success',assistant.includes('owner!==document||!node.isConnected')&&assistant.includes('node.getClientRects().length>0&&rect.width>1&&rect.height>1')&&assistant.includes('.filter(targetReachable)'));
+check('authored anchors outrank conversational wording',assistant.includes('if(raw&&!raw.dataset.assistGeneratedId)return raw;')&&assistant.includes('never throw away a real')&&!assistant.includes("targetScore(label,targetText(raw))<.6"));
+check('ids Nika mints are marked as its own suggestion',assistant.includes("node.dataset.assistGeneratedId='true'")&&assistant.includes('Minted here, not authored by the site'));
+check('a generated anchor loses to a clearly better answer',assistant.includes('if(raw&&preferExact&&label){')&&assistant.includes('ranked.score>targetMatch(label,raw,request)+.15'));
+check('a generated anchor still wins when nothing beats it',assistant.includes("ranked.node!==raw&&")&&assistant.indexOf('ranked.score>targetMatch(label,raw,request)+.15')<assistant.indexOf('if(raw)return raw;'));
+check('fuzzy confidence is based on target evidence, not page position',assistant.includes('const targetMatch=(label,node,request=\'\')=>')&&assistant.includes('b.score-a.score||b.priority-a.priority||a.area-b.area')&&!assistant.includes("node.closest('main,[role=\"main\"]')?0.25:0"));
+check('dynamic destinations wait for live DOM mutations before falling back',assistant.includes('const waitForTarget=')&&assistant.includes('new MutationObserver(attempt)')&&assistant.includes("url.hash?1100:0")&&assistant.includes('revealTargetWhenReady'));
+check('detached hidden and zero-size targets are discarded before success',assistant.includes('owner!==document||!node.isConnected')&&assistant.includes('node.getClientRects().length>0&&rect.width>1&&rect.height>1')&&assistant.includes('.filter(node=>targetReachable(node))'));
+check('the reachability filter never receives the array index as a flag',!assistant.includes('.filter(targetReachable)')&&assistant.includes('.filter(node=>targetReachable(node))'));
+check('a scroll-reveal target is not disqualified for being transparent',assistant.includes('const targetReachable=(node,requireOpaque=false)=>')&&assistant.includes("if(requireOpaque&&!(Number(style.opacity||1)>.01))return false;")&&assistant.includes('Scroll-triggered reveal animations are everywhere'));
+check('deliberately hidden elements are still excluded',assistant.includes("node.hidden||node.getAttribute?.('aria-hidden')==='true'")&&assistant.includes("if(node.closest('[hidden],[aria-hidden=\"true\"]'))return;"));
 check('unverified actions never reuse an optimistic arrival sentence',assistant.includes("result?.outcome==='completed'")&&assistant.includes("I couldn't find or highlight"));
 check('the browser sends compact labels and kinds, never page HTML',assistant.includes(".slice(0,80)")&&assistant.includes('kind:targetKind(node)')&&!assistant.includes('outerHTML'));
+
+console.log('\n=== a named kind ranks targets instead of diluting the match ===');
+check('kind words are read as structure, not as content',assistant.includes('const targetKindHint=label=>')&&assistant.includes('const withoutKindWords=label=>')&&assistant.includes('const hint=targetKindHint(label)||targetKindHint(request)'));
+check('structure only reorders targets that already matched on content',assistant.includes('if(!hint||!base)return base;')&&assistant.includes('targetKindAgrees(node,hint)?base+.5:targetKindConflicts(node,hint)?base*.55:base'));
+check('container shape is judged structurally, not by class vocabulary',assistant.includes('const structuralContainer=node=>')&&assistant.includes('headings>=1&&headings<=3&&(controls>0||node.querySelectorAll(\'li\').length>=2)'));
+check('headings are never a conflict for container requests',assistant.includes("card:['button','link','field','media']")&&assistant.includes("section:['button','link','field','media']"));
+
+// The vocabulary and the score arithmetic are pure, so they are exercised for
+// real rather than asserted as source text. This is the exact live failure that
+// closed 1.4.1: "Highlight the Business package" resolved to nothing, because
+// "package" halved the score of the card whose visible word is "Business".
+const vocabulary=assistant.split('/* nika:kind-vocabulary:start */')[1]?.split('/* nika:kind-vocabulary:end */')[0]||'';
+const targetTokens=value=>new Set(String(value||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').match(/[a-z0-9]{2,}/g)||[]);
+const targetScore=(query,candidate)=>{
+  const wanted=targetTokens(query),available=targetTokens(candidate);
+  if(!wanted.size||!available.size)return 0;
+  let matches=0;wanted.forEach(token=>{if(available.has(token))matches++});
+  const normalizedQuery=[...wanted].join(' '),normalizedCandidate=[...available].join(' ');
+  return matches/wanted.size+(normalizedCandidate.includes(normalizedQuery)?1:0);
+};
+const kind=vocabulary
+  ? new Function('targetTokens',`${vocabulary};return{targetKindHint,withoutKindWords}`)(targetTokens)
+  : {targetKindHint:()=>'',withoutKindWords:label=>label};
+check('the vocabulary block is extractable for behavioural testing',Boolean(vocabulary));
+check('"Business package" asks for a card named Business',kind.targetKindHint('Business package')==='card'&&kind.withoutKindWords('Business package')==='business');
+check('"signup button" and "pricing section" keep their own kinds',kind.targetKindHint('signup button')==='button'&&kind.withoutKindWords('signup button')==='signup'&&kind.targetKindHint('pricing section')==='section'&&kind.withoutKindWords('pricing section')==='pricing');
+check('a bare kind request keeps its literal label',kind.withoutKindWords('the packages')==='the packages');
+check('ordinary labels are left completely alone',kind.targetKindHint('cheapest price')===''&&kind.targetKindHint('Monthly support')===''&&kind.withoutKindWords('Monthly support')==='monthly support');
+// Scored against the real markup of a plan card: its own words never contain
+// "package", while the buy button carries the plan name verbatim.
+const planCard='Business A growing portfolio $199 one time 5 websites WordPress + Universal installers customer-hosted data and usage remove Nika branding priority email support buy Business';
+const otherCard='Personal One useful site $99 one time 1 website choose WordPress or Universal';
+const query=kind.withoutKindWords('Business package');
+const cardScore=targetScore(query,planCard)*.84+.5;
+const buttonScore=targetScore(query,'buy Business')*.55;
+check('the named card outscores its own buy button',cardScore>buttonScore&&cardScore>=0.6);
+check('a differently named card is not a candidate at all',targetScore(query,otherCard)===0);
+check('a card is identified by its own eyebrow label, not its prose',assistant.includes('const containerIdentity=node=>')&&assistant.includes('containerIdentity(node),')&&assistant.includes("text.length<=40?text:''"));
+// A card that merely mentions the word scores only through context (x.84),
+// while the card actually named by it matches an alias at full weight. Without
+// that separation both land on 2.18 and the smaller box wins the tie.
+const namedByEyebrow=targetScore(query,'Business')+.5;
+const mentionsInProse=targetScore(query,'01 Select the installer at checkout Personal includes one platform. Business includes both.')*.84+.5;
+check('the card named Business outranks one that only mentions it',namedByEyebrow>mentionsInProse);
+check('the old scoring really did miss this target',targetScore('Business package',planCard)*.84<0.6);
+
+console.log('\n=== the visitor\'s own wording survives the model summary ===');
+check('the live question is attached to the validated action only',assistant.includes("if(navigation.action)navigation.action.request=String(text||'')")&&assistant.includes('never sent anywhere and never becomes visible copy'));
+check('the resolver reads a kind from the request when the label has none',assistant.includes('const hint=targetKindHint(label)||targetKindHint(request)')&&assistant.includes('query=targetKindHint(label)?withoutKindWords(label):label'));
+check('the request only supplies a kind, never content tokens',assistant.includes('never contributes content tokens'));
+check('every reveal path forwards the remembered request',assistant.includes("handoff?.request||''")&&assistant.includes("journey.request||''")&&assistant.includes("handoff.request||''"));
+check('the cross-page handoff keeps the request across the reload',assistant.includes('{...handoff,href:destination+url.hash,label,at:Date.now()}'));
+// The model summarised "the Business package" down to "Business", which is the
+// exact wording that let the buy button outrank the card it sits in.
+const labelOnly=kind.targetKindHint('Business')||kind.targetKindHint('Highlight the Business package.');
+check('a summarised label still resolves to a card request',labelOnly==='card');
+const summarised=targetScore('Business',planCard)*.84+.5;
+check('the card outranks its buy button even from a bare label',summarised>targetScore('Business','buy Business')*.55);
 
 console.log('\n=== mobile cross-page arrival keeps the target visible ===');
 check('phone handoff stays minimized',assistant.includes("const keepPageVisible=matchMedia('(max-width:640px)').matches")&&assistant.includes("if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click()"));
@@ -99,8 +170,8 @@ check('buffered reveal commits immediately when hidden',assistant.includes("if(!
 check('leaving mid-reveal still settles the reveal',assistant.includes("const onHidden=()=>{if(document.hidden)finish()}")&&assistant.includes("document.addEventListener('visibilitychange',onHidden)"));
 check('the reveal promise cannot resolve twice',assistant.includes('let settled=false;')&&assistant.includes('if(settled)return;settled=true;'));
 check('journey starts fall back to a timer when hidden',assistant.includes('const afterPaint=run=>{')&&assistant.includes('if(document.hidden){setTimeout(run,0);return}'));
-check('same-page journeys use that fallback',assistant.includes('afterPaint(()=>{\n        if(publicPath(url)!==pagePath()){'));
-check('cross-page handoffs use that fallback',assistant.includes('afterPaint(()=>{\n          const keepPageVisible='));
+check('same-page journeys use that fallback',assistant.includes('afterPaint(async()=>{\n        if(publicPath(url)!==pagePath()){'));
+check('cross-page handoffs use that fallback',assistant.includes('afterPaint(async()=>{\n          const keepPageVisible='));
 check('scroll settling does not wait on frames when hidden',assistant.includes('if(document.hidden)return void run();'));
 
 console.log('\n=== manual navigation keeps what the visitor supplied ===');

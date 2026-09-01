@@ -1,4 +1,4 @@
-# Nika Universal 1.4.0
+# Nika Universal 1.4.1
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go
@@ -75,8 +75,9 @@ its own clickable fallback. Raw page HTML is never sent. Query parameters are ne
 also a runtime privacy boundary: the widget does not mount there and the server
 rejects chat requests carrying one of those paths.
 
-Conventional rendered HTML works automatically. Add `data-assist-target="Descriptive label"`
-to a custom component when it needs an explicit target name. Closed shadow roots,
+Conventional rendered HTML works automatically. Add `data-nika-target="Descriptive label"`
+or `data-nika-label="Short alias"` to a custom component when it needs an explicit target name.
+The older `data-assist-target` attribute remains supported. Closed shadow roots,
 cross-origin iframe contents, canvas pixels and image-only text cannot be inspected
 through the page DOM and require an owner-authored accessible target outside that boundary.
 
