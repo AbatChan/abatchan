@@ -142,7 +142,7 @@
     const linear=channel=>{const normalized=channel/255;return normalized<=.04045?normalized/12.92:((normalized+.055)/1.055)**2.4};
     return .2126*linear(rgb[0])+.7152*linear(rgb[1])+.0722*linear(rgb[2]);
   };
-  const guidanceInlineProperties=['outline','outline-offset','z-index'];
+  const guidanceInlineProperties=['outline','outline-offset'];
   const applyAdaptiveGuidance=node=>{
     // The outline is painted outside the element, so contrast it against the
     // surrounding surface rather than a button's own fill. A white ring around
@@ -173,9 +173,48 @@
   // Dimming alone is invisible on a dark site, where a black veil over a
   // near-black page changes almost nothing. A small blur reads on any
   // background, so the page recedes whatever palette it uses.
+  // The rest of the page steps back so the answer reads as the answer.
+  //
+  // The scrim covers the whole viewport and cuts a hole over the target with
+  // an even-odd clip path, rather than raising the target above a full-screen
+  // overlay. Lifting only works while no ancestor traps the element in a
+  // stacking context, and a wrapper with a transform, filter or opacity — the
+  // ordinary way a site animates a section in — traps it. Clipping asks
+  // nothing of the page's own stacking at all: the target is simply not
+  // covered, so it can never be dimmed, blurred, or fight a z-index.
+  const SCRIM_PAD=10;
   const SCRIM_STYLE='position:fixed;inset:0;z-index:2147482000;pointer-events:none;background:rgba(9,9,17,.34);-webkit-backdrop-filter:blur(3px) brightness(.66);backdrop-filter:blur(3px) brightness(.66);opacity:0;transition:opacity .24s ease';
-  let guidanceScrim=null;
+  // The guide's own panel and launcher must stay crisp and readable: they are
+  // what the visitor is reading the answer in.
+  const SCRIM_ABOVE='2147482600';
+  let guidanceScrim=null,guidanceScrimFrame=0,guidanceScrimRaised=[];
+  const scrimCutout=node=>{
+    if(!guidanceScrim)return;
+    const rect=node?.getBoundingClientRect?.();
+    if(!rect||rect.width<1||rect.height<1){guidanceScrim.style.removeProperty('clip-path');guidanceScrim.style.removeProperty('-webkit-clip-path');return}
+    const left=Math.max(0,rect.left-SCRIM_PAD),top=Math.max(0,rect.top-SCRIM_PAD);
+    const right=Math.min(innerWidth,rect.right+SCRIM_PAD),bottom=Math.min(innerHeight,rect.bottom+SCRIM_PAD);
+    const path=`polygon(evenodd, 0px 0px, ${innerWidth}px 0px, ${innerWidth}px ${innerHeight}px, 0px ${innerHeight}px, 0px 0px, ${left}px ${top}px, ${right}px ${top}px, ${right}px ${bottom}px, ${left}px ${bottom}px, ${left}px ${top}px)`;
+    guidanceScrim.style.setProperty('clip-path',path);
+    guidanceScrim.style.setProperty('-webkit-clip-path',path);
+  };
+  const raiseGuideSurfaces=()=>{
+    const scope=uiScope();
+    const surfaces=[...(scope.querySelectorAll?.('.assist-panel,.assist-launch,.assist-backdrop')||[])];
+    guidanceScrimRaised=surfaces.map(node=>{
+      const previous=[node.style.getPropertyValue('z-index'),node.style.getPropertyPriority('z-index')];
+      node.style.setProperty('z-index',SCRIM_ABOVE,'important');
+      return [node,previous];
+    });
+  };
+  const restoreGuideSurfaces=()=>{
+    guidanceScrimRaised.forEach(([node,[value,priority]])=>value?node.style.setProperty('z-index',value,priority):node.style.removeProperty('z-index'));
+    guidanceScrimRaised=[];
+  };
   const showGuidanceScrim=node=>{
+    // A browser without even-odd clip paths would paint the scrim straight
+    // over the target, which is worse than no scrim at all.
+    if(!CSS?.supports?.('clip-path','polygon(evenodd, 0px 0px, 1px 0px, 1px 1px)'))return;
     if(!guidanceScrim||!guidanceScrim.isConnected){
       guidanceScrim=document.createElement('div');
       guidanceScrim.className='assist-guide-scrim';
@@ -185,18 +224,25 @@
       guidanceScrim.style.cssText=SCRIM_STYLE;
       document.body.appendChild(guidanceScrim);
     }
+    scrimCutout(node);
+    raiseGuideSurfaces();
+    // The hole has to follow the target through the smooth scroll that is
+    // still running, and through any layout the page settles into after it.
+    const track=()=>{scrimCutout(node);guidanceScrimFrame=requestAnimationFrame(track)};
+    cancelAnimationFrame(guidanceScrimFrame);
+    guidanceScrimFrame=requestAnimationFrame(track);
     // One frame before the class lands, so the fade actually plays.
     requestAnimationFrame(()=>{guidanceScrim?.classList.add('is-on');if(guidanceScrim)guidanceScrim.style.opacity='1'});
-    node.classList.add('is-guide-lifted');
-    if(!getComputedStyle(node).zIndex||getComputedStyle(node).zIndex==='auto')node.style.setProperty('z-index','2147482500');
   };
   const hideGuidanceScrim=()=>{
+    cancelAnimationFrame(guidanceScrimFrame);
+    guidanceScrimFrame=0;
+    restoreGuideSurfaces();
     guidanceScrim?.remove();
     guidanceScrim=null;
   };
   const clearAdaptiveGuidance=node=>{
     ['--assist-guide-border','--assist-guide-radius','--assist-guide-fill','--assist-guide-marker-bg','--assist-guide-marker-text'].forEach(name=>node.style?.removeProperty(name));
-    node.classList?.remove('is-guide-lifted');
     const restore=guidanceInlineRestore.get(node);
     if(!restore)return;
     restore.forEach(([name,value,priority])=>value?node.style.setProperty(name,value,priority):node.style.removeProperty(name));

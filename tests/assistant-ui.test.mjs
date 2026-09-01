@@ -88,8 +88,12 @@ check('a scrim dims the rest of the page with the highlight',assistant.includes(
 check('the scrim never intercepts a click',assistant.includes('pointer-events:none')&&assistantCss.includes('.assist-guide-scrim{position:fixed;inset:0;z-index:2147482000;pointer-events:none'));
 check('the scrim recedes the page on dark palettes too',assistantCss.includes('backdrop-filter:blur(3px) brightness(.66)')&&assistant.includes('Dimming alone is invisible on a dark site')&&assistantCss.includes('-webkit-backdrop-filter:blur(3px)'));
 check('the scrim styles inline too, for embeds without the stylesheet',assistant.includes('const SCRIM_STYLE=')&&assistant.includes('guidanceScrim.style.cssText=SCRIM_STYLE'));
-check('the target is lifted in place, never re-parented',assistant.includes("node.classList.add('is-guide-lifted')")&&assistantCss.includes('.assist-guided-target.is-guide-lifted{z-index:2147482500}')&&!assistant.includes('appendChild(visualTarget)'));
-check('the lift and its z-index are restored on clear',assistant.includes("const guidanceInlineProperties=['outline','outline-offset','z-index']")&&assistant.includes("node.classList?.remove('is-guide-lifted')")&&assistant.includes('hideGuidanceScrim()'));
+check('the target is cut out of the scrim, not raised above it',assistant.includes('const scrimCutout=node=>')&&assistant.includes('polygon(evenodd, 0px 0px,')&&!assistant.includes('is-guide-lifted'));
+check('the cutout asks nothing of the page stacking context',assistant.includes('Clipping asks')&&!assistant.includes("guidanceInlineProperties=['outline','outline-offset','z-index']")&&!assistant.includes('appendChild(visualTarget)'));
+check('the guide panel and launcher stay above the scrim',assistant.includes("const SCRIM_ABOVE='2147482600'")&&assistant.includes("scope.querySelectorAll?.('.assist-panel,.assist-launch,.assist-backdrop')")&&assistant.includes('restoreGuideSurfaces()'));
+check('the hole follows the target through the scroll',assistant.includes('guidanceScrimFrame=requestAnimationFrame(track)')&&assistant.includes('cancelAnimationFrame(guidanceScrimFrame)'));
+check('a browser without even-odd clipping shows no scrim at all',assistant.includes("CSS?.supports?.('clip-path','polygon(evenodd, 0px 0px, 1px 0px, 1px 1px)')"));
+check('the scrim, its tracking frame and the raised panels are all released',assistant.includes('hideGuidanceScrim()')&&assistant.includes('restoreGuideSurfaces();')&&assistant.includes('guidanceScrimFrame=0;'));
 check('reduced motion drops the scrim fade',assistantCss.includes('@media(prefers-reduced-motion:reduce){.assist-guide-scrim{transition:none}}'));
 
 console.log('\n=== a theme flip repaints the ring while it is up ===');
