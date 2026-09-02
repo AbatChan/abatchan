@@ -113,6 +113,23 @@ create policy "signed in uploads work images"
   using (bucket_id = 'work' and public.is_site_admin())
   with check (bucket_id = 'work' and public.is_site_admin());
 
+-- Nika release archives. Private, deliberately: every build used to sit at a
+-- public /downloads URL, which is what made a paid plugin free to anyone who
+-- read the update manifest. There is no anon select policy here and there must
+-- never be one. /api/download checks the licence key and then mints a signed
+-- URL with the service key, which is the only way these bytes leave storage.
+insert into storage.buckets (id, name, public)
+values ('releases', 'releases', false)
+on conflict (id) do update set public = false;
+
+drop policy if exists "releases are never public" on storage.objects;
+drop policy if exists "site admins manage releases" on storage.objects;
+create policy "site admins manage releases"
+  on storage.objects for all
+  to authenticated
+  using (bucket_id = 'releases' and public.is_site_admin())
+  with check (bucket_id = 'releases' and public.is_site_admin());
+
 -- ------------------------------------------------------- editable site copy
 -- Anything on the site tagged data-copy="<key>" is replaced by these values.
 -- Add a row here and tag an element; no deploy needed.

@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.5.2
+ * Version:           1.5.3
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,9 +16,9 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.5.2';
+const NIKA_VERSION = '1.5.3';
 const NIKA_OPTION  = 'nika_site_guide';
-const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/downloads/nika-site-guide-update.json';
+const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
 
 function nika_defaults() {
@@ -409,7 +409,7 @@ function nika_settings_page() {
 
 				<section class="nika-card" id="nika-licence">
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Licence', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Updates and support', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Nika runs with or without a key. A key is what brings new versions and support, and it never affects what visitors see.', 'nika-site-guide' ); ?></p></div></div>
-					<label class="nika-field"><span><?php esc_html_e( 'Licence key', 'nika-site-guide' ); ?><?php echo nika_help( __( 'From your purchase email. One key covers both the WordPress plugin and the Universal installer.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[licence_key]" type="text" spellcheck="false" autocomplete="off" value="<?php echo esc_attr( $s['licence_key'] ); ?>" placeholder="0000-0000-0000-0000"><small><?php echo esc_html( nika_licence_summary( nika_licence_state() ) ); ?></small></label>
+					<label class="nika-field"><span><?php esc_html_e( 'Licence key', 'nika-site-guide' ); ?><?php echo nika_help( __( 'From your purchase email. One key covers both the WordPress plugin and the Universal installer.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[licence_key]" type="text" spellcheck="false" autocomplete="off" value="<?php echo esc_attr( $s['licence_key'] ); ?>" placeholder="0000-0000-0000-0000"><small><?php echo esc_html( trim( nika_licence_summary( nika_licence_state() ) . ' ' . nika_update_notice() ) ); ?></small></label>
 					<?php $licence = nika_licence_state(); if ( 'valid' === ( $licence['state'] ?? '' ) && $licence['sitesAllowed'] ) : ?>
 					<p class="nika-field__note"><?php echo esc_html( sprintf( __( '%1$d of %2$d sites in use. Development and staging installs are not counted.', 'nika-site-guide' ), (int) $licence['sitesUsed'], (int) $licence['sitesAllowed'] ) ); ?></p>
 					<?php endif; ?>
@@ -1549,15 +1549,38 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ( $li
 	return $links;
 } );
 
+/**
+ * Ask abatchan.com what the current release is, and whether this site may have it.
+ *
+ * The version and the changelog come back either way, so a site with no key
+ * still learns an update exists and what is in it. The download URL does not:
+ * it is minted for this licence and expires within the hour, which is why the
+ * transient below is short and why a missing package is a normal answer rather
+ * than a broken one.
+ */
 function nika_update_manifest() {
-	$cached = get_site_transient( 'nika_update_manifest_v1' );
+	$cached = get_site_transient( 'nika_update_manifest_v2' );
 	if ( is_array( $cached ) ) return $cached;
-	$response = wp_remote_get( NIKA_UPDATE_MANIFEST, array( 'timeout' => 8, 'headers' => array( 'Accept' => 'application/json' ) ) );
+
+	$settings = nika_settings();
+	$url = add_query_arg( array_filter( array(
+		'edition' => 'wordpress',
+		'key'     => (string) ( $settings['licence_key'] ?? '' ),
+		'site'    => wp_parse_url( home_url(), PHP_URL_HOST ),
+	) ), NIKA_UPDATE_MANIFEST );
+
+	$response = wp_remote_get( $url, array( 'timeout' => 8, 'headers' => array( 'Accept' => 'application/json' ) ) );
 	if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) return array();
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	if ( ! is_array( $data ) || empty( $data['version'] ) ) return array();
+
+	// A package URL is optional, but if one is present it must be ours. Anything
+	// else is dropped and the update simply is not offered.
 	$package = esc_url_raw( $data['package'] ?? '' );
-	$parts = wp_parse_url( $package );
-	if ( ! is_array( $data ) || empty( $data['version'] ) || 'https' !== ( $parts['scheme'] ?? '' ) || 'abatchan.com' !== strtolower( $parts['host'] ?? '' ) ) return array();
+	$parts   = wp_parse_url( $package );
+	if ( '' !== $package && ( 'https' !== ( $parts['scheme'] ?? '' ) || 'abatchan.com' !== strtolower( $parts['host'] ?? '' ) ) ) $package = '';
+
+	$licence = is_array( $data['licence'] ?? null ) ? $data['licence'] : array();
 	$manifest = array(
 		'version' => sanitize_text_field( $data['version'] ),
 		'package' => $package,
@@ -1566,13 +1589,35 @@ function nika_update_manifest() {
 		'requires_php' => sanitize_text_field( $data['requires_php'] ?? '7.4' ),
 		'tested' => sanitize_text_field( $data['tested'] ?? '' ),
 		'sections' => is_array( $data['sections'] ?? null ) ? array_map( 'wp_kses_post', $data['sections'] ) : array(),
+		'licence_state' => sanitize_text_field( (string) ( $licence['state'] ?? '' ) ),
+		'licence_message' => sanitize_text_field( (string) ( $licence['message'] ?? '' ) ),
 	);
-	set_site_transient( 'nika_update_manifest_v1', $manifest, 6 * HOUR_IN_SECONDS );
+	// A signed package URL outlives this by design, but not by much. Holding the
+	// manifest for six hours would hand WordPress an expired link.
+	set_site_transient( 'nika_update_manifest_v2', $manifest, '' === $package ? 6 * HOUR_IN_SECONDS : 30 * MINUTE_IN_SECONDS );
 	return $manifest;
 }
 
+/**
+ * What to say on the settings screen about the release that is out there.
+ *
+ * Only ever informational. Nothing here changes what visitors see, and no state
+ * of a licence key stops the guide running.
+ */
+function nika_update_notice() {
+	$manifest = nika_update_manifest();
+	if ( empty( $manifest['version'] ) || version_compare( NIKA_VERSION, $manifest['version'], '>=' ) ) return '';
+	if ( '' !== ( $manifest['package'] ?? '' ) ) {
+		/* translators: %s: version number. */
+		return sprintf( __( 'Version %s is available and will install from the Plugins screen.', 'nika-site-guide' ), $manifest['version'] );
+	}
+	$reason = (string) ( $manifest['licence_message'] ?? '' );
+	/* translators: 1: version number, 2: reason the update cannot be installed. */
+	return trim( sprintf( __( 'Version %1$s is available. %2$s', 'nika-site-guide' ), $manifest['version'], $reason ) );
+}
+
 function nika_forget_update_manifest() {
-	delete_site_transient( 'nika_update_manifest_v1' );
+	delete_site_transient( 'nika_update_manifest_v2' );
 }
 
 // WordPress schedules its plugin check on admin_init. Clear our own manifest
@@ -1597,7 +1642,10 @@ add_filter( 'pre_set_site_transient_update_plugins', function ( $transient ) {
 	// Right after an upgrade the new files are on disk while this request still has
 	// the previous NIKA_VERSION in memory, so trust what WordPress read from disk.
 	$installed = (string) ( $transient->checked[ $plugin_file ] ?? NIKA_VERSION );
-	if ( empty( $manifest['version'] ) || ! version_compare( $installed, $manifest['version'], '<' ) ) {
+	// No package means no offer. Advertising a version WordPress cannot fetch
+	// turns the updates screen into a button that fails; the settings screen says
+	// what is available and why instead.
+	if ( empty( $manifest['version'] ) || empty( $manifest['package'] ) || ! version_compare( $installed, $manifest['version'], '<' ) ) {
 		unset( $transient->response[ $plugin_file ] );
 		$transient->no_update[ $plugin_file ] = (object) array(
 			'id' => 'https://abatchan.com/nika',

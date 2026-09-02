@@ -13,3 +13,18 @@ tests/
 *.md
 BRAND_GUIDE.txt
 design-qa.md
+
+# Release archives are a product, not a page. Every zip under downloads/ was a
+# public URL: 115 builds of a paid plugin, plus an unauthenticated update
+# manifest that named the newest one. They now live in releases/ and reach
+# customers through /api/download, which asks for a licence first.
+releases/
+
+# The source of both editions. WordPress is GPL and its source travelling with
+# a customer is fine; serving the Universal tree from the marketing site is
+# giving away the commercial edition. Neither is needed to render a page.
+wordpress/
+universal/
+
+# Build and maintenance tooling. Runs here, never from a URL.
+scripts/

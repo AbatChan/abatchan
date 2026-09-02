@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const version = '1.5.2';
+const version = '1.5.3';
 
 // Versions iterate in .9s: the patch digit runs 0-9, then the minor rolls over.
 // 0.3.9 is followed by 0.4.0, never 0.3.10.
@@ -15,7 +15,10 @@ if (parts.length !== 3 || parts.some((n) => !Number.isInteger(n) || n < 0 || n >
 const brandAssets = join(root, 'assets');
 const wordpress = join(root, 'wordpress', 'nika-site-guide');
 const universal = join(root, 'universal', 'nika-universal');
-const downloads = join(root, 'downloads');
+// Builds land in releases/, which is excluded from the deploy. Everything under
+// the old downloads/ was a public URL, so putting a paid build there published
+// it; scripts/publish-release.mjs moves one into the private bucket instead.
+const downloads = join(root, 'releases');
 
 mkdirSync(join(wordpress, 'assets'), { recursive: true });
 mkdirSync(join(universal, 'public'), { recursive: true });
@@ -68,9 +71,9 @@ for (const artifact of artifacts) {
   if (existsSync(destination)) throw new Error(`Refusing to overwrite immutable release ${artifact.output}. Bump the version first.`);
   const zip = spawnSync('zip', ['-q', '-r', destination, artifact.source, '-x', '*/data/*', '*/.env', '*.DS_Store'], { cwd: artifact.cwd, stdio: 'inherit' });
   if (zip.status !== 0) throw new Error(`Could not build ${artifact.output}. Install the zip command and retry.`);
-  // A buyer is sent one link that has to keep working after the next release, so
-  // the versioned file, which stays immutable, is also published under a stable
-  // name that always points at the current build.
+  // A local convenience copy under a stable name. Buyers are sent a licence key
+  // rather than a link now, and /api/download resolves the current version, so
+  // this is not published anywhere and nothing depends on its URL.
   cpSync(destination, join(downloads, artifact.latest));
-  console.log(`built downloads/${artifact.output} (and ${artifact.latest})`);
+  console.log(`built releases/${artifact.output} (and ${artifact.latest})`);
 }

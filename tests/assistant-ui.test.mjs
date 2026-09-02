@@ -105,7 +105,11 @@ check('no single angle can claim all three cards',!adminGenerator.includes('cons
 check('the reason is recorded next to the fix',adminGenerator.includes('a quarter of the time that ground was a single product')||adminGenerator.includes('quarter of the time'));
 
 console.log('\n=== the licence endpoint answers, it never blocks ===');
-const licence=readFileSync(new URL('../api/licence.js',import.meta.url),'utf8');
+// The endpoint and the vocabulary it answers in are two files now, because
+// /api/download has to reach the same verdict about the same key. Read both:
+// these rules must hold wherever they ended up living.
+const licence=readFileSync(new URL('../api/licence.js',import.meta.url),'utf8')
+  +readFileSync(new URL('../lib/licence/verify.js',import.meta.url),'utf8');
 check('a failure tells the caller to carry on',licence.includes('ok: true,')&&licence.includes('degraded: true')&&licence.includes('Nika continues to run unchanged'));
 check('development and staging never consume an activation',licence.includes("function siteKind")&&licence.includes("kind === 'production'")&&licence.includes("staging|stage|dev|test|preview|sandbox|uat|qa"));
 check('being over the limit is reported, not refused',licence.includes('const overLimit =')&&licence.includes('ok: valid || overLimit')&&licence.includes('not a shutdown'));

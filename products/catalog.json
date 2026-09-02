@@ -11,14 +11,14 @@
       "id": "wordpress",
       "name": "WordPress",
       "status": "available",
-      "artifact": "/downloads/nika-site-guide-latest.zip",
+      "artifact": "/api/download?edition=wordpress",
       "runtime": "WordPress 6.2+ and PHP 7.4+"
     },
     {
       "id": "universal",
       "name": "Universal website",
       "status": "available",
-      "artifact": "/downloads/nika-universal-latest.zip",
+      "artifact": "/api/download?edition=universal",
       "runtime": "Node.js 22.5+ or Docker"
     },
     {
@@ -34,7 +34,7 @@
       "id": "personal",
       "name": "Personal",
       "price": 99,
-      "sites": 1,
+      "sites": 2,
       "platformSelection": "one_available_platform",
       "features": [
         "context-aware answers",
@@ -60,7 +60,7 @@
       "id": "agency",
       "name": "Agency",
       "price": 399,
-      "sites": 25,
+      "sites": 50,
       "platformSelection": "all_available_and_future_platforms_during_update_term",
       "features": [
         "everything in Business",
@@ -70,5 +70,5 @@
       ]
     }
   ],
-  "artifactPolicy": "Send buyers the -latest.zip link. It always serves the current release; each version also stays available under its own number."
+  "artifactPolicy": "Buyers get a licence key, never a file link. /api/download exchanges a key for a short-lived URL, and the plugin updates itself through /api/update. Nothing under /downloads is public any more: builds live in the private releases bucket, and every version stays available to the licences whose update term covered it."
 }

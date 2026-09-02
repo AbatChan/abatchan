@@ -13,7 +13,7 @@ const adminCss=readFileSync(new URL('../wordpress/nika-site-guide/assets/nika-ad
 const adminJs=readFileSync(new URL('../wordpress/nika-site-guide/assets/nika-admin.js',import.meta.url),'utf8');
 const adminIcon=readFileSync(new URL('../wordpress/nika-site-guide/assets/nika-admin-icon.png',import.meta.url));
 const canonicalAdminIcon=readFileSync(new URL('../assets/abatchan-symbol-white-tight-504x308.png',import.meta.url));
-const updateManifest=JSON.parse(readFileSync(new URL('../downloads/nika-site-guide-update.json',import.meta.url),'utf8'));
+const updateManifest=JSON.parse(readFileSync(new URL('../lib/licence/wordpress-release.json',import.meta.url),'utf8'));
 const canonical=readFileSync(new URL('../assistant-v2.js',import.meta.url),'utf8');
 const pluginVersion=(php.match(/const NIKA_VERSION = '([^']+)'/)||[])[1];
 const adminPage=php.slice(php.indexOf('function nika_settings_page()'),php.indexOf('function nika_excluded_paths()'));
@@ -54,11 +54,16 @@ check('uses a dedicated top-level WordPress admin menu',php.includes("add_menu_p
 check('ships the canonical transparent white Abatchan admin icon',adminIcon.equals(canonicalAdminIcon));
 check('ships a responsive branded settings workspace',adminCss.includes('.nika-hero')&&adminCss.includes('.nika-shell')&&adminCss.includes('@media (max-width: 782px)'));
 check('offers automatic future WordPress update notices',php.includes('pre_set_site_transient_update_plugins')&&php.includes('NIKA_UPDATE_MANIFEST')&&php.includes("'plugins_api'"));
-check('every release is also published under a permanent link',build.includes("latest: 'nika-site-guide-latest.zip'")&&build.includes('cpSync(destination, join(downloads, artifact.latest))')&&catalog.platforms.some(entry=>entry.artifact==='/downloads/nika-site-guide-latest.zip'));
+// The permanent link is now an endpoint rather than a file. A stable zip URL
+// was what made the archive public: it worked for buyers and for everyone else.
+check('a buyer is sent an endpoint, never a file',catalog.platforms.some(entry=>entry.artifact==='/api/download?edition=wordpress')&&!JSON.stringify(catalog).includes('/downloads/'));
 check('the versioned release stays immutable',build.includes('Refusing to overwrite immutable release'));
 check('update downloads are restricted to the trusted HTTPS host',php.includes("'https' !== ( $parts['scheme']")&&php.includes("'abatchan.com' !== strtolower"));
-check('published update manifest matches the plugin version',Boolean(pluginVersion)&&updateManifest.version===pluginVersion&&updateManifest.package.endsWith(`/nika-site-guide-${pluginVersion}.zip`));
-check('a forced WordPress update check clears the release manifest before the scheduled plugin check',php.includes("add_action( 'admin_init'")&&php.includes("}, 1 );")&&php.includes("add_action( 'load-update-core.php'")&&php.includes("nika_forget_update_manifest")&&php.includes("delete_site_transient( 'nika_update_manifest_v1' )")&&php.includes("upgrader_process_complete"));
+check('the served manifest matches the plugin version',Boolean(pluginVersion)&&updateManifest.version===pluginVersion);
+// The release description carries no download address at all. The only URL that
+// yields bytes is minted per licence by /api/update, and expires.
+check('the manifest never carries a standing package URL',!('package' in updateManifest)&&!JSON.stringify(updateManifest).includes('.zip'));
+check('a forced WordPress update check clears the release manifest before the scheduled plugin check',php.includes("add_action( 'admin_init'")&&php.includes("}, 1 );")&&php.includes("add_action( 'load-update-core.php'")&&php.includes("nika_forget_update_manifest")&&php.includes("delete_site_transient( 'nika_update_manifest_v2' )")&&php.includes("upgrader_process_complete"));
 check('model is a select that can be filled from the provider model list',php.includes("'/admin/models'")&&php.includes('nika_models_response')&&php.includes('nika_provider_models_url')&&php.includes('<select class="code" id="nika-model"')&&adminJs.includes('modelsEndpoint')&&adminJs.includes('fillModels'));
 check('a custom model can still be typed for compatible providers',php.includes('id="nika-model-custom"')&&php.includes('__custom__')&&adminJs.includes('syncCustomMode')&&adminJs.includes("modelCustom.setAttribute('name', fieldName)"));
 check('the model list request requires an HTTPS compatible endpoint',php.includes("'https' !== ( $parts['scheme'] ?? '' ) || empty( $parts['host'] )"));

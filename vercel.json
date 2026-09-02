@@ -19,6 +19,16 @@
   ],
   "redirects": [
     {
+      "source": "/downloads/:path*",
+      "destination": "https://abatchan.com/nika",
+      "permanent": false
+    },
+    {
+      "source": "/lib/:path*",
+      "destination": "https://abatchan.com/404",
+      "permanent": false
+    },
+    {
       "source": "/",
       "has": [{ "type": "host", "value": "www.abatchan.com" }],
       "destination": "https://abatchan.com/",
