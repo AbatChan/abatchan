@@ -210,6 +210,15 @@ html[data-theme="light"] .assist-msg-attachment{background:rgba(21,21,25,.035)}
 .assist-send img{width:18px;height:18px;filter:brightness(0) invert(1)!important;opacity:1}.assist-send.is-generating img{width:14px;height:14px}
 .assist-note{padding:0 16px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center;margin:0 0 6px!important}
 
+/* The one line that says whose software this is. Sits under the disclaimer,
+   quieter than it, and pins its own box model for the same reason .assist-note
+   does: a host theme's `p` or `a` rule would otherwise resize or recolour it.
+   Deliberately not hidden on small screens. Branding that disappears on a phone
+   is branding a customer has removed without paying for it. */
+.assist-brand{padding:0 16px;color:var(--muted);font-size:9.5px;line-height:1.4;text-align:center;opacity:.72;margin:0 0 8px!important}
+.assist-brand a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.assist-brand a:hover,.assist-brand a:focus-visible{color:var(--paper);border-bottom-color:currentColor;outline:0}
+
 /* Margin is not inherited, so a shadow root already blocks a theme from
    reaching these. What it does not block is the user-agent default: a <p> or
    <ul> the guide owns still gets its 1em margin unless the guide says

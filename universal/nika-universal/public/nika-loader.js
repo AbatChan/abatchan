@@ -57,6 +57,10 @@
       stylesheet: at('/assistant.css'),
       placeholder: config.placeholder,
       disclaimer: config.disclaimer,
+      // Absent means present. A config that has never heard of branding, an old
+      // server or a response that lost the field, must not silently produce an
+      // unbranded guide.
+      branding: config.branding !== false,
       chips: config.suggestions || [],
       // A packaged guide lands inside somebody else's site, so it is isolated.
       attachments: false,

@@ -81,6 +81,10 @@
       stylesheet: asset('/assistant.css?v=26'),
       placeholder: config.placeholder,
       disclaimer: config.disclaimer,
+      // Absent means present. A config that has never heard of branding, an old
+      // server or a response that lost the field, must not silently produce an
+      // unbranded guide.
+      branding: config.branding !== false,
       chips: config.chips || [],
       loadSettings: async () => null   // the config call above already answered this
     });

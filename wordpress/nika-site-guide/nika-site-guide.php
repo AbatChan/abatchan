@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.5.4
+ * Version:           1.5.5
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.5.4';
+const NIKA_VERSION = '1.5.5';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
@@ -38,7 +38,7 @@ function nika_defaults() {
 		'dictation_language' => 'en-US', 'accent' => '#6366f1', 'position' => 'right',
 		'avatar' => '', 'launcher_icon' => '',
 		'panel_colour' => '#0f0f12', 'panel_opacity' => 72,
-		'gradient_from' => '#8184ff', 'gradient_to' => '#4338ca', 'scrollbar_colour' => '#6366f1', 'shadow_colour' => '#4f46e5', 'text_colour' => '#f5f5f3', 'icon_colour' => '#ffffff', 'licence_key' => '', 'custom_css' => '',
+		'gradient_from' => '#8184ff', 'gradient_to' => '#4338ca', 'scrollbar_colour' => '#6366f1', 'shadow_colour' => '#4f46e5', 'text_colour' => '#f5f5f3', 'icon_colour' => '#ffffff', 'licence_key' => '', 'custom_css' => '', 'branding' => true,
 		'logo_size' => 26, 'mark_size' => 24,
 		'disclaimer' => "Answers use this website's configured content. Review important information.",
 		'context_characters' => 12000, 'history_turns' => 10, 'excluded_paths' => '',
@@ -136,6 +136,10 @@ function nika_sanitize_settings( $input ) {
 		'custom_css' => nika_sanitize_custom_css( $input['custom_css'] ?? '' ),
 		'logo_size' => min( 64, max( 14, absint( $input['logo_size'] ?? 26 ) ) ),
 		'mark_size' => min( 44, max( 14, absint( $input['mark_size'] ?? 24 ) ) ),
+		// Enforced on save, not in the form. A hidden input or a hand-made POST is
+		// how a checkbox gate gets walked around, and this is the only place every
+		// path to the option goes through.
+		'branding' => nika_can( 'unbranded' ) ? ! empty( $input['branding'] ) : true,
 		'disclaimer' => sanitize_text_field( wp_unslash( $input['disclaimer'] ?? '' ) ),
 		'context_characters' => min( 20000, max( 1000, absint( $input['context_characters'] ?? 12000 ) ) ),
 		'history_turns' => min( 20, max( 1, absint( $input['history_turns'] ?? 10 ) ) ),
@@ -415,7 +419,14 @@ function nika_settings_page() {
 
 				<section class="nika-card" id="nika-experience">
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Visitor tools', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Navigation and dictation', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Choose which tools visitors may use.', 'nika-site-guide' ); ?></p></div></div>
-					<div class="nika-toggle-list"><label><span><b><?php esc_html_e( 'Navigation and highlighting', 'nika-site-guide' ); ?></b><small><?php esc_html_e( 'Let Nika open approved pages, scroll to useful sections, and highlight the destination.', 'nika-site-guide' ); ?></small></span><input type="checkbox" name="<?php echo esc_attr( NIKA_OPTION ); ?>[navigation]" value="1" <?php checked( $s['navigation'] ); ?>></label><label><span><b><?php esc_html_e( 'Microphone dictation', 'nika-site-guide' ); ?></b><small><?php esc_html_e( 'Offer speech-to-text when the visitor browser supports it.', 'nika-site-guide' ); ?></small></span><input type="checkbox" name="<?php echo esc_attr( NIKA_OPTION ); ?>[dictation]" value="1" <?php checked( $s['dictation'] ); ?>></label></div>
+					<div class="nika-toggle-list"><label><span><b><?php esc_html_e( 'Navigation and highlighting', 'nika-site-guide' ); ?></b><small><?php esc_html_e( 'Let Nika open approved pages, scroll to useful sections, and highlight the destination.', 'nika-site-guide' ); ?></small></span><input type="checkbox" name="<?php echo esc_attr( NIKA_OPTION ); ?>[navigation]" value="1" <?php checked( $s['navigation'] ); ?>></label><label><span><b><?php esc_html_e( 'Microphone dictation', 'nika-site-guide' ); ?></b><small><?php esc_html_e( 'Offer speech-to-text when the visitor browser supports it.', 'nika-site-guide' ); ?></small></span><input type="checkbox" name="<?php echo esc_attr( NIKA_OPTION ); ?>[dictation]" value="1" <?php checked( $s['dictation'] ); ?>></label><?php
+					// Shown on every package, and honest about which one can change
+					// it. Hiding the row would leave an owner wondering where the
+					// line under the guide comes from and whether it can go.
+					$unbranded = nika_can( 'unbranded' );
+					?><label class="<?php echo $unbranded ? '' : 'is-locked'; ?>"><span><b><?php esc_html_e( 'Show the Nika line', 'nika-site-guide' ); ?><?php if ( ! $unbranded ) : ?> <span class="nika-lock"><?php echo esc_html( nika_package_name( nika_capability_package( 'unbranded' ) ) ); ?></span><?php endif; ?></b><small><?php echo $unbranded
+						? esc_html__( 'One small line under the message box crediting Nika. Turn it off to run the guide unbranded.', 'nika-site-guide' )
+						: esc_html( sprintf( __( 'One small line under the message box crediting Nika. Removing it is included in %s.', 'nika-site-guide' ), nika_package_name( nika_capability_package( 'unbranded' ) ) ) ); ?></small></span><input type="checkbox" name="<?php echo esc_attr( NIKA_OPTION ); ?>[branding]" value="1" <?php checked( $unbranded ? ! empty( $s['branding'] ) : true ); ?> <?php disabled( ! $unbranded ); ?>></label></div>
 					<label class="nika-field nika-field--compact" data-nika-when="dictation" data-nika-checked="1"<?php echo $s['dictation'] ? '' : ' hidden'; ?>><span><?php esc_html_e( 'Dictation language', 'nika-site-guide' ); ?></span><input class="code" id="nika-language" name="<?php echo esc_attr( NIKA_OPTION ); ?>[dictation_language]" value="<?php echo esc_attr( $s['dictation_language'] ); ?>" placeholder="en-US"></label>
 				</section>
 
@@ -515,7 +526,7 @@ add_action( 'rest_api_init', function () {
 function nika_config_response() {
 	$s = nika_settings();
 	$brand = nika_brand_images( $s );
-	return rest_ensure_response( array( 'enabled' => (bool) $s['enabled'], 'name' => $s['name'], 'subtitle' => __( 'website guide', 'nika-site-guide' ), 'avatar' => $brand['avatar'], 'launcherIcon' => $brand['launcherIcon'], 'disclaimer' => nika_disclaimer( $s ), 'suggestions' => $s['suggestions'], 'placeholder' => $s['placeholder'], 'siteId' => home_url(), 'pages' => nika_pages(), 'blockedPaths' => nika_excluded_paths(), 'autoNavigate' => (bool) $s['navigation'], 'dictation' => (bool) $s['dictation'], 'dictationLanguage' => $s['dictation_language'], 'accent' => $s['accent'], 'position' => $s['position'], 'contextCharacters' => (int) $s['context_characters'], 'historyTurns' => (int) $s['history_turns'] ) );
+	return rest_ensure_response( array( 'enabled' => (bool) $s['enabled'], 'name' => $s['name'], 'subtitle' => __( 'website guide', 'nika-site-guide' ), 'avatar' => $brand['avatar'], 'launcherIcon' => $brand['launcherIcon'], 'disclaimer' => nika_disclaimer( $s ), 'branding' => nika_can( 'unbranded' ) ? ! empty( $s['branding'] ) : true, 'suggestions' => $s['suggestions'], 'placeholder' => $s['placeholder'], 'siteId' => home_url(), 'pages' => nika_pages(), 'blockedPaths' => nika_excluded_paths(), 'autoNavigate' => (bool) $s['navigation'], 'dictation' => (bool) $s['dictation'], 'dictationLanguage' => $s['dictation_language'], 'accent' => $s['accent'], 'position' => $s['position'], 'contextCharacters' => (int) $s['context_characters'], 'historyTurns' => (int) $s['history_turns'] ) );
 }
 
 function nika_rate_allowed( $hourly_limit, $daily_limit ) {

@@ -12,6 +12,11 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = numberBetween(process.env.NIKA_PORT, 1, 65535, 8787);
 const HOURLY_LIMIT = numberBetween(process.env.NIKA_HOURLY_LIMIT, 1, 1000, 20);
 const DAILY_LIMIT = numberBetween(process.env.NIKA_DAILY_LIMIT, 1, 100000, 500);
+// Universal has no licence check yet, so there is no setting to turn this off.
+// A toggle here would hand every install the Business feature for nothing. It
+// ships with the licence check, not before it.
+const NIKA_UNIVERSAL_BRANDING = true;
+
 const ORIGIN = cleanOrigin(process.env.NIKA_PUBLIC_ORIGIN || 'http://localhost:8787');
 const SECRET = process.env.NIKA_HASH_SECRET || '';
 const PROVIDER = process.env.NIKA_AI_PROVIDER || 'openai';
@@ -704,7 +709,10 @@ const server = createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/nika/config') {
     const { config, pages } = siteData();
     const directory = pages.map(({ path, title }) => ({ path, title }));
-    return send(res, 200, { enabled: config.enabled, name: config.name, subtitle: 'website guide', avatar: config.avatar || '/nika/nika-logo.png', launcherIcon: config.launcherIcon, disclaimer: config.disclaimer || "Answers use this website's configured content. Review important information.", panelColour: config.panelColour, panelOpacity: config.panelOpacity, gradientFrom: config.gradientFrom, gradientTo: config.gradientTo, scrollbarColour: config.scrollbarColour, shadowColour: config.shadowColour, textColour: config.textColour, iconColour: config.iconColour, customCss: config.customCss, logoSize: config.logoSize, markSize: config.markSize, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
+    // Always on here, with no setting to turn it off. Universal has no licence
+    // check yet, so a toggle would hand every install the Business feature for
+    // nothing. The toggle ships with the licence check, not before it.
+    return send(res, 200, { enabled: config.enabled, name: config.name, subtitle: 'website guide', avatar: config.avatar || '/nika/nika-logo.png', launcherIcon: config.launcherIcon, disclaimer: config.disclaimer || "Answers use this website's configured content. Review important information.", branding: NIKA_UNIVERSAL_BRANDING, panelColour: config.panelColour, panelOpacity: config.panelOpacity, gradientFrom: config.gradientFrom, gradientTo: config.gradientTo, scrollbarColour: config.scrollbarColour, shadowColour: config.shadowColour, textColour: config.textColour, iconColour: config.iconColour, customCss: config.customCss, logoSize: config.logoSize, markSize: config.markSize, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
   }
   if (req.method === 'POST' && url.pathname === '/nika/chat') {
     try { return await chat(req, res); } catch (error) { return send(res, error.status || 500, { error: error.status ? 'Invalid request.' : 'Nika encountered a server error.' }); }

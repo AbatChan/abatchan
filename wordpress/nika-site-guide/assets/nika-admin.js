@@ -375,6 +375,10 @@
       logoSize: value('logo_size'),
       markSize: value('mark_size'),
       disclaimer: value('disclaimer') || "Answers use this website's configured content. Review important information.",
+      // The preview has to show what a visitor sees, so it reads the same
+      // capability the saved setting is enforced against rather than the
+      // checkbox alone.
+      branding: capabilities.has('unbranded') ? Boolean((byName('branding') || {}).checked) : true,
       placeholder: value('placeholder'),
       chips: [0, 1, 2].map((index) => ({
         label: (form.querySelector(`[name$="[suggestions][${index}][label]"]`) || {}).value || '',
@@ -462,6 +466,9 @@
     };
     form.addEventListener('input', syncPreviewIdentity);
     form.addEventListener('input', render);
+    // Checkboxes fire change, not input, so the branding toggle would otherwise
+    // leave the preview showing the line it just removed.
+    form.addEventListener('change', render);
     form.addEventListener('change', render);
     render();
   }

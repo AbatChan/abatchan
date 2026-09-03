@@ -252,5 +252,31 @@ check('it still looks like a working button',adminStyles.includes('.nika-generat
 check('every colour it sets has its own editable field',['accent','panel_colour','gradient_from','gradient_to','scrollbar_colour','shadow_colour','text_colour','icon_colour'].every(name=>php.includes(`[${name}]`)));
 check('the licence card names the package in force',php.includes('$package = nika_package_name( strtolower(')&&php.includes('%1$s is active. Updates and support until %2$s.'));
 
+console.log('\n=== the branding pair: present by default, removable by package ===');
+const embed=readFileSync(new URL('../embed.js',import.meta.url),'utf8');
+const loader=readFileSync(new URL('../universal/nika-universal/public/nika-loader.js',import.meta.url),'utf8');
+const universalServer=readFileSync(new URL('../universal/nika-universal/server.mjs',import.meta.url),'utf8');
+
+check('the guide carries a line naming the software',canonicalShell.includes("branding: true,")&&canonicalShell.includes("assist-brand")&&canonicalShell.includes("Powered by Nika"));
+check('it is only omitted when branding is explicitly false',canonicalShell.includes("cfg.branding===false?''"));
+// Every default in this chain has to fail towards branded. An old server, a
+// truncated response or a config that predates the field must not produce a
+// free unbranded guide.
+check('both loaders treat a missing field as branded',embed.includes('branding: config.branding !== false')&&loader.includes('branding: config.branding !== false'));
+check('the line survives a small screen',canonicalGuideCss.includes('.assist-brand{')&&!/@media[^{]*\{[^}]*\.assist-brand\{[^}]*display:\s*none/.test(canonicalGuideCss));
+check('and states its own box model like the note above it',canonicalGuideCss.includes('.assist-brand{')&&canonicalGuideCss.includes('margin:0 0 8px!important'));
+
+check('removing it is a package capability, not a free checkbox',php.includes("'branding' => nika_can( 'unbranded' ) ? ! empty( $input['branding'] ) : true,"));
+// The form is not the boundary. A hidden input or a hand-made POST goes through
+// sanitisation like everything else, which is where the capability is checked.
+check('the capability is enforced on save, not in the form',php.includes('Enforced on save, not in the form'));
+check('and again when the config is served',php.includes("'branding' => nika_can( 'unbranded' ) ? ! empty( $s['branding'] ) : true,"));
+check('a lapsed package restores the line without losing the preference',php.includes("nika_can( 'unbranded' ) ? ! empty( $s['branding'] ) : true"));
+check('the toggle is shown to every package and labelled with its own',php.includes("esc_html_e( 'Show the Nika line', 'nika-site-guide' )")&&php.includes("nika_capability_package( 'unbranded' )"));
+check('the admin preview shows what a visitor sees',adminScript.includes("branding: capabilities.has('unbranded')")&&adminScript.includes("form.addEventListener('change', render);"));
+// Universal cannot check a licence yet, so a toggle there would give the
+// Business feature away to every install.
+check('Universal stays branded until it can check a licence',universalServer.includes('const NIKA_UNIVERSAL_BRANDING = true;')&&universalServer.includes('branding: NIKA_UNIVERSAL_BRANDING,')&&universalServer.includes('Universal has no licence check yet'));
+
 if(failed)process.exit(1);
 console.log('\nall passed');

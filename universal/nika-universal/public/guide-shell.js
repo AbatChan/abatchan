@@ -49,6 +49,13 @@ export async function mountGuideShell(options = {}) {
     apiBase: '',
     placeholder: 'Ask about your project…',
     disclaimer: 'Site help only, no account access, payments, or promises.',
+    // One quiet line naming the software. It defaults on, because every install
+    // that has not bought the right to remove it should carry it, including one
+    // running with no licence key at all. Removing it is a Business feature and
+    // the site's own server decides, which is what self-hosted means.
+    branding: true,
+    brandingLabel: 'Powered by Nika',
+    brandingUrl: 'https://abatchan.com/nika',
     chips: [
       {label:'Show me relevant work',description:'See projects similar to yours'},
       {label:'How does a project start?',description:'Learn about the process'},
@@ -215,7 +222,10 @@ export async function mountGuideShell(options = {}) {
         '</div>'+
       '</div>'+
     '</form>'+
-    `<p class="assist-note">${cfg.disclaimer}</p>`;
+    `<p class="assist-note">${cfg.disclaimer}</p>`+
+    // Below the disclaimer and smaller than it: present and readable, never
+    // competing with the site it is a guest on.
+    (cfg.branding===false?'':`<p class="assist-brand"><a href="${safe(cfg.brandingUrl)}" target="_blank" rel="noopener">${safe(cfg.brandingLabel)}</a></p>`);
 
   (cfg.isolate?scope:document.body).append(launch,panel);
   (cfg.isolate?scope:document.head).append(ownStyle);
