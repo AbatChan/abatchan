@@ -436,8 +436,10 @@ result = await call('7.7.7.4', 'Update the email to full name @ gmail.com.', '/c
 const updateText=decodeURIComponent(result.text);
 check('spaced email syntax is normalized', updateText.includes('"email":"fullname@gmail.com"'), true);
 check('only email is authorized for replacement', updateText.includes('"replace_fields":["email"]'), true);
-check('departure names the verified replacement', updateText.includes('update the email address to fullname@gmail.com'), true);
-check('arrival confirms the exact verified replacement', updateText.includes('email address fullname@gmail.com'), true);
+check('the value that reaches the form is the normalised one', updateText.includes('"email":"fullname@gmail.com"'), true);
+// The three journey sentences are the model's own now. The server only supplies
+// them when the model sends none.
+check('the reply is in the model\'s own voice', updateText.includes('I’ll change the email to hello@northstar.com.') === false && updateText.includes('"departure"'), true);
 
 console.log('\n=== the model can apply a contextual email transformation without keyword routing ===');
 table.clear();
@@ -464,14 +466,22 @@ check('current email reaches the model as live state', derivedSystem.includes('"
 check('the section in view reaches the model with its text', derivedSystem.includes('Current section text: Share the project, current setup, required outcome, and timing.'), true);
 check('verified company-name email is accepted', derivedText.includes('"email":"adastudio@gmail.com"'), true);
 check('derived update still replaces only email', derivedText.includes('"replace_fields":["email"]'), true);
-check('derived conclusion names the new address', derivedText.includes('email address adastudio@gmail.com'), true);
+// This is exactly the "my email is my name at gmail" case, and it is the model
+// that works it out. The server no longer needs derive_email_from_name to bless
+// the result, it just applies it.
+check('the derived address reaches the form', derivedText.includes('"email":"adastudio@gmail.com"'), true);
 
 console.log('\n=== an unverified replacement cannot pretend to update the form ===');
 table.clear();
 deepSeekMode = 'form-update-invented';
 result = await call('7.7.7.3', 'Update the email.', '/contact', '#project-form');
-check('asks for the complete replacement value', result.text.includes('What exact email should I use?'), true);
-check('does not emit an unverified form action', result.text.includes('<!--abatchan-nav:'), false);
+// The provenance matcher used to empty this address and the emptied field then
+// tripped the "what exact value" branch. Both are gone: an address the model
+// supplies now reaches the form, where the visitor reads it before anything is
+// sent. Asking rather than inventing when there is nothing to go on is in the
+// role, and a canned fixture cannot demonstrate a model choosing to ask.
+check('a supplied address is no longer blocked by where it came from', decodeURIComponent(result.text).includes('"email":"invented@gmail.com"'), true);
+check('and the visitor still gets a reviewable form action', result.text.includes('<!--abatchan-nav:'), true);
 
 console.log('\n=== preparing still works when the form is already in view ===');
 table.clear();
@@ -480,19 +490,16 @@ result = await call('7.7.7.9', 'Prepare the form for Ada Studio, ada@example.com
 check('same-section preparation still emits a client action', result.text.includes('<!--abatchan-nav:'), true);
 check('same-section preparation keeps the review payload', decodeURIComponent(result.text).includes('"form_prefill"'), true);
 
-console.log('\n=== invented personal details are removed from prepared forms ===');
+console.log('\n=== a loosely described contact reaches the form ===');
 table.clear();
 deepSeekMode = 'form-prefill';
 result = await call('7.7.7.8', 'Prepare the form for my booking automation.');
-check('an unsupplied name is stripped', decodeURIComponent(result.text).includes('"name":""'), true);
-check('an unsupplied email is stripped', decodeURIComponent(result.text).includes('"email":""'), true);
-// Stripping them silently is how "fill it with dummy data" produced a cheerful
-// confirmation naming only the two fields that happened to survive, leaving the
-// visitor to notice from the form itself that the other two were refused.
-const strippedArrival = JSON.parse(decodeURIComponent((decodeURIComponent(result.text).match(/abatchan-nav:[^:]+:([\s\S]+?)-->/) || [])[1] || '{}')).arrival || '';
-check('the visitor is told which fields were refused', /could not fill/.test(strippedArrival) && /name \/ company/.test(strippedArrival) && /email address/.test(strippedArrival), true);
-check('and why, in terms they can act on', /typed them yourself/.test(strippedArrival) && /exact values/.test(strippedArrival), true);
-check('while the fields that were verified still confirm', /project type|project context/.test(strippedArrival), true);
+check('a name the visitor never typed literally is kept', decodeURIComponent(result.text).includes('"name":"Ada Studio"'), true);
+check('and an address it worked out is kept too', decodeURIComponent(result.text).includes('"email":"ada@example.com"'), true);
+// The one thing the prose still cannot do is name a different address from the
+// one being applied. The likeliest wrong answer is the studio's own address,
+// printed on the page the model is reading.
+check('the reply cannot name an address other than the applied one', decodeURIComponent(result.text).includes('abatchan4@gmail.com'), false);
 
 console.log('\n=== provider tool-call protocol never reaches the visitor ===');
 // DeepSeek sometimes serialises a second tool attempt as DSML inside
@@ -541,15 +548,18 @@ check('does not re-ask for the replacement value', result.text.includes('What ex
 check('the corrected address is accepted', northstar.includes('"email":"hello@northstar.com"'), true);
 check('the visitor-supplied company survives', northstar.includes('"name":"Northstar Creative"'), true);
 check('an empty form is prepared, not replaced', northstar.includes('"replace_fields"'), false);
-check('the journey names the verified address', northstar.includes('email address hello@northstar.com'), true);
+check('the journey names the address it applied', northstar.includes('hello@northstar.com'), true);
 check('the site contact address is not substituted', northstar.includes('abatchan4@gmail.com'), false);
 
-console.log('\n=== a domain change the visitor never asked for is rejected ===');
+console.log('\n=== an empty form is prepared, whatever the model chose ===');
 table.clear();
 deepSeekMode = 'northstar-unrelated';
 result = await call('9.9.9.2', northstarMessage, '/contact', '#project-form');
-check('an unrelated domain is not treated as the correction', result.text.includes('hello@elsewhere.com'), false);
-check('asks for the complete replacement value instead', result.text.includes('What exact email should I use?'), true);
+// The form is empty here, so this is a preparation and not a replacement, and
+// nothing is overwritten. The address the model settled on goes in, and the
+// visitor reads it before their mail client ever opens.
+check('the model\'s address reaches the empty form', decodeURIComponent(result.text).includes('"email":"hello@elsewhere.com"'), true);
+check('and it is not reported as replacing anything', decodeURIComponent(result.text).includes('"replace_fields"'), false);
 
 console.log('\n=== ordinary angle brackets are not mistaken for protocol ===');
 // The firewall matches exact transport frames, so ordinary prose that happens
@@ -627,7 +637,7 @@ check('a previously applied name is accepted', restored.includes('"name":"Ada St
 check('a previously applied email is accepted', restored.includes('"email":"ada@example.com"'), true);
 check('prepared values reach the model as context', lastDeepSeekBody.messages.some(m=>m.role==='system'&&m.content.includes('Details you already prepared')), true);
 
-console.log('\n=== a value never prepared is still not inventable ===');
+console.log('\n=== a value the visitor never typed now reaches the form ===');
 table.clear();
 deepSeekMode = 'form-prefill';
 result = await call('9.9.9.7', 'put those details back please', '/contact', '#project-form', [], {
@@ -635,8 +645,11 @@ result = await call('9.9.9.7', 'put those details back please', '/contact', '#pr
   preparedForm: {name:'Other Co',email:'someone@else.test',type:'X',message:'Y'}
 });
 const mismatched = decodeURIComponent(result.text);
-check('an unrelated prepared name does not bless the proposal', mismatched.includes('"name":""'), true);
-check('an unrelated prepared email does not bless the proposal', mismatched.includes('"email":""'), true);
+// This form submits nothing. It composes a mailto: the visitor opens in their
+// own client, so a value they did not type is a suggestion they read and edit,
+// not a claim made for them.
+check('the name the model worked out is applied', mismatched.includes('"name":"Ada Studio"'), true);
+check('and so is the address', mismatched.includes('"email":"ada@example.com"'), true);
 
 console.log('\n=== the composed prompt reaches the model unchanged ===');
 // The instructions now come from a tenant record rather than literals in this

@@ -118,18 +118,28 @@ check('what it said is what it gets back',guide.includes('content:item.journeyCo
 check('a repeated request is work to do, not something to defer',role.includes('Every visitor message is a live request')&&role.includes('never a reason to decline, defer, or reply that something was handled before'));
 check('and a short follow-up is resolved from the conversation',role.includes('Resolve what a short follow-up refers to from the conversation')&&role.includes('Highlight it')&&role.includes('section_requested true'));
 
-console.log('\n=== the form says what it refused, not only what it did ===');
-// Name and email accept only what the visitor typed. Refusing silently is how
-// "fill it with dummy data" produced a confirmation naming the two fields that
-// survived, with nothing about the two that did not.
+console.log('\n=== the form trusts the model, and the visitor reviews ===');
+// Name and email used to be matched against the visitor's own words and emptied
+// when they did not appear there, which threw away every correct inference from
+// loose phrasing. The form composes a mailto: the visitor opens in their own
+// client, so a value is a suggestion they read and edit, never a claim made for
+// them, and the matching is gone.
 const chatStream=readFileSync(new URL('../api/chat-stream.js',import.meta.url),'utf8');
-check('what the model proposed is recorded before verification empties it',chatStream.includes('const proposedFields=Object.entries(formPrefill||{})')&&chatStream.includes('const droppedFields=proposedFields.filter(field=>!formPrefill?.[field]);'));
-check('a refused field is named in the reply',chatStream.includes('const droppedNote=droppedFields.length')&&chatStream.includes('I could not fill'));
-check('with the way forward, not just the refusal',chatStream.includes('typed them yourself')&&chatStream.includes('Send the exact'));
-// If every field is refused there is nothing to confirm, and the model's own
-// arrival would have claimed the form was filled.
-check('a wholly refused prefill does not borrow the model\'s success line',chatStream.includes('`I did not change the form.${droppedNote}`'));
-check('the guide is told not to offer what it cannot do',role.includes('never offer to make one up')&&role.includes('placeholder, sample and dummy values'));
+check('nothing matches a proposed value against the visitor\'s words',!chatStream.includes('suppliedText')&&!chatStream.includes('previouslyPrepared'));
+check('and no value is emptied for where it came from',!/formPrefill\?\.(name|email)&&[^\n]*\)formPrefill\.(name|email)=''/.test(chatStream));
+check('the reason is recorded where the guard used to be',chatStream.includes('It composes a mailto: link the visitor opens in')&&chatStream.includes('costs a keystroke rather than a mistake'));
+
+// The three journey sentences are the model's own. The server templates are the
+// fallback for a journey that arrives without them.
+check('the model writes the journey, the server fills gaps',chatStream.includes('const safeDepartureBase=ownVoice(departure)')&&chatStream.includes('const safeArrival=ownVoice(authoredArrival)'));
+// The one thing prose still cannot do: name an address other than the one going
+// into the form. The likeliest wrong answer is the studio's own address, printed
+// on the page the model is reading.
+check('a sentence naming a different address loses to the template',chatStream.includes('const namesOtherAddress=')&&chatStream.includes('This checks the prose against the value, not the value'));
+
+check('the model is told to work values out from loose phrasing',role.includes('however loosely they put it')&&role.includes('my email is my name at gmail'));
+check('to ask only when it has nothing to go on',role.includes('nothing to base a value on, ask for it rather than inventing'));
+check('and to close by asking for a review, in its own words',role.includes('check the fields before sending, in your own words and different each time'));
 
 console.log('\n=== the licence endpoint answers, it never blocks ===');
 // The endpoint and the vocabulary it answers in are two files now, because

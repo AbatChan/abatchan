@@ -92,7 +92,6 @@ const NAV_TOOL={
         label:{type:'string',description:'A concise human label for the exact destination. When section_requested is true, name that requested content specifically, never only the page.'},
         form_prefill:{type:'object',description:'Optional project-enquiry values, only when the latest visitor message explicitly asks to prepare or fill that form. Omit facts the visitor did not supply. Never invent personal details, scope, timing, or budget.',properties:{name:{type:'string',description:'Visitor name or company exactly as supplied, otherwise empty.'},email:{type:'string',description:'Visitor email exactly as supplied, otherwise empty.'},type:{type:'string',description:'A short description of what the visitor said they are building.'},message:{type:'string',description:'A concise summary of the project context, desired outcome, constraints and timing the visitor actually supplied.'}},required:['name','email','type','message'],additionalProperties:false},
         replace_fields:{type:'array',maxItems:4,uniqueItems:true,description:'Existing project-form fields the latest visitor message explicitly asked to correct or replace. Omit for initial preparation and replay. Never include unchanged fields.',items:{type:'string',enum:['name','email','type','message']}},
-        derive_email_from_name:{type:'boolean',description:'True only when the latest visitor message explicitly asks to form the email from the current name/company field. The server verifies the derived address against live form state.'},
         related_links:{type:'array',maxItems:3,description:'Other verified destinations the visitor requested in the same message but which should not replace the active navigation. Return an empty array when there are none.',items:{type:'object',properties:{href:{type:'string',description:'A verified relative route and optional exact anchor from the directory.'},label:{type:'string',description:'A concise human label for this related destination.'}},required:['href','label'],additionalProperties:false}}
       },
       required:['departure','status','arrival','requires_approval','href','section_requested','label','related_links'],
@@ -557,58 +556,26 @@ export default async function handler(req,res){
               message:cleanVoice(String(action.form_prefill.message||'').slice(0,1800))
             }
           : null;
-        // Personal identifiers must appear literally in the visitor's latest
-        // message. This prevents the model from guessing a name or email while
-        // still allowing it to organise the project description for review.
-        const suppliedText=[...history.filter(item=>item.role==='user').map(item=>item.content),message]
-          .join('\n')
-          .replace(/\\([@._+-])/g,'$1')
-          .toLowerCase();
+        // Name and email used to be matched against the visitor's own words and
+        // emptied when they did not appear there. That guard assumed a filled
+        // field was a claim being made on the visitor's behalf. It is not: this
+        // form submits nothing. It composes a mailto: link the visitor opens in
+        // their own mail client, so every value is read, editable and sent by
+        // them, and a wrong one costs a keystroke rather than a mistake.
+        //
+        // What the guard actually cost was the reasoning worth having. "My name
+        // is Ada Bello and my email is my name at gmail" is enough for a person
+        // and was not enough for the matcher, so the model's correct answer was
+        // discarded and the visitor was told nothing. Working that out is the
+        // model's job, and it now does it.
+        //
+        // Nothing below this point rewrites a proposed value. Length caps and
+        // the whitespace tidy on the address stay, because they are cleanup
+        // rather than judgement.
         const currentFormName=String(pageContext?.formState?.name||'').trim();
         const currentFormEmail=String(pageContext?.formState?.email||'').trim().toLowerCase();
-        const derivedLocal=currentFormName.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
-        const currentDomain=/^[^\s@]+@([^\s@]+\.[^\s@]+)$/.exec(currentFormEmail)?.[1]||'';
-        const verifiedDerivedEmail=derivedLocal&&currentDomain?`${derivedLocal}@${currentDomain}`:'';
-        const derivedEmailAllowed=action.derive_email_from_name===true&&formPrefill?.email.toLowerCase()===verifiedDerivedEmail;
-        // A visitor can supply an address and correct part of it in the same
-        // message. Rather than rediscovering that intent with phrase matching,
-        // the proposed value is verified against what they actually typed: the
-        // local part must be unchanged, every domain label but the last must be
-        // unchanged, and the replacement must appear literally in their words.
-        const emailPattern=/[^\s@]+@[a-z0-9.-]+\.[a-z]{2,}/g;
-        const suppliedEmails=[
-          ...suppliedText.matchAll(emailPattern),
-          ...suppliedText.replace(/\s+/g,'').matchAll(emailPattern)
-        ].map(match=>match[0]);
-        const [proposedLocal='',proposedDomain='']=(formPrefill?.email||'').toLowerCase().split('@');
-        const transformedEmailAllowed=Boolean(proposedLocal&&proposedDomain&&suppliedEmails.some(supplied=>{
-          const [suppliedLocal,suppliedDomain]=supplied.split('@');
-          if(suppliedLocal!==proposedLocal||suppliedDomain===proposedDomain)return false;
-          const suppliedLabels=suppliedDomain.split('.');
-          const proposedLabels=proposedDomain.split('.');
-          if(suppliedLabels.length!==proposedLabels.length)return false;
-          if(suppliedLabels.slice(0,-1).join('.')!==proposedLabels.slice(0,-1).join('.'))return false;
-          return suppliedText.includes(`.${proposedLabels.at(-1)}`)||suppliedText.replace(/\s+/g,'').includes(proposedDomain);
-        }));
-        // A value this browser already applied was verified against the
-        // visitor's own words when it was first prepared. Restoring it is not a
-        // new claim, so it stays acceptable after the supplying message has
-        // scrolled out of the history budget.
-        const preparedForm=pageContext?.preparedForm||null;
-        const previouslyPrepared=field=>{
-          const applied=String(preparedForm?.[field]||'').trim().toLowerCase();
-          return Boolean(applied)&&applied===String(formPrefill?.[field]||'').trim().toLowerCase();
-        };
-        // What the model asked for, recorded before verification empties any of
-        // it, so the visitor can be told which fields did not make it and why.
-        const proposedFields=Object.entries(formPrefill||{}).filter(([,value])=>Boolean(value)).map(([field])=>field);
         const requestedReplaceFields=[...new Set((Array.isArray(action.replace_fields)?action.replace_fields:[]).filter(field=>['name','email','type','message'].includes(field)))];
         const requestedReplaceSet=new Set(requestedReplaceFields);
-        // The model interprets corrections from language and live form state.
-        // Code validates the proposed value and action boundary; it does not
-        // try to rediscover intent with trigger phrases or exact-text matching.
-        if(formPrefill?.name&&!(requestedReplaceSet.has('name')&&currentFormName)&&!suppliedText.includes(formPrefill.name.toLowerCase())&&!previouslyPrepared('name'))formPrefill.name='';
-        if(formPrefill?.email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formPrefill.email)||(!(requestedReplaceSet.has('email')&&currentFormEmail)&&!suppliedText.replace(/\s+/g,'').includes(formPrefill.email.toLowerCase())&&!derivedEmailAllowed&&!transformedEmailAllowed&&!previouslyPrepared('email'))))formPrefill.email='';
         const replaceFields=requestedReplaceFields.filter(field=>{
           const value=formPrefill?.[field];
           if(!value)return false;
@@ -630,16 +597,28 @@ export default async function handler(req,res){
           res.end();
           return;
         }
-        // A name or email the visitor never typed is emptied above. Saying
-        // nothing about it is how "fill in a dummy name and email" produced a
-        // cheerful confirmation that listed only the two fields that happened to
-        // survive, leaving the visitor to work out from the form itself that the
-        // other two were quietly refused.
-        const droppedFields=proposedFields.filter(field=>!formPrefill?.[field]);
         const hasPrefill=formPrefill&&Object.values(formPrefill).some(Boolean);
-        // Build form confirmations from server-verified values rather than the
-        // model's prose. This keeps the journey specific without allowing a
-        // guessed name, email, or stale field to be presented as applied.
+        // The server used to write these three sentences itself, because a value
+        // could be emptied after the model had already described it and the
+        // description would then be wrong. Nothing is emptied any more, so the
+        // model's own words are accurate and they are what the visitor reads.
+        // These templates remain as the fallback for a journey that arrives
+        // without them, not as a replacement for a reply that has them.
+        //
+        // With one exception. A sentence may name an address that is not the one
+        // going into the form, and the likeliest wrong answer is the studio's own
+        // address, which is printed on the contact page the model is reading. A
+        // reply confirming "abatchan4@gmail.com is ready" while the field holds
+        // the visitor's address is a specific, plausible confusion, so a sentence
+        // that names a different address than the one applied loses to the
+        // template. This checks the prose against the value, not the value
+        // against the visitor.
+        const namesOtherAddress=text=>{
+          const applied=String(formPrefill?.email||'').toLowerCase();
+          return (String(text||'').toLowerCase().match(/[^\s@<>()"']+@[a-z0-9.-]+\.[a-z]{2,}/g)||[])
+            .some(found=>found.replace(/[.,;:]+$/,'')!==applied);
+        };
+        const ownVoice=text=>(text&&!namesOtherAddress(text)?text:'');
         const fieldLabel=field=>({name:'name / company',email:'email address',type:'project type',message:'project context'})[field]||field;
         const replacementDetails=replaceFields.map(field=>field==='message'
           ? 'the project context with the details you supplied'
@@ -655,32 +634,25 @@ export default async function handler(req,res){
           ? 'the project context you supplied'
           : `${fieldLabel(field)} ${value}`);
         const preparedLabels=preparedFields.map(([field])=>fieldLabel(field));
-        const safeDepartureBase=replacementDetails.length
-          ? `I’ll update ${joinDetails(replacementDetails)}.`
-          : hasPrefill
-            ? `I’ll prepare the enquiry with ${joinDetails(preparationDetails)}.`
-            : departure;
+        const safeDepartureBase=ownVoice(departure)
+          || (replacementDetails.length
+            ? `I’ll update ${joinDetails(replacementDetails)}.`
+            : hasPrefill
+              ? `I’ll prepare the enquiry with ${joinDetails(preparationDetails)}.`
+              : departure);
         const safeDeparture=requiresApproval&&relatedMarkup?`${safeDepartureBase} ${relatedMarkup}`:safeDepartureBase;
-        const safeStatus=replacementDetails.length
-          ? `Applying ${replaceFields.length===1?'that verified change':'those verified changes'} to the project form.`
-          : hasPrefill
-            ? `Adding the verified ${joinDetails(preparedLabels)} to the project form.`
-            : status;
-        // Name and email accept only what the visitor typed themselves, so a
-        // guessed or placeholder value is refused. That refusal is now said out
-        // loud, with the way forward, rather than left for them to notice.
-        const droppedNote=droppedFields.length
-          ? ` I could not fill ${joinDetails(droppedFields.map(fieldLabel))}: I only put contact details in the form when you have typed them yourself. Send the exact ${droppedFields.length===1?'value':'values'} to use and I will add ${droppedFields.length===1?'it':'them'}.`
-          : '';
-        const safeArrival=(replacementDetails.length
-          ? `The form now has ${joinDetails(replacementResults)}. Review everything before opening the email.`
-          : hasPrefill
-            ? `The enquiry form now includes ${joinDetails(preparationDetails)}. Review each field before opening the email.`
-            // Every field was refused, so there is nothing to confirm. The
-            // model's own arrival would have claimed the form was filled.
-            : droppedFields.length
-              ? `I did not change the form.${droppedNote}`
-              : authoredArrival)+(hasPrefill?droppedNote:'');
+        const safeStatus=ownVoice(status)
+          || (replacementDetails.length
+            ? `Applying ${replaceFields.length===1?'that change':'those changes'} to the project form.`
+            : hasPrefill
+              ? `Adding the ${joinDetails(preparedLabels)} to the project form.`
+              : status);
+        const safeArrival=ownVoice(authoredArrival)
+          || (replacementDetails.length
+            ? `The form now has ${joinDetails(replacementResults)}. Review everything before opening the email.`
+            : hasPrefill
+              ? `The enquiry form now includes ${joinDetails(preparationDetails)}. Review each field before opening the email.`
+              : authoredArrival);
         const arrival=!requiresApproval&&relatedMarkup?`${safeArrival} ${relatedMarkup}`:safeArrival;
         const authored=[safeDeparture,safeStatus,arrival,...relatedLinks.map(item=>item.label)];
         const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item,tenant.canaries));

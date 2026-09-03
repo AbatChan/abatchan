@@ -82,8 +82,11 @@ for (const word of vocabulary) {
 check('the only "code" left is generic', engineOnly.match(/\bcode\b/gi)?.length, 2);
 check('"code block" is the formatting rule', engineOnly.includes('not inside a code block'), true);
 check('"edit code" is the capability disclaimer', engineOnly.includes('submit forms, edit code'), true);
-check('"studio" only appears as an example address', engineOnly.match(/\bstudio\b/gi)?.length, 1);
-check('and that example is the email derivation one', engineOnly.includes('Example: Ada Studio plus'), true);
+// The email-derivation recipe that used the word went with the guard it served,
+// so the shared engine now carries none of this tenant's vocabulary at all. The
+// worked example that replaced it uses an invented person, not a real client.
+check('no tenant vocabulary is left in the shared engine', engineOnly.match(/\bstudio\b/gi)?.length ?? 0, 0);
+check('the worked example is an invented one', engineOnly.includes('Ada Bello') && !engineOnly.includes('abatchan'), true);
 check('a tenant with no protected work still reads correctly', engineOnly.includes('The restriction below is about the work this business sells'), true);
 check('the bakery names its own restriction', composeRole(northwind).includes('The recipe restriction below is about method and quantities'), true);
 
