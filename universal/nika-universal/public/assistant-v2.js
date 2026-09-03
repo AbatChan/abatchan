@@ -975,8 +975,11 @@
     const history=transcript
       .filter(item=>item.role!=='user'||item.state==='answered')
       .slice(-MAX_STORED)
+      // journey.arrival holds the conclusion the visitor actually read, written
+      // after the browser reported what happened. That is the half worth
+      // resending; the departure is the half that goes stale.
       .map(item=>item?.journey?.completed
-        ? {...item,content:item.content,journeyRoute:true,journey:undefined}
+        ? {...item,content:item.content,journeyConclusion:item.journey.arrival||'',journeyRoute:true,journey:undefined}
         : item
       );
     let pending=false,activeController=null,audioCtx=null,peekTimer=0,confirmTimer=0,formGuidanceTimer=0,guidanceTimer=0;
@@ -999,29 +1002,24 @@
         return kept;
       };
       const recent=history.slice(-MAX_STORED);
-      // Every completed journey is historical by the next question, including
-      // after a fresh tab or reload where navigationState is "initial". Do not
-      // resend its old route claim beside the new live context, or the model may
-      // treat “you are on Pricing” as newer than the browser.
-      // Three things have to hold at once here, and each of the obvious fixes
-      // breaks one of them. Dropping the visitor's message loses details they
-      // supplied once and still expect to be known, and the server verifies
-      // proposed form values against exactly those messages. Dropping only the
-      // reply leaves their question unanswered, so the model proposes the same
-      // action again on every later turn. Keeping any of the reply's own
-      // wording, the departure included, reads as a location claim: after
-      // "I'll take you to the work page" the model answers "where am I" with
-      // Work even once the visitor has walked to another page.
-      // So keep the turn, keep their message, and replace the reply with a
-      // stand-in that carries no destination and defers to the live route.
-      // The stand-in is bracketed rather than written as a sentence because a
-      // sentence gets copied. "That request was completed earlier." read as a
-      // perfectly good reply, and the model started answering live questions
-      // with it: a visitor asking to see something was told their request had
-      // already been handled. A bracketed note reads as machinery, and the
-      // prompt rules say never to repeat one.
+      // A completed journey is two sentences with different lifespans. The
+      // departure, "Taking you to the plans", is a claim about where the visitor
+      // is heading, and it is stale the moment they arrive or walk off. The
+      // conclusion is written after the browser reports what actually happened,
+      // and it is a real answer: "The cheapest is Personal at $99 for 2 sites."
+      //
+      // Only the conclusion is resent. Nothing is invented in the model's place.
+      //
+      // This used to substitute a stand-in sentence instead, and that was the
+      // bug: given a plausible sentence in its own voice, the model reused it as
+      // a reply. A visitor who asked to see a specific line was told their
+      // request had already been handled, twice. Replacing one canned sentence
+      // with another only lowers the odds, so there is no canned sentence now.
+      // What the model gets is what it actually said, plus the live route and
+      // the guide-navigation record in page context, both of which the role
+      // already tells it outrank anything in the conversation.
       return budget(recent.map(item=>item.journeyRoute
-        ? {...item,content:'[earlier navigation, already delivered]',journeyRoute:false}
+        ? {...item,content:item.journeyConclusion||item.content,journeyRoute:false}
         : item
       ));
     };
@@ -1934,7 +1932,7 @@
       for(let i=transcript.length-1;i>=0;i--){if(transcript[i].role==='assistant'){
         transcript[i]={...transcript[i],journey:{...journey,pending:false,completed:true}};break
       }}
-      for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:`${journey.departure}\n${conclusion}`,journeyRoute:true};break}}
+      for(let i=history.length-1;i>=0;i--){if(history[i].role==='assistant'){history[i]={...history[i],content:`${journey.departure}\n${conclusion}`,journeyConclusion:conclusion,journeyRoute:true};break}}
       writeStored(transcript);
       appendJourneyFallback(arrival,journey);
       scrollLatest({force:true});

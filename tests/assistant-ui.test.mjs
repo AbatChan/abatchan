@@ -104,14 +104,19 @@ check('each of the three questions takes a different angle',adminGenerator.inclu
 check('no single angle can claim all three cards',!adminGenerator.includes('const angle = angles[Math.floor(Math.random() * angles.length)];')&&adminGenerator.includes('No two questions may be about the same product or page'));
 check('the reason is recorded next to the fix',adminGenerator.includes('a quarter of the time that ground was a single product')||adminGenerator.includes('quarter of the time'));
 
-console.log('\n=== an internal note is never spoken to a visitor ===');
-// "That request was completed earlier." was a well-formed sentence, so the model
-// started using it as its own reply: a visitor asking to be shown something was
-// told their request had already been handled. Twice, in a row.
+console.log('\n=== nothing is put in the model\'s mouth ===');
+// A stand-in sentence in the assistant's own voice gets reused as a reply. "That
+// request was completed earlier." was well formed enough to look like an answer,
+// and a visitor who asked to see a specific line got it twice in a row. Swapping
+// it for a different canned sentence only lowers the odds, so there is none.
 const guide=readFileSync(new URL('../assistant-v2.js',import.meta.url),'utf8');
 const role=readFileSync(new URL('../lib/prompt/engine.js',import.meta.url),'utf8');
-check('the placeholder reads as machinery, not as prose',guide.includes("content:'[earlier navigation, already delivered]'")&&!guide.includes("content:'That request was completed earlier.'"));
-check('and the model is told never to repeat one',role.includes('Text in square brackets inside the conversation history is an internal note')&&role.includes('Never repeat one')&&role.includes("the visitor's current message is still unanswered"));
+check('no sentence is written on the model\'s behalf',!/content:'[^']*[a-z]{4}[^']*'/.test(guide.slice(guide.indexOf('return budget(recent.map'),guide.indexOf('const rememberJourney'))));
+check('what it said is what it gets back',guide.includes('content:item.journeyConclusion||item.content'));
+// The replacement for the canned line is guidance, not another string: the model
+// is told to treat a repeat or a refinement as live work.
+check('a repeated request is work to do, not something to defer',role.includes('Every visitor message is a live request')&&role.includes('never a reason to decline, defer, or reply that something was handled before'));
+check('and a short follow-up is resolved from the conversation',role.includes('Resolve what a short follow-up refers to from the conversation')&&role.includes('Highlight it')&&role.includes('section_requested true'));
 
 console.log('\n=== the licence endpoint answers, it never blocks ===');
 // The endpoint and the vocabulary it answers in are two files now, because
@@ -303,10 +308,11 @@ console.log('\n=== manual navigation keeps what the visitor supplied ===');
 // Dropping the whole journey turn also deleted the message carrying the
 // visitor's own details, so a later "put those back" had nothing to work from
 // and the server could not verify the values either.
-check('the journey turn is kept with neutral conversational history',assistant.includes("journeyRoute:false}")&&assistant.includes('That request was completed earlier.')&&!assistant.includes('live route check is the only authority'));
-// Keeping the reply's own wording, departure included, reads as a location
-// claim and made "where am I" answer with the old destination.
-check('no wording from the journey reply survives',!assistant.includes("String(item.content||'').split('\\n')[0]"));
+check('the journey turn is kept, and carries what was really said',assistant.includes("journeyRoute:false}")&&assistant.includes('content:item.journeyConclusion||item.content'));
+// The departure is a claim about where the visitor is heading and goes stale on
+// arrival. The conclusion is written after the browser reports what happened, so
+// it is an answer rather than a location claim, and it is the half that is kept.
+check('the departure is dropped and the conclusion kept',assistant.includes('journeyConclusion:conclusion')&&assistant.includes("journeyConclusion:item.journey.arrival||''"));
 check('the visitor message is no longer removed with it',!assistant.includes('journeyQuestions'));
 // Dropping the reply while keeping the question left it unanswered, and the
 // model then re-proposed the same action on every following turn.

@@ -307,5 +307,14 @@ check('the refusal names the package instead of a slug',php.includes('Moving set
 check('the controls are shown to every package and marked with theirs',php.includes("id=\"nika-export-config\" data-nika-capability=\"config_transfer\"")&&php.includes("id=\"nika-import-config\" data-nika-capability=\"config_transfer\""));
 check('the page reloads after an import so the form cannot disagree with the database',adminScript.includes('window.location.reload()'));
 
+console.log('\n=== a repeated request is answered, not deflected ===');
+// The packaged editions build their own prompts, so guidance that only exists in
+// the abatchan role leaves a customer's install behaving worse than the demo.
+const guidance='Every visitor message is a live request';
+const followUp='Resolve what a short follow-up refers to from the conversation';
+check('the plugin tells the model a repeat is live work',php.includes(guidance)&&php.includes('never a reason to decline, defer, or reply that something was handled before'));
+check('and how to resolve a short follow-up',php.includes(followUp)&&php.includes('set section_requested true'));
+check('Universal carries the same two rules',universalServer.includes(guidance)&&universalServer.includes(followUp));
+
 if(failed)process.exit(1);
 console.log('\nall passed');
