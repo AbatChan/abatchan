@@ -1,4 +1,4 @@
-# Nika Universal 1.5.6
+# Nika Universal 1.5.7
 
 Self-host Nika beside any website that can include a script tag. Your site data,
 configuration, and rate-limit database stay on your server. AI requests go
@@ -31,6 +31,29 @@ Add this before the closing `</body>` tag:
 ```
 
 The API key must stay in `.env`; never place it in HTML or `NikaConfig`.
+
+## Your licence
+
+Put the key from your purchase email in `.env` beside the others:
+
+```env
+NIKA_LICENCE_KEY=0000-0000-0000-0000
+```
+
+One key covers this installer and the WordPress plugin. One production domain
+uses one activation whichever installer it runs; localhost, `.local`, `.test`
+and recognised staging hosts are not counted.
+
+Nika runs with or without a key, and always will. A key brings updates, support,
+and the features your package includes. If the licence service cannot be reached
+the guide carries on exactly as it is, keeping the package last confirmed, and
+checks again later. Being on more sites than the package covers is reported on
+the admin page and never switches anything off.
+
+Business adds turning off the Nika line under the message box, and moving a
+configuration between sites from the admin page. Neither the licence key, the AI
+key nor the admin token is ever included in an exported file: all three live in
+`.env` and never enter `nika.config.json`.
 
 For a static HTML site, Nika can discover new pages and changed content
 automatically. Mount the site's published directory read-only, then set:

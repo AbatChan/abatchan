@@ -5,19 +5,23 @@ import { isIP } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { createLicence, packageFor, PACKAGE_NAMES } from './lib/licence.js';
 import { indexStaticSite } from './site-index.mjs';
 import { currentLocationAnswer, historicalContext, normalizeCurrentPath } from './lib/context-awareness.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
+// Read once, from the one place it is already maintained, so an export stamps
+// the build that produced it without a second copy of the number to forget.
+const VERSION = readJson(join(ROOT, 'package.json'), {}).version || '0.0.0';
 const PORT = numberBetween(process.env.NIKA_PORT, 1, 65535, 8787);
 const HOURLY_LIMIT = numberBetween(process.env.NIKA_HOURLY_LIMIT, 1, 1000, 20);
 const DAILY_LIMIT = numberBetween(process.env.NIKA_DAILY_LIMIT, 1, 100000, 500);
-// Universal has no licence check yet, so there is no setting to turn this off.
-// A toggle here would hand every install the Business feature for nothing. It
-// ships with the licence check, not before it.
-const NIKA_UNIVERSAL_BRANDING = true;
-
 const ORIGIN = cleanOrigin(process.env.NIKA_PUBLIC_ORIGIN || 'http://localhost:8787');
+// Read from the environment like every other credential here, which is also what
+// keeps it out of an exported configuration: the file cannot leak what it never
+// held.
+const LICENCE_KEY = process.env.NIKA_LICENCE_KEY || '';
+const LICENCE_API = process.env.NIKA_LICENCE_API || 'https://abatchan.com/api/licence';
 const SECRET = process.env.NIKA_HASH_SECRET || '';
 const PROVIDER = process.env.NIKA_AI_PROVIDER || 'openai';
 const API_KEY = process.env.NIKA_AI_API_KEY || '';
@@ -35,6 +39,20 @@ let discovered = { expiresAt: 0, pages: [] };
 
 mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, 'nika.db'));
+
+// Answers from the last confirmed package straight away and corrects itself in
+// the background, so a licence service having a bad minute never delays a boot
+// or takes a paid feature away mid-outage.
+const licence = createLicence({
+  key: LICENCE_KEY,
+  site: new URL(ORIGIN).host,
+  statePath: join(DATA_DIR, 'licence.json'),
+  endpoint: LICENCE_API
+});
+// Activating on boot is what claims this site against the key. Development and
+// staging hosts are recognised by the endpoint and never consume an activation.
+licence.refresh({ activate: true }).catch(() => {});
+setInterval(() => { licence.refresh().catch(() => {}); }, 24 * 60 * 60 * 1000).unref();
 db.exec('CREATE TABLE IF NOT EXISTS rate_usage (visitor_hash TEXT NOT NULL, hour TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(visitor_hash, hour))');
 db.exec('CREATE TABLE IF NOT EXISTS site_usage (day TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0)');
 
@@ -134,6 +152,9 @@ function siteData() {
       logoSize: numberBetween(config.logoSize, 14, 64, 26),
       markSize: numberBetween(config.markSize, 14, 44, 24),
       disclaimer: text(config.disclaimer, 160),
+      // Absent means branded, the same reading the loaders use, so a config file
+      // written before this existed does not become an unbranded install.
+      branding: config.branding !== false,
       launcherIcon: imageUrl(config.launcherIcon),
       position: config.position === 'left' ? 'left' : 'right',
       contextCharacters: numberBetween(config.contextCharacters, 1000, 20000, 12000),
@@ -221,7 +242,29 @@ function adminAllowed(req) {
 
 function adminConfig() {
   const { config } = siteData();
-  return { ...config, provider: PROVIDER, model: MODEL, keyConfigured: Boolean(API_KEY), endpointConfigured: Boolean(ENDPOINT), environmentExemptions: ENV_EXEMPT_IPS.length };
+  const state = licence.state();
+  return {
+    ...config,
+    provider: PROVIDER,
+    model: MODEL,
+    keyConfigured: Boolean(API_KEY),
+    endpointConfigured: Boolean(ENDPOINT),
+    environmentExemptions: ENV_EXEMPT_IPS.length,
+    // The key itself is never sent back, only what it entitles this site to.
+    licence: {
+      configured: Boolean(LICENCE_KEY),
+      status: state.status,
+      package: state.tier,
+      packageName: PACKAGE_NAMES[state.tier] || PACKAGE_NAMES.personal,
+      capabilities: licence.capabilities(),
+      packageFor: { unbranded: PACKAGE_NAMES[packageFor('unbranded')] || '', config_transfer: PACKAGE_NAMES[packageFor('config_transfer')] || '' },
+      sitesAllowed: state.sitesAllowed,
+      sitesUsed: state.sitesUsed,
+      updatesUntil: state.updatesUntil,
+      siteKind: state.siteKind,
+      message: state.message
+    }
+  };
 }
 
 function saveAdminConfig(input) {
@@ -250,6 +293,9 @@ function saveAdminConfig(input) {
     logoSize: numberBetween(input.logoSize, 14, 64, 26),
     markSize: numberBetween(input.markSize, 14, 44, 24),
     disclaimer: text(input.disclaimer, 160),
+    // Gated where the value is written, not in the admin page. A hand-made POST
+    // reaches this function too, and this is the only way in.
+    branding: licence.can('unbranded') ? input.branding !== false : true,
     launcherIcon: imageUrl(input.launcherIcon),
     position: input.position === 'left' ? 'left' : 'right',
     contextCharacters: numberBetween(input.contextCharacters, 1000, 20000, 12000),
@@ -263,6 +309,51 @@ function saveAdminConfig(input) {
   writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
   renameSync(temporary, CONFIG_PATH);
   return adminConfig();
+}
+
+// The configuration an owner downloads, and reads back on another server.
+//
+// Nothing secret can appear here, and not by careful listing: the AI key, the
+// admin token and the licence key are all read from the environment and were
+// never in the file. The one exception worth stating is the site's own exempt
+// IP list, which is in the file and does travel, because an agency setting up a
+// client site wants its own addresses exempt there too.
+function exportDocument() {
+  const { config } = siteData();
+  return { nika: 'settings', version: VERSION, exportedAt: new Date().toISOString(), site: new URL(ORIGIN).host, settings: config };
+}
+
+// Sanitised through saveAdminConfig, the same path the admin form uses, because
+// a file off somebody else's disk deserves less trust than a form, not more.
+function importDocument(document_) {
+  if (!document_ || typeof document_ !== 'object' || document_.nika !== 'settings' || !document_.settings || typeof document_.settings !== 'object') {
+    throw Object.assign(new Error('That file is not a Nika settings export.'), { status: 400 });
+  }
+  const { config } = siteData();
+  const incoming = { ...document_.settings };
+  const notes = [];
+
+  // An image hosted on the site the file came from would leave this server
+  // loading somebody else's uploads, and breaking the day they tidy up.
+  const host = new URL(ORIGIN).host.toLowerCase();
+  for (const field of ['avatar', 'launcherIcon']) {
+    const value = String(incoming[field] || '');
+    if (!value || value.startsWith('/')) continue;
+    let sameSite = false;
+    try { sameSite = new URL(value).host.toLowerCase() === host; } catch { sameSite = false; }
+    if (!sameSite) {
+      delete incoming[field];
+      notes.push('An image was left out because it is hosted on the site the file came from. Upload it here and set it again.');
+    }
+  }
+
+  if (incoming.enabled !== false && !API_KEY) {
+    incoming.enabled = false;
+    notes.push('Nika was left switched off because this server has no AI key yet. Set NIKA_AI_API_KEY, then turn it on.');
+  }
+
+  const saved = saveAdminConfig({ ...config, ...incoming });
+  return { ok: true, notes: [...new Set(notes)], config: saved };
 }
 
 async function providerCompletion(messages, options = {}) {
@@ -693,6 +784,20 @@ const server = createServer(async (req, res) => {
       catch (error) { return send(res, error.status || 500, { error: error.status ? 'Invalid settings.' : 'The settings file could not be saved. Check that nika.config.json is writable.' }); }
     }
   }
+  // The package is checked as well as the admin token. Holding the token says
+  // you may configure this server; the package says whether moving a
+  // configuration between servers is something the licence includes.
+  if (url.pathname === '/nika/admin/config-export' || url.pathname === '/nika/admin/config-import') {
+    if (!adminAllowed(req)) return send(res, 401, { error: ADMIN_TOKEN ? 'Enter the Nika admin token.' : 'Set NIKA_ADMIN_TOKEN on the server first.' });
+    if (!licence.can('config_transfer')) {
+      return send(res, 403, { error: `Moving settings between sites is included in ${PACKAGE_NAMES[packageFor('config_transfer')]}.` });
+    }
+    if (req.method === 'GET' && url.pathname === '/nika/admin/config-export') return send(res, 200, exportDocument());
+    if (req.method === 'POST' && url.pathname === '/nika/admin/config-import') {
+      try { return send(res, 200, importDocument(await bodyJson(req))); }
+      catch (error) { return send(res, error.status || 500, { error: error.status ? error.message : 'The settings file could not be saved. Check that nika.config.json is writable.' }); }
+    }
+  }
   if (req.method === 'GET' && url.pathname === '/nika/admin/ip') {
     if (!adminAllowed(req)) return send(res, 401, { error: 'Enter the Nika admin token.' });
     return send(res, 200, { ip: clientAddress(req) });
@@ -712,7 +817,7 @@ const server = createServer(async (req, res) => {
     // Always on here, with no setting to turn it off. Universal has no licence
     // check yet, so a toggle would hand every install the Business feature for
     // nothing. The toggle ships with the licence check, not before it.
-    return send(res, 200, { enabled: config.enabled, name: config.name, subtitle: 'website guide', avatar: config.avatar || '/nika/nika-logo.png', launcherIcon: config.launcherIcon, disclaimer: config.disclaimer || "Answers use this website's configured content. Review important information.", branding: NIKA_UNIVERSAL_BRANDING, panelColour: config.panelColour, panelOpacity: config.panelOpacity, gradientFrom: config.gradientFrom, gradientTo: config.gradientTo, scrollbarColour: config.scrollbarColour, shadowColour: config.shadowColour, textColour: config.textColour, iconColour: config.iconColour, customCss: config.customCss, logoSize: config.logoSize, markSize: config.markSize, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
+    return send(res, 200, { enabled: config.enabled, name: config.name, subtitle: 'website guide', avatar: config.avatar || '/nika/nika-logo.png', launcherIcon: config.launcherIcon, disclaimer: config.disclaimer || "Answers use this website's configured content. Review important information.", branding: licence.can('unbranded') ? config.branding !== false : true, panelColour: config.panelColour, panelOpacity: config.panelOpacity, gradientFrom: config.gradientFrom, gradientTo: config.gradientTo, scrollbarColour: config.scrollbarColour, shadowColour: config.shadowColour, textColour: config.textColour, iconColour: config.iconColour, customCss: config.customCss, logoSize: config.logoSize, markSize: config.markSize, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
   }
   if (req.method === 'POST' && url.pathname === '/nika/chat') {
     try { return await chat(req, res); } catch (error) { return send(res, error.status || 500, { error: error.status ? 'Invalid request.' : 'Nika encountered a server error.' }); }

@@ -274,9 +274,9 @@ check('and again when the config is served',php.includes("'branding' => nika_can
 check('a lapsed package restores the line without losing the preference',php.includes("nika_can( 'unbranded' ) ? ! empty( $s['branding'] ) : true"));
 check('the toggle is shown to every package and labelled with its own',php.includes("esc_html_e( 'Show the Nika line', 'nika-site-guide' )")&&php.includes("nika_capability_package( 'unbranded' )"));
 check('the admin preview shows what a visitor sees',adminScript.includes("branding: capabilities.has('unbranded')")&&adminScript.includes("form.addEventListener('change', render);"));
-// Universal cannot check a licence yet, so a toggle there would give the
-// Business feature away to every install.
-check('Universal stays branded until it can check a licence',universalServer.includes('const NIKA_UNIVERSAL_BRANDING = true;')&&universalServer.includes('branding: NIKA_UNIVERSAL_BRANDING,')&&universalServer.includes('Universal has no licence check yet'));
+// Universal reads a licence of its own now, so both editions answer the same
+// question the same way. The detail lives in tests/nika-universal.test.mjs.
+check('Universal gates the same capability rather than hard-coding an answer',universalServer.includes("branding: licence.can('unbranded') ? config.branding !== false : true")&&!universalServer.includes('NIKA_UNIVERSAL_BRANDING'));
 
 console.log('\n=== a configuration moves between sites, secrets do not ===');
 // The denylist is the whole safety story for export, so this reads the real

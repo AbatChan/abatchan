@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai chatbot, chatbot, ai assistant, customer support, live chat
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 1.5.6
+Stable tag: 1.5.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -101,6 +101,9 @@ No. Nika is read-only. It does not submit forms, access user accounts, or comple
 The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, every colour and size in the widget, the note under the message box, and custom CSS. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 1.5.7 =
+* Universal reads a licence of its own, so both editions answer to the same packages.
 
 = 1.5.6 =
 * Export a configuration and apply it to another site. Included in Business and Agency. The AI key and licence key never leave in the file.

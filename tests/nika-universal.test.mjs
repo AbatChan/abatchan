@@ -12,6 +12,18 @@ const packagedShell = readFileSync(new URL('universal/nika-universal/public/guid
 const packagedWidget = readFileSync(new URL('universal/nika-universal/public/assistant-v2.js', root), 'utf8');
 const packagedCss = readFileSync(new URL('universal/nika-universal/public/assistant.css', root), 'utf8');
 const adminHtml = readFileSync(new URL('universal/nika-universal/public/admin.html', root), 'utf8');
+const universalLicence = readFileSync(new URL('universal/nika-universal/lib/licence.js', root), 'utf8');
+const plugin = readFileSync(new URL('wordpress/nika-site-guide/nika-site-guide.php', root), 'utf8');
+
+// Both editions carry their own copy of the package table because they ship
+// separately and neither can import from the other. Duplication is fine; the two
+// disagreeing is not, so read both and compare.
+const phpPackages = Object.fromEntries(
+  [...plugin.slice(plugin.indexOf('function nika_packages()'), plugin.indexOf('/** The package a capability first appears in'))
+    .matchAll(/'(personal|business|agency)'\s*=>\s*array\(([^)]*)\)/g)]
+    .map(([, name, body]) => [name, [...body.matchAll(/'([a-z_]+)'/g)].map(match => match[1])])
+);
+const { PACKAGES: jsPackages } = await import(new URL('universal/nika-universal/lib/licence.js', root));
 const adminJs = readFileSync(new URL('universal/nika-universal/public/admin.js', root), 'utf8');
 
 // A customer unzips only `nika-universal/`, and the Dockerfile copies only that
@@ -31,6 +43,37 @@ assert.deepEqual(escaping, [], `packaged modules must not import above the packa
 assert.doesNotThrow(() => readFileSync(new URL('universal/nika-universal/lib/context-awareness.js', root), 'utf8'), 'shared server logic must be vendored into the package');
 
 const checks = [
+  ['both editions name the same three packages', JSON.stringify(Object.keys(phpPackages).sort()) === JSON.stringify(Object.keys(jsPackages).sort())],
+  ['and put every capability in the same one', Object.keys(jsPackages).every(name => JSON.stringify([...(phpPackages[name] || [])].sort()) === JSON.stringify([...jsPackages[name]].sort()))],
+
+  ['the licence key is read from the environment, never the config file', server.includes("const LICENCE_KEY = process.env.NIKA_LICENCE_KEY") && !server.includes('config.licenceKey') && env.includes('NIKA_LICENCE_KEY')],
+  // Handing the key to the licence module is the point of reading it. What must
+  // not happen is it crossing to the browser, so read the one function that
+  // builds the admin response and check that only `configured` derives from it.
+  ['and is never sent back to the browser', (() => {
+    const body = server.slice(server.indexOf('function adminConfig()'), server.indexOf('function saveAdminConfig('));
+    const mentions = body.match(/LICENCE_KEY/g) || [];
+    return server.includes('The key itself is never sent back') && mentions.length === 1 && body.includes('configured: Boolean(LICENCE_KEY)');
+  })()],
+  ['booting never waits on the licence service', server.includes('licence.refresh({ activate: true }).catch(() => {})') && universalLicence.includes('Construction never waits on the network')],
+  ['an unreachable service keeps the package last confirmed', universalLicence.includes("status: 'unreachable'") && universalLicence.includes("tier: state.confirmed || 'personal'")],
+  ['which survives a restart, because it is written to disk', universalLicence.includes('writeState(statePath') && server.includes("statePath: join(DATA_DIR, 'licence.json')")],
+  ['being over the site count keeps the package', universalLicence.includes('const entitled = Boolean(data.valid) || Boolean(data.overLimit);')],
+  ['nothing in the licence path can stop the guide', !server.includes('if (!licence.can') || !/if \(!licence\.can\('(?:navigation|dictation)/.test(server)],
+
+  ['branding follows the package, and absent means branded', server.includes("branding: licence.can('unbranded') ? config.branding !== false : true") && server.includes('branding: config.branding !== false')],
+  ['and is gated where the value is written, not in the admin page', server.includes("branding: licence.can('unbranded') ? input.branding !== false : true") && server.includes('A hand-made POST')],
+
+  ['moving a configuration checks the package as well as the token', server.includes("if (!licence.can('config_transfer'))") && server.includes("'/nika/admin/config-export'") && server.includes("'/nika/admin/config-import'")],
+  // The AI key, admin token and licence key are all env-only, so the export is
+  // safe by construction rather than by remembering to strip anything.
+  ['an export cannot leak a credential it never held', server.includes('never in the file') && !/settings: \{[^}]*(?:apiKey|adminToken|licenceKey)/.test(server) && server.includes('settings: config }')],
+  ['an import is saved through the same path as the admin form', server.includes('saveAdminConfig({ ...config, ...incoming })')],
+  ['a file that is not an export is refused', server.includes("document_.nika !== 'settings'") && server.includes('is not a Nika settings export')],
+  ['images from the other site are dropped rather than hotlinked', server.includes("for (const field of ['avatar', 'launcherIcon'])") && server.includes('hosted on the site the file came from')],
+  ['the guide is not switched on where there is no AI key', server.includes('if (incoming.enabled !== false && !API_KEY)')],
+  ['the licence is explained where an owner will look for it', readme.includes('NIKA_LICENCE_KEY') && readme.includes('Nika runs with or without a key')],
+
   ['uses customer environment API key', server.includes('process.env.NIKA_AI_API_KEY')],
   ['protects the browser admin with a server token', server.includes('NIKA_ADMIN_TOKEN') && server.includes('timingSafeEqual') && adminJs.includes('Authorization:`Bearer ${token}`')],
   ['keeps provider credentials server-managed in the universal admin', adminHtml.includes('Change provider credentials in') && adminHtml.includes('The browser never receives the saved API key') && !adminJs.includes('NIKA_AI_API_KEY')],
