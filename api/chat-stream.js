@@ -403,7 +403,11 @@ export default async function handler(req,res){
     const resultPath=resultRoute.split('#')[0]||'/';
     const expectedPath=String(receipt?.action?.href||'').split('#')[0]||'/';
     const routeVerified=Boolean(receipt&&Object.hasOwn(PAGE,resultPath)&&resultPath===expectedPath);
-    const targetVerified=routeVerified&&(receipt.action.section_requested!==true||actionResult.target_found===true);
+    // The browser is the only thing that can see whether the anchor exists, and
+    // it now answers for every journey rather than only a highlight. Trusting a
+    // false here can only ever downgrade the outcome, so a lying client cannot
+    // use it to claim more than it did.
+    const targetVerified=routeVerified&&actionResult.target_found===true;
     const expectedFormFields=Object.entries(receipt?.action?.form_prefill||{}).filter(([,value])=>Boolean(value)).map(([field])=>field);
     const appliedFields=Array.isArray(actionResult?.applied_fields)
       ? actionResult.applied_fields.filter(field=>expectedFormFields.includes(field)).slice(0,4)

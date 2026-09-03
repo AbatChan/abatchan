@@ -1913,11 +1913,32 @@
       });
     };
 
+    // Anchors reach an element by id or by a legacy name attribute, and the id
+    // can be anything a site's author typed, so it is escaped before it ever
+    // becomes a selector.
+    const hashTarget=raw=>{
+      const id=(()=>{try{return decodeURIComponent(raw)}catch{return raw}})();
+      if(!id)return null;
+      const byId=document.getElementById(id);
+      if(byId)return byId;
+      try{return document.querySelector(`[name="${(window.CSS&&CSS.escape?CSS.escape(id):id.replace(/["\\]/g,'\\$&'))}"]`)}catch{return null}
+    };
     const actionResultFor=(journey,revealResult,formResult,note='')=>{
       let destination=null;
       try{destination=new URL(journey.href,location.href)}catch{}
       const routeMatches=Boolean(destination&&publicPath(destination)===pagePath());
-      const targetFound=journey.section_requested===true?revealResult?.found===true:routeMatches;
+      // A page journey carrying a hash was judged solely on the page. If the
+      // anchor did not exist the browser scrolled nowhere, the visitor sat at
+      // the top, and this still reported a completed arrival at the section, so
+      // the conclusion described a place nobody had been taken to. A directory
+      // can promise an anchor the page never had, and every edition builds that
+      // directory differently, so the check belongs here where the answer is
+      // simply whether the thing is on the page.
+      const wantedHash=(destination?.hash||'').slice(1);
+      const hashResolves=!wantedHash||Boolean(hashTarget(wantedHash));
+      const targetFound=journey.section_requested===true
+        ? revealResult?.found===true
+        : routeMatches&&hashResolves;
       const formExpected=Boolean(journey.form_prefill&&Object.values(journey.form_prefill).some(Boolean));
       const formUpdated=!formExpected||formResult?.updated===true;
       return {
@@ -1928,7 +1949,10 @@
         highlighted:revealResult?.highlighted===true,
         form_updated:formResult?.updated===true,
         applied_fields:formResult?.appliedFields||[],
-        note
+        // Said plainly, because the model is writing the conclusion from this
+        // and the honest version of the answer is that the page arrived and the
+        // section did not.
+        note:note||(routeMatches&&!hashResolves?`The page opened but it has no ${wantedHash} section, so nothing was scrolled to. Say the page is open, say that part is not on it, and do not claim to have reached it.`:'')
       };
     };
 
@@ -1979,11 +2003,18 @@
       try{conclusion=await streamActionConclusion(journey,result,arrival,settleStep)}
       catch{
         settleStep();
+        // The packaged editions never reach the server continuation: their chat
+        // route wants a visitor message and refuses a result-only request, so
+        // every WordPress and Universal conclusion is written here. A page that
+        // opened without its section is its own case; "I couldn't confirm
+        // opening that page" would be false, because the page did open.
         const verifiedFallback=result?.outcome==='completed'
           ? journey.arrival
           : journey.section_requested===true
             ? `I couldn't find or highlight ${journey.label||'that page element'} in the accessible page content.`
-            : `I couldn't confirm opening ${journey.label||'that page'}.`;
+            : result?.outcome==='partial'&&result?.target_found===false
+              ? `I opened the page, but there is no ${journey.label||'section'} on it to scroll to.`
+              : `I couldn't confirm opening ${journey.label||'that page'}.`;
         await typeBufferedMessage(arrival,verifiedFallback);
         conclusion=verifiedFallback;
       }

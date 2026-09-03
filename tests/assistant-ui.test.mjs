@@ -120,6 +120,24 @@ check('what it said is what it gets back',guide.includes('content:item.journeyCo
 check('a repeated request is work to do, not something to defer',role.includes('Every visitor message is a live request')&&role.includes('never a reason to decline, defer, or reply that something was handled before'));
 check('and a short follow-up is resolved from the conversation',role.includes('Resolve what a short follow-up refers to from the conversation')&&role.includes('Highlight it')&&role.includes('section_requested true'));
 
+console.log('\n=== a page that opened without its section says so ===');
+// A page journey carrying a hash was judged on the page alone. When the anchor
+// did not exist the browser scrolled nowhere, the visitor sat at the top, and
+// the guide still reported arrival at the section. That is how a request for the
+// middle of the homepage was answered with the footer, twice.
+check('the hash has to resolve before the journey counts as arrived',assistant.includes('const hashResolves=!wantedHash||Boolean(hashTarget(wantedHash));')&&assistant.includes('routeMatches&&hashResolves'));
+check('id or the legacy name attribute both count',assistant.includes('const byId=document.getElementById(id);')&&assistant.includes('[name="'));
+// An id is whatever a site author typed, and it goes into a selector.
+check('the id is escaped before it becomes a selector',assistant.includes('CSS.escape?CSS.escape(id)'));
+check('and decoded, because a hash arrives percent-encoded',assistant.includes('return decodeURIComponent(raw)'));
+
+// Two different editions write the conclusion in two different places, and both
+// had to learn this. WordPress and Universal refuse a result-only chat request,
+// so their conclusion is the client fallback.
+check('the browser tells the model what actually happened',assistant.includes('it has no ${wantedHash} section, so nothing was scrolled to'));
+check('and the packaged editions get their own honest sentence',assistant.includes("result?.outcome==='partial'&&result?.target_found===false")&&assistant.includes('I opened the page, but there is no'));
+check('the old wording is not reused, because the page did open',assistant.includes("`I couldn't confirm opening ${journey.label||'that page'}.`")&&assistant.includes('would be false, because the page did open'));
+
 console.log('\n=== closing the panel to see a highlight does not destroy it ===');
 // A press anywhere released the highlight, including the launcher. The commonest
 // reason to touch the launcher while a highlight is up is that the panel is
@@ -175,6 +193,10 @@ check('a replacement with no value asks in the model\'s words first',chatStream.
 check('the model is told to work values out from loose phrasing',role.includes('however loosely they put it')&&role.includes('my email is my name at gmail'));
 check('to ask only when it has nothing to go on',role.includes('nothing to base a value on, ask for it rather than inventing'));
 check('and to close by asking for a review, in its own words',role.includes('check the fields before sending, in your own words and different each time'));
+
+// The server used to re-derive this and ignore a false from the browser, so the
+// browser's new answer would have been thrown away on abatchan.com.
+check('the server honours a browser that reports the target missing',chatStream.includes('const targetVerified=routeVerified&&actionResult.target_found===true;')&&chatStream.includes('can only ever downgrade the outcome'));
 
 console.log('\n=== the licence endpoint answers, it never blocks ===');
 // The endpoint and the vocabulary it answers in are two files now, because
