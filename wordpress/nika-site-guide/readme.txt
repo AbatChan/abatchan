@@ -3,7 +3,7 @@ Contributors: abatchan
 Tags: ai chatbot, chatbot, ai assistant, customer support, live chat
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 1.5.9
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -101,6 +101,10 @@ No. Nika is read-only. It does not submit forms, access user accounts, or comple
 The site owner controls the pre-chat starter suggestions, per-visitor hourly and whole-site daily request budgets, visible context size, recent session history, excluded routes, navigation, microphone dictation, language, assistant identity, every colour and size in the widget, the note under the message box, and custom CSS. Security ceilings, same-origin enforcement, server-only API keys, published-route validation, and the read-only boundary cannot be disabled.
 
 == Changelog ==
+
+= 1.6.0 =
+* Place the highlight label beside the highlight instead of inside it, so it cannot cover the content it names.
+* Keep a highlight up when the visitor closes the panel to look at it.
 
 = 1.5.9 =
 * No plugin changes. Released alongside a website correction so both editions stay on one version.

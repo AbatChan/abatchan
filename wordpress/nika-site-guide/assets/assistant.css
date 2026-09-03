@@ -664,7 +664,12 @@ html[data-theme="light"] .assist-text-action:hover{color:#151519}
 @media(prefers-reduced-motion:reduce){.assist-guide-scrim{transition:none}}
 .assist-guided-target{position:relative;scroll-margin-block:120px;outline:2px solid var(--assist-guide-border,rgba(129,132,255,.78));outline-offset:var(--assist-guide-offset,4px);border-radius:var(--assist-guide-radius,16px);animation:assistTargetPulse 1.15s var(--ease) 2}
 [data-assist-target].assist-guided-target{background:linear-gradient(90deg,rgba(99,102,241,.13),rgba(99,102,241,.035))}
-.assist-guide-marker{position:absolute;z-index:12;top:10px;right:10px;max-width:min(240px,70%);display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent);border-radius:999px;color:var(--assist-guide-marker-text,#fff);background:var(--assist-guide-marker-bg,var(--signal,#6366f1));box-shadow:none;font:650 11px/1.2 Geist,Inter,sans-serif;letter-spacing:.015em;pointer-events:none;animation:assistMarkerIn .35s var(--ease) both}
+/* Fixed, and placed beside the cutout rather than inside the target. Its
+   z-index sits under the value raiseGuideSurfaces gives the panel, so the
+   conversation still covers it; that was the point of the old z-index 12 and it
+   survives the move. Positioning comes from placeGuidanceMarker, so no offsets
+   are set here. */
+.assist-guide-marker{position:fixed;z-index:2147482550;max-width:min(280px,72vw);display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent);border-radius:999px;color:var(--assist-guide-marker-text,#fff);background:var(--assist-guide-marker-bg,var(--signal,#6366f1));box-shadow:none;font:650 11px/1.2 Geist,Inter,sans-serif;letter-spacing:.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .assist-guide-marker::before{content:"";width:6px;height:6px;flex:0 0 6px;border:1px solid currentColor;border-radius:50%;background:transparent;opacity:.82}
 /* Page components can style every child span (pricing does this for its 01–04
    indices). The guide marker is shared UI, so its readable foreground wins in
@@ -677,5 +682,4 @@ html[data-theme="light"] .assist-error>b{color:#b42318}
 html[data-theme="light"] .assist-form-review{color:#087a55;border-color:rgba(5,150,105,.32);background:rgba(236,253,245,.86)}
 @keyframes assistTargetPulse{50%{outline-color:rgba(129,132,255,.28);outline-offset:13px}}
 @keyframes assistMarkerIn{from{opacity:0;transform:translateY(-5px) scale(.96)}}
-@media(max-width:640px){.assist-guide-marker{top:8px;right:8px}}
-@media(prefers-reduced-motion:reduce){.assist-guided-target,.assist-guide-marker{animation:none}}
+@media(prefers-reduced-motion:reduce){.assist-guided-target{animation:none}}

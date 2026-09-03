@@ -118,7 +118,7 @@
   const targetSlug=text=>text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,58)||'content';
   const targetKind=node=>node.matches('input,select,textarea')?'field':node.matches('button,[role="button"]')?'button':node.matches('a[href],[role="link"]')?'link':node.matches('form,fieldset')?'form':node.matches('h1,h2,h3,h4,h5,h6,[role="heading"]')?'heading':node.matches('details,summary')?'details':node.matches('img,[alt]')?'media':node.matches('footer,[role="contentinfo"],section,article,[role="region"],[role="tabpanel"]')?'section':'content';
   const targetPriority=node=>(node.hasAttribute('data-nika-target')||node.hasAttribute('data-nika-label')||node.hasAttribute('data-assist-target')&&!node.hasAttribute('data-assist-auto'))?8:['field','button','link','form'].includes(targetKind(node))?7:targetKind(node)==='heading'?6:['details','section'].includes(targetKind(node))?5:targetKind(node)==='media'?4:2;
-  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:2px solid var(--assist-guide-border,#312e81)!important;outline-offset:var(--assist-guide-offset,4px)!important;border-radius:var(--assist-guide-radius,16px)!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}.assist-guide-marker{position:absolute!important;z-index:12!important;top:10px!important;right:10px!important;max-width:min(240px,70%)!important;display:inline-flex!important;align-items:center!important;gap:7px!important;padding:6px 10px!important;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent)!important;border-radius:999px!important;color:var(--assist-guide-marker-text,#fff)!important;background:var(--assist-guide-marker-bg,#6366f1)!important;box-shadow:none!important;font:650 11px/1.2 system-ui,sans-serif!important;letter-spacing:.015em!important;pointer-events:none!important}.assist-guide-marker::before{content:""!important;width:6px!important;height:6px!important;flex:0 0 6px!important;border:1px solid currentColor!important;border-radius:50%!important;background:transparent!important;opacity:.82!important}';
+  const TARGET_STYLE='.assist-guided-target{position:relative!important;scroll-margin-block:120px!important;outline:2px solid var(--assist-guide-border,#312e81)!important;outline-offset:var(--assist-guide-offset,4px)!important;border-radius:var(--assist-guide-radius,16px)!important}.assist-guided-target[data-assist-target]{background:linear-gradient(90deg,var(--assist-guide-fill,rgba(99,102,241,.13)),transparent)!important}';
   const effectiveTargetBackground=(node,includeSelf=true)=>{
     for(let current=includeSelf?node:node?.parentElement;current&&current.nodeType===1;current=current.parentElement){
       const style=getComputedStyle(current);
@@ -214,12 +214,50 @@
   // than a child of the target: appending to the visitor's own button or link
   // would nest interactive elements, and a control target never gets a label
   // pill to put it in. It is the one part of the overlay that takes clicks.
+  // The label pill lives beside the cutout rather than inside the target. As an
+  // absolutely positioned child it sat in the target's top-right corner, which
+  // is empty on a card and occupied on anything real: on the contact form it
+  // landed on the review note and cut the sentence in half. Moving it to the
+  // other corner only moved the problem, because a tall target has text at both
+  // ends. Outside the box it can cover nothing, and it stops being clipped by a
+  // target with hidden overflow.
+  const MARKER_STYLE='position:fixed;z-index:2147482550;max-width:min(280px,72vw);display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent);border-radius:999px;color:var(--assist-guide-marker-text,#fff);background:var(--assist-guide-marker-bg,#6366f1);font:650 11px/1.2 system-ui,sans-serif;letter-spacing:.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:0;transition:opacity .2s ease';
   const DISMISS_STYLE='position:fixed;z-index:2147482550;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid color-mix(in srgb,var(--assist-guide-marker-text,#fff) 38%,transparent);border-radius:999px;color:var(--assist-guide-marker-text,#fff);background:var(--assist-guide-marker-bg,#6366f1);line-height:0;cursor:pointer;pointer-events:auto;opacity:0;transition:opacity .2s ease';
-  let guidanceScrim=null,guidanceScrimFrame=0,guidanceDismiss=null;
+  let guidanceScrim=null,guidanceScrimFrame=0,guidanceDismiss=null,guidanceMarker=null;
   // Additive, because guide surfaces can appear after the scrim is already up:
   // the reply bubble is created when an answer lands, which on a phone happens
   // after the sheet has minimized and while the highlight is still showing.
   const guidanceScrimRaised=new Map();
+  const placeGuidanceMarker=rect=>{
+    if(!guidanceMarker)return;
+    const width=guidanceMarker.offsetWidth||0,height=guidanceMarker.offsetHeight||0;
+    // Above the cutout by preference. A target near the top of the viewport has
+    // no room there, so the pill goes under it instead; either way it is outside
+    // the highlighted box and covers none of it.
+    const above=rect.top-SCRIM_PAD-height-8;
+    const top=above>=6?above:Math.min(rect.bottom+SCRIM_PAD+8,innerHeight-height-6);
+    // Left-aligned with the cutout, which keeps it clear of the close chip on
+    // the opposite corner, and clamped so a wide target cannot push it off.
+    const left=Math.min(Math.max(6,rect.left-SCRIM_PAD),innerWidth-width-6);
+    guidanceMarker.style.left=`${Math.round(left)}px`;
+    guidanceMarker.style.top=`${Math.round(Math.max(6,top))}px`;
+  };
+  const markerCoversText=(target,marker)=>{
+    const box=marker.getBoundingClientRect();
+    if(box.width<1||box.height<1)return false;
+    const walker=document.createTreeWalker(target,NodeFilter.SHOW_TEXT);
+    for(let seen=0,node=walker.nextNode();node&&seen<400;node=walker.nextNode()){
+      if(node.parentElement===marker||!node.textContent.trim())continue;
+      seen++;
+      const range=document.createRange();
+      range.selectNodeContents(node);
+      for(const rect of range.getClientRects()){
+        if(rect.width<1||rect.height<1)continue;
+        if(rect.left<box.right&&rect.right>box.left&&rect.top<box.bottom&&rect.bottom>box.top)return true;
+      }
+    }
+    return false;
+  };
   const placeGuidanceDismiss=rect=>{
     if(!guidanceDismiss)return;
     // Centred on the cutout's top-right corner, like a badge, so it never sits
@@ -233,7 +271,7 @@
   };
   const scrimCutout=node=>{
     const rect=node?.getBoundingClientRect?.();
-    if(rect&&rect.width>=1&&rect.height>=1)placeGuidanceDismiss(rect);
+    if(rect&&rect.width>=1&&rect.height>=1){placeGuidanceDismiss(rect);placeGuidanceMarker(rect);}
     if(!guidanceScrim)return;
     if(!rect||rect.width<1||rect.height<1){guidanceScrim.style.removeProperty('clip-path');guidanceScrim.style.removeProperty('-webkit-clip-path');return}
     const left=Math.max(0,rect.left-SCRIM_PAD),top=Math.max(0,rect.top-SCRIM_PAD);
@@ -1286,7 +1324,18 @@
     const watchGuidanceRelease=()=>{
       if(guidanceReleaseWatch)return;
       const onKey=event=>{if(event.key==='Escape')clearGuidance()};
-      const onPress=()=>clearGuidance();
+      // A press on the page means "I have seen it, put it away". A press on the
+      // guide's own furniture does not: the commonest reason to touch the
+      // launcher while a highlight is up is that the panel is sitting on top of
+      // the thing being pointed at, and closing it to look destroyed what the
+      // visitor was trying to see. The close chip has its own handler and calls
+      // this deliberately.
+      const onPress=event=>{
+        const path=event.composedPath?.()||[];
+        const ours=node=>node?.classList?.contains?.('assist-panel')||node?.classList?.contains?.('assist-launch')||node?.classList?.contains?.('assist-guide-dismiss');
+        if(path.some(ours))return;
+        clearGuidance();
+      };
       addEventListener('keydown',onKey);
       // Armed a frame late so the very click that asked for the highlight
       // cannot immediately dismiss it.
@@ -1307,6 +1356,7 @@
       hideGuidanceScrim();
       document.querySelectorAll('.assist-guided-target').forEach(node=>{node.classList.remove('assist-guided-target');clearAdaptiveGuidance(node)});
       document.querySelectorAll('.assist-guide-marker').forEach(marker=>marker.remove());
+      guidanceMarker=null;
       guidedVisualTargets.forEach(node=>{node.classList?.remove('assist-guided-target');clearAdaptiveGuidance(node);node.querySelectorAll?.('.assist-guide-marker').forEach(marker=>marker.remove())});
       guidedVisualTargets.clear();
       automaticTargetNodes.forEach(node=>{
@@ -1338,11 +1388,20 @@
       // second pill on a compact button duplicates that label and can cover
       // adjacent copy, so controls use the ring alone.
       if(!visualTarget.matches('button,a[href],input,select,textarea,h1,h2,h3,h4,h5,h6,[role="button"],[role="link"],[role="tab"],[role="heading"]')){
-        const marker=document.createElement('span');
-        marker.className='assist-guide-marker';
-        marker.textContent=label||'Here';
-        marker.setAttribute('aria-hidden','true');
-        visualTarget.appendChild(marker);
+        // A sibling of <body>, positioned beside the cutout, so it cannot cover
+        // the content it is naming and cannot be clipped by it either.
+        guidanceMarker=document.createElement('span');
+        guidanceMarker.className='assist-guide-marker';
+        guidanceMarker.textContent=label||'Here';
+        guidanceMarker.setAttribute('aria-hidden','true');
+        guidanceMarker.style.cssText=MARKER_STYLE;
+        for(const name of ['--assist-guide-marker-bg','--assist-guide-marker-text']){
+          const value=visualTarget?.style?.getPropertyValue?.(name);
+          if(value)guidanceMarker.style.setProperty(name,value);
+        }
+        document.body.appendChild(guidanceMarker);
+        placeGuidanceMarker(visualTarget.getBoundingClientRect());
+        requestAnimationFrame(()=>{if(guidanceMarker)guidanceMarker.style.opacity='1'});
       }
       guidanceTimer=setTimeout(clearGuidance,GUIDANCE_DURATION);
       return {found:true,highlighted:true,label:String(label||targetText(target)).slice(0,120),id:String(target.id||'').slice(0,100)};

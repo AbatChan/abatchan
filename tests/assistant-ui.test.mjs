@@ -94,9 +94,11 @@ check('resting and hover glow come from the same setting',shell.includes('const 
 console.log('\n=== an isolated guide still styles what it puts on the page ===');
 check('the page gets the target stylesheet when the guide is isolated',assistant.includes('const ensurePageTargetStyle=()=>')&&assistant.includes('if(uiScope()===document)return;')&&assistant.includes('ensurePageTargetStyle();'));
 check('it is injected once, and not where the page already has the rules',assistant.includes("if(document.querySelector('style[data-assist-target-style]'))return;"));
-check('the pill never rides above the conversation',assistant.includes('assist-guide-marker{position:absolute!important;z-index:12!important;')&&assistantCss.includes('.assist-guide-marker{position:absolute;z-index:12')&&!assistant.includes('z-index:2147483000'));
+// The pill sits above the scrim and below the panel. raiseGuideSurfaces lifts
+// guide surfaces to SCRIM_ABOVE, so comparing the two numbers is the check.
+check('the pill never rides above the conversation',Number(assistant.match(/MARKER_STYLE='position:fixed;z-index:(\d+)/)[1])<Number(assistant.match(/SCRIM_ABOVE='(\d+)'/)[1])&&assistantCss.includes('.assist-guide-marker{position:fixed;z-index:2147482550'));
 check('both definitions of the pill agree on its stacking',assistant.includes('a near-maximum z-index made it float over the conversation instead'));
-check('the pill is positioned out of flow, so it adds no layout space',assistant.includes('.assist-guide-marker{position:absolute!important')&&assistant.includes('.assist-guided-target{position:relative!important'));
+check('the pill is positioned out of flow, so it adds no layout space',assistant.includes("MARKER_STYLE='position:fixed;")&&assistant.includes('.assist-guided-target{position:relative!important'));
 check('the same definition serves nested shadow roots and the page',assistant.includes('style.textContent=TARGET_STYLE')&&assistant.split('style.textContent=TARGET_STYLE').length===3);
 
 console.log('\n=== generated starters cover the site, not one product ===');
@@ -117,6 +119,34 @@ check('what it said is what it gets back',guide.includes('content:item.journeyCo
 // is told to treat a repeat or a refinement as live work.
 check('a repeated request is work to do, not something to defer',role.includes('Every visitor message is a live request')&&role.includes('never a reason to decline, defer, or reply that something was handled before'));
 check('and a short follow-up is resolved from the conversation',role.includes('Resolve what a short follow-up refers to from the conversation')&&role.includes('Highlight it')&&role.includes('section_requested true'));
+
+console.log('\n=== closing the panel to see a highlight does not destroy it ===');
+// A press anywhere released the highlight, including the launcher. The commonest
+// reason to touch the launcher while a highlight is up is that the panel is
+// covering the thing being pointed at, so closing it to look wiped out what the
+// visitor was trying to see.
+check('a press on the guide\'s own furniture is not a dismissal',assistant.includes("node?.classList?.contains?.('assist-panel')")&&assistant.includes("node?.classList?.contains?.('assist-launch')"));
+check('it reads the composed path, so a shadow-root guide counts too',assistant.includes('const path=event.composedPath?.()||[];'));
+// The close chip still dismisses, because that is the one control that means it.
+check('the close chip still dismisses deliberately',assistant.includes("guidanceDismiss.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();dismiss?.()})"));
+check('and a press on the page still releases the highlight',assistant.includes('if(path.some(ours))return;')&&assistant.includes('clearGuidance();'));
+
+console.log('\n=== the highlight label does not sit on the words it points at ===');
+// The pill is absolutely positioned in the target's top-right. On a card that
+// corner is empty; on the contact form the first row is a full-width note, and
+// the pill landed on it and cut the sentence in half.
+check('the pill is placed outside the highlighted box',assistant.includes('const placeGuidanceMarker=rect=>')&&assistant.includes('const above=rect.top-SCRIM_PAD-height-8;'));
+check('and drops below the target when there is no room above',assistant.includes('above>=6?above:Math.min(rect.bottom+SCRIM_PAD+8,innerHeight-height-6)'));
+// A child of the target was clipped by a target with hidden overflow and covered
+// whatever sat in the corner it chose. Neither can happen from <body>.
+check('it is a body child, not a child of the target',assistant.includes('document.body.appendChild(guidanceMarker);')&&!assistant.includes('visualTarget.appendChild(marker);'));
+check('the same loop that tracks the cutout tracks the pill',assistant.includes('{placeGuidanceDismiss(rect);placeGuidanceMarker(rect);}'));
+// Left-aligned with the cutout, and the close chip is centred on the opposite
+// corner, so the two cannot collide.
+check('the pill and the close chip take opposite corners',assistant.includes('rect.left-SCRIM_PAD),innerWidth-width-6')&&assistant.includes('rect.right+SCRIM_PAD-size/2'));
+// The close chip is centred on the cutout corner precisely so it never sits on
+// the pill; moving the pill down must not undo that.
+check('the close chip still owns the top-right corner',assistant.includes('Centred on the cutout')&&assistant.includes('rect.top-SCRIM_PAD-size/2'));
 
 console.log('\n=== the form trusts the model, and the visitor reviews ===');
 // Name and email used to be matched against the visitor's own words and emptied
