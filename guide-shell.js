@@ -193,6 +193,11 @@ export async function mountGuideShell(options = {}) {
     '</div>'+
     '<div class="assist-log" role="log" aria-live="polite"></div>'+
     '<div class="assist-chips" aria-label="Suggested questions">'+suggestionMarkup(activeSuggestions)+'</div>'+
+    // Above the composer, not under it. It is a caution about the answers, so
+    // it belongs where someone reads it before typing rather than after the
+    // reply they have already acted on. The brand line stays at the bottom:
+    // that one is a credit, and credits sit at the foot of the thing.
+    `<p class="assist-note">${cfg.disclaimer}</p>`+
     '<form class="assist-form">'+
       '<div class="assist-attachment-list" aria-live="polite" hidden></div>'+
       '<p class="assist-attachment-error" role="alert" hidden></p>'+
@@ -222,7 +227,6 @@ export async function mountGuideShell(options = {}) {
         '</div>'+
       '</div>'+
     '</form>'+
-    `<p class="assist-note">${cfg.disclaimer}</p>`+
     // Below the disclaimer and smaller than it: present and readable, never
     // competing with the site it is a guest on.
     (cfg.branding===false?'':`<p class="assist-brand"><a href="${safe(cfg.brandingUrl)}" target="_blank" rel="noopener">${safe(cfg.brandingLabel)}</a></p>`);

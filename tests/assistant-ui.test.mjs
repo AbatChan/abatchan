@@ -229,7 +229,13 @@ check('an unrecognised variant receives no Nika entitlement',licence.includes('f
 check('the key is identified before an activation is spent',licence.includes('Validate before activation')&&licence.indexOf("lemon('validate'")<licence.indexOf("lemon('activate'"));
 
 console.log('\n=== the guide states its own box model ===');
-check('the note pins its own margin against theme and UA defaults',assistantCss.includes('.assist-note{padding:0 16px;')&&assistantCss.includes('margin:0 0 6px!important'));
+// The value changed when the note moved above the composer; the reason it is
+// stated at all did not. A host theme's bare `p` rule would otherwise decide
+// the spacing between this line and the input.
+check('the note pins its own margin against theme and UA defaults',assistantCss.includes('.assist-note{padding:0 16px;')&&/\.assist-note\{[^}]*margin:[^;}]*!important/.test(assistantCss));
+// A caution about the answers belongs where it is read before typing, not under
+// the reply the visitor has already acted on.
+check('the note sits above the composer, the credit below it',shell.indexOf('assist-note')<shell.indexOf("'<form class=\"assist-form\">'")&&shell.indexOf('assist-brand')>shell.indexOf("'</form>'"));
 check('the reasoning names the user-agent default, not just themes',assistantCss.includes('Margin is not inherited')&&assistantCss.includes('What it does not block is the user-agent default'));
 check('the conversation keeps the spacing its markdown needs',assistantCss.includes('The conversation itself is excluded')&&!assistantCss.includes('.assist-log p{margin:0!important}'));
 // The reset is more specific than the note's own rule, so listing the note in

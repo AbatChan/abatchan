@@ -208,7 +208,10 @@ html[data-theme="light"] .assist-msg-attachment{background:rgba(21,21,25,.035)}
 .assist-send:hover{transform:translateY(-2px)}
 .assist-send:disabled{opacity:.45;transform:none;cursor:default}
 .assist-send img{width:18px;height:18px;filter:brightness(0) invert(1)!important;opacity:1}.assist-send.is-generating img{width:14px;height:14px}
-.assist-note{padding:0 16px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center;margin:0 0 6px!important}
+/* Sits above the composer. The margin is stated here, and marked important,
+   for the same reason it always was: a host theme's bare `p` rule would
+   otherwise decide the spacing between this and the input. */
+.assist-note{padding:0 16px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center;margin:2px 0 0!important}
 
 /* The one line that says whose software this is. Sits under the disclaimer,
    quieter than it, and pins its own box model for the same reason .assist-note
