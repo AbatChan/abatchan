@@ -292,6 +292,83 @@
     });
   }
 
+  /* Move a configuration between sites --------------------------------------- */
+
+  // Both buttons check the package client-side so the answer is instant, and the
+  // endpoints check it again, because a chip in the DOM is a courtesy and the
+  // server is the rule.
+  const exportConfig = document.querySelector('#nika-export-config');
+  const importConfig = document.querySelector('#nika-import-config');
+  const importFile = document.querySelector('#nika-import-file');
+  const transferStatus = document.querySelector('#nika-transfer-status');
+
+  const say = (message, tone) => {
+    if (!transferStatus) return;
+    transferStatus.textContent = message;
+    transferStatus.dataset.tone = tone || '';
+  };
+
+  if (exportConfig) {
+    allowed(exportConfig);
+    exportConfig.addEventListener('click', async () => {
+      if (!allowed(exportConfig)) { explainPackage(exportConfig); return; }
+      say('Preparing the file…');
+      try {
+        const response = await request(window.NikaAdmin.exportEndpoint, { method: 'GET' });
+        const document_ = await response.json();
+        if (!response.ok) throw new Error(document_ && document_.message ? document_.message : 'Export failed.');
+        // Built in the browser from what the server sent, so the file the owner
+        // opens is exactly the document the endpoint produced.
+        const blob = new Blob([JSON.stringify(document_, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `nika-settings-${(document_.site || 'site').replace(/[^a-z0-9.-]+/gi, '-')}.json`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        say('Downloaded. The AI key and licence key are not in the file.');
+      } catch (error) {
+        say(error.message || 'Export failed.', 'error');
+      }
+    });
+  }
+
+  if (importConfig && importFile) {
+    allowed(importConfig);
+    importConfig.addEventListener('click', () => {
+      if (!allowed(importConfig)) { explainPackage(importConfig); return; }
+      importFile.click();
+    });
+    importFile.addEventListener('change', async () => {
+      const file = importFile.files && importFile.files[0];
+      // Cleared straight away so choosing the same file twice fires again.
+      importFile.value = '';
+      if (!file) return;
+      say('Reading the file…');
+      let parsed;
+      try {
+        parsed = JSON.parse(await file.text());
+      } catch {
+        say('That file could not be read as JSON.', 'error');
+        return;
+      }
+      try {
+        const response = await request(window.NikaAdmin.importEndpoint, { method: 'POST', body: JSON.stringify(parsed) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result && result.message ? result.message : 'Import failed.');
+        const notes = Array.isArray(result.notes) ? result.notes : [];
+        // The settings are saved; this page is still showing the old ones, so
+        // reload rather than leave the form disagreeing with the database.
+        say(['Settings applied. Reloading…'].concat(notes).join(' '));
+        setTimeout(() => window.location.reload(), notes.length ? 2600 : 900);
+      } catch (error) {
+        say(error.message || 'Import failed.', 'error');
+      }
+    });
+  }
+
   /* Reset appearance --------------------------------------------------------- */
 
   // Restores the look a fresh install has. It only touches appearance, so a

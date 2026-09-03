@@ -278,5 +278,34 @@ check('the admin preview shows what a visitor sees',adminScript.includes("brandi
 // Business feature away to every install.
 check('Universal stays branded until it can check a licence',universalServer.includes('const NIKA_UNIVERSAL_BRANDING = true;')&&universalServer.includes('branding: NIKA_UNIVERSAL_BRANDING,')&&universalServer.includes('Universal has no licence check yet'));
 
+console.log('\n=== a configuration moves between sites, secrets do not ===');
+// The denylist is the whole safety story for export, so this reads the real
+// defaults and asserts that anything named like a secret is on it. A new
+// setting called something_key or provider_token fails here rather than in
+// somebody's downloads folder.
+const defaultsBlock=php.slice(php.indexOf('function nika_defaults()'),php.indexOf('function nika_settings()'));
+const settingKeys=[...defaultsBlock.matchAll(/'([a-z_]+)'\s*=>/g)].map(match=>match[1]);
+const privateBlock=php.slice(php.indexOf('function nika_private_keys()'),php.indexOf('function nika_export_document()'));
+const privateKeys=[...privateBlock.matchAll(/'([a-z_]+)'/g)].map(match=>match[1]);
+const secretish=settingKeys.filter(name=>/(^|_)(key|secret|token|password|credential)$/.test(name));
+check('there are settings that look like secrets to protect',secretish.length>0);
+check('and every one of them is excluded from an export',secretish.every(name=>privateKeys.includes(name)));
+check('the licence key is excluded too, so an import cannot spend an activation',privateKeys.includes('licence_key')&&php.includes('spending one of the customer'));
+check('the export strips them rather than listing what to keep',php.includes('array_diff_key( nika_settings(), array_flip( nika_private_keys() ) )'));
+
+check('an import is sanitised on the same path as the form',php.includes('nika_sanitize_settings( $merged )'));
+check('a file that is not an export is refused before anything is read',php.includes("'settings' !== ( $document['nika'] ?? '' )")&&php.includes('is not a Nika settings export'));
+check('this site keeps the private keys it already had',php.includes('foreach ( nika_private_keys() as $private ) $merged[ $private ] = $current[ $private ];'));
+// Two things that would otherwise break a site quietly rather than loudly.
+check('images from the other site are dropped, never hotlinked',php.includes("foreach ( array( 'avatar', 'launcher_icon' ) as $image )")&&php.includes('hosted on the site the file came from'));
+check('the guide is not switched on where there is no AI key',php.includes("if ( ! empty( $incoming['enabled'] ) && '' === trim( (string) $current['api_key'] ) )")&&php.includes('left switched off'));
+check('every skipped field is reported, never silently dropped',php.includes("array( 'settings' => nika_sanitize_settings( $merged ), 'notes' =>")&&adminScript.includes('Array.isArray(result.notes)'));
+
+check('both endpoints check the package, not just the WordPress role',php.includes("function nika_config_export_response()")&&php.includes("if ( ! nika_can( 'config_transfer' ) ) return nika_transfer_denied();")&&(php.match(/nika_can\( 'config_transfer' \) \) return nika_transfer_denied\(\);/g)||[]).length===2);
+check('and administrators still cannot reach them without the capability',php.includes("current_user_can( 'manage_options' )")&&php.includes("register_rest_route( 'nika/v1', '/admin/config-export'")&&php.includes("register_rest_route( 'nika/v1', '/admin/config-import'"));
+check('the refusal names the package instead of a slug',php.includes('Moving settings between sites is included in %s.'));
+check('the controls are shown to every package and marked with theirs',php.includes("id=\"nika-export-config\" data-nika-capability=\"config_transfer\"")&&php.includes("id=\"nika-import-config\" data-nika-capability=\"config_transfer\""));
+check('the page reloads after an import so the form cannot disagree with the database',adminScript.includes('window.location.reload()'));
+
 if(failed)process.exit(1);
 console.log('\nall passed');

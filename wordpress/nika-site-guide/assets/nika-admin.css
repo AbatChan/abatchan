@@ -107,6 +107,13 @@
 .nika-lock { margin-left: 2px; padding: 2px 6px; border-radius: 999px; background: var(--nika-indigo, #6366f1); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 .nika-package-note { margin: 6px 0 0; color: var(--nika-ink-soft, #5c5c6b); font-size: 12px; line-height: 1.5; }
 .nika-package-note a { color: var(--nika-indigo-dark); }
+
+/* Moving a configuration between sites. Sits under the licence key because that
+   is what decides whether it is available. */
+.nika-transfer { display: grid; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e8e8ef; }
+.nika-transfer .nika-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.nika-transfer .nika-field__note { margin: 0; }
+.nika-admin .nika-generator-status[data-tone="error"] { color: #8a1f1f; }
 .nika-launch-card { display: flex; align-items: center; justify-content: space-between; gap: 28px; border-color: #d8d8f8; }
 .nika-launch-card h2 { font-size: 24px; }
 .nika-lock { align-self: flex-start; white-space: nowrap; padding: 7px 10px; color: #5555d8; background: #f1f1ff; border-radius: 999px; font-size: 12px; font-weight: 700; }

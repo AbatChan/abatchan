@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.5.5
+ * Version:           1.5.6
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.5.5';
+const NIKA_VERSION = '1.5.6';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
@@ -183,6 +183,8 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 		'keyEndpoint' => rest_url( 'nika/v1/admin/key' ),
 		'instructionsEndpoint' => rest_url( 'nika/v1/admin/instructions' ),
 		'ipEndpoint' => rest_url( 'nika/v1/admin/ip' ),
+		'exportEndpoint' => rest_url( 'nika/v1/admin/config-export' ),
+		'importEndpoint' => rest_url( 'nika/v1/admin/config-import' ),
 		'bundledAvatar' => plugin_dir_url( __FILE__ ) . 'assets/nika-admin-icon.png',
 		'themePalette' => nika_theme_palette(),
 		'package' => nika_tier(),
@@ -436,6 +438,25 @@ function nika_settings_page() {
 					<?php $licence = nika_licence_state(); if ( 'valid' === ( $licence['state'] ?? '' ) && $licence['sitesAllowed'] ) : ?>
 					<p class="nika-field__note"><?php echo esc_html( sprintf( __( '%1$d of %2$d sites in use. Development and staging installs are not counted.', 'nika-site-guide' ), (int) $licence['sitesUsed'], (int) $licence['sitesAllowed'] ) ); ?></p>
 					<?php endif; ?>
+					<?php
+					// Shown on every package, labelled with the one that includes it,
+					// for the same reason the branding row is: an owner who cannot
+					// see the control assumes Nika cannot do it.
+					$transfer = nika_can( 'config_transfer' );
+					$transfer_package = nika_package_name( nika_capability_package( 'config_transfer' ) );
+					?>
+					<div class="nika-transfer">
+						<span class="nika-field__head"><span><b><?php esc_html_e( 'Move settings between sites', 'nika-site-guide' ); ?></b><?php if ( ! $transfer ) : ?> <span class="nika-lock"><?php echo esc_html( $transfer_package ); ?></span><?php endif; ?></span></span>
+						<p class="nika-field__note"><?php echo esc_html( $transfer
+							? __( 'Download this configuration and apply it to another site. The AI key and licence key are never included in the file.', 'nika-site-guide' )
+							: sprintf( __( 'Download this configuration and apply it to another site. Included in %s.', 'nika-site-guide' ), $transfer_package ) ); ?></p>
+						<div class="nika-card__actions">
+							<button type="button" class="nika-generate" id="nika-export-config" data-nika-capability="config_transfer" data-nika-package="<?php echo esc_attr( nika_capability_package( 'config_transfer' ) ); ?>"><span><?php esc_html_e( 'Export settings', 'nika-site-guide' ); ?></span></button>
+							<button type="button" class="nika-generate" id="nika-import-config" data-nika-capability="config_transfer" data-nika-package="<?php echo esc_attr( nika_capability_package( 'config_transfer' ) ); ?>"><span><?php esc_html_e( 'Import settings', 'nika-site-guide' ); ?></span></button>
+							<input type="file" id="nika-import-file" accept="application/json,.json" hidden>
+						</div>
+						<p class="nika-generator-status" id="nika-transfer-status" aria-live="polite"></p>
+					</div>
 				</section>
 					<section class="nika-card" id="nika-styles">
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Advanced', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Custom CSS', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'For anything the settings above do not cover. These rules load inside the guide only, so they cannot affect the rest of your site.', 'nika-site-guide' ); ?></p></div></div>
@@ -520,8 +541,33 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'nika/v1', '/admin/models', array( 'methods' => 'GET', 'callback' => 'nika_models_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 	register_rest_route( 'nika/v1', '/admin/key', array( 'methods' => 'GET', 'callback' => 'nika_reveal_key_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 	register_rest_route( 'nika/v1', '/admin/instructions', array( 'methods' => 'POST', 'callback' => 'nika_generate_instructions_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
+	// Both sides check the package as well as the WordPress capability. Being an
+	// administrator says you may change this site; the package says whether moving
+	// a configuration between sites is something you bought.
+	register_rest_route( 'nika/v1', '/admin/config-export', array( 'methods' => 'GET', 'callback' => 'nika_config_export_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
+	register_rest_route( 'nika/v1', '/admin/config-import', array( 'methods' => 'POST', 'callback' => 'nika_config_import_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 	register_rest_route( 'nika/v1', '/admin/ip', array( 'methods' => 'GET', 'callback' => function () { return rest_ensure_response( array( 'ip' => nika_client_ip() ) ); }, 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 } );
+
+/** Refuses in the customer's terms, naming the package rather than a slug. */
+function nika_transfer_denied() {
+	$package = nika_package_name( nika_capability_package( 'config_transfer' ) );
+	/* translators: %s: package name. */
+	return new WP_Error( 'nika_package', sprintf( __( 'Moving settings between sites is included in %s.', 'nika-site-guide' ), $package ), array( 'status' => 403 ) );
+}
+
+function nika_config_export_response() {
+	if ( ! nika_can( 'config_transfer' ) ) return nika_transfer_denied();
+	return rest_ensure_response( nika_export_document() );
+}
+
+function nika_config_import_response( WP_REST_Request $request ) {
+	if ( ! nika_can( 'config_transfer' ) ) return nika_transfer_denied();
+	$result = nika_import_settings( $request->get_json_params() );
+	if ( is_wp_error( $result ) ) return $result;
+	update_option( NIKA_OPTION, $result['settings'] );
+	return rest_ensure_response( array( 'ok' => true, 'notes' => $result['notes'] ) );
+}
 
 function nika_config_response() {
 	$s = nika_settings();
@@ -1571,6 +1617,83 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ( $li
 	array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=nika-site-guide' ) ) . '">' . esc_html__( 'Settings', 'nika-site-guide' ) . '</a>' );
 	return $links;
 } );
+
+/**
+ * Settings that must never leave this site in a file.
+ *
+ * A denylist rather than an allow-list, so a new colour or limit travels without
+ * anyone remembering to add it, and a test asserts that every settings key whose
+ * name looks like a secret appears here. That is the half that has to be safe;
+ * a cosmetic setting that failed to export is an annoyance, an API key in a
+ * downloaded file is an incident.
+ *
+ * The licence key is private for a different reason: it is not a secret so much
+ * as an identity. Carrying it into an import would quietly activate whichever
+ * site received the file, spending one of the customer's activations on a
+ * machine they were only setting up.
+ */
+function nika_private_keys() {
+	return array( 'api_key', 'licence_key' );
+}
+
+/** The settings document an owner downloads. Never contains a private key. */
+function nika_export_document() {
+	$settings = array_diff_key( nika_settings(), array_flip( nika_private_keys() ) );
+	return array(
+		'nika' => 'settings',
+		'version' => NIKA_VERSION,
+		'exportedAt' => gmdate( 'c' ),
+		'site' => wp_parse_url( home_url(), PHP_URL_HOST ),
+		'settings' => $settings,
+	);
+}
+
+/**
+ * Read a settings document back, and say plainly what was not applied.
+ *
+ * Everything goes through nika_sanitize_settings, the same path the form uses,
+ * because a file off somebody's disk deserves less trust than a form, not more.
+ * Two things it deliberately refuses to carry:
+ *
+ *   Images hosted on the site the file came from. Importing those URLs would
+ *   leave a client site loading the agency's uploads, and breaking the day the
+ *   agency tidied its media library.
+ *
+ *   An enabled flag, when this site has no AI key. Turning the guide on with no
+ *   provider gives visitors an error instead of an answer, and the owner did not
+ *   ask for that; they asked for these settings.
+ */
+function nika_import_settings( $document ) {
+	if ( ! is_array( $document ) || 'settings' !== ( $document['nika'] ?? '' ) || ! is_array( $document['settings'] ?? null ) ) {
+		return new WP_Error( 'nika_import', __( 'That file is not a Nika settings export.', 'nika-site-guide' ), array( 'status' => 400 ) );
+	}
+
+	$current = nika_settings();
+	$incoming = array_diff_key( $document['settings'], array_flip( nika_private_keys() ) );
+	$notes = array();
+
+	$host = wp_parse_url( home_url(), PHP_URL_HOST );
+	foreach ( array( 'avatar', 'launcher_icon' ) as $image ) {
+		$url = (string) ( $incoming[ $image ] ?? '' );
+		if ( '' === $url ) continue;
+		if ( strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) ) !== strtolower( (string) $host ) ) {
+			unset( $incoming[ $image ] );
+			$notes[] = __( 'An image was left out because it is hosted on the site the file came from. Upload it here and set it again.', 'nika-site-guide' );
+		}
+	}
+
+	if ( ! empty( $incoming['enabled'] ) && '' === trim( (string) $current['api_key'] ) ) {
+		$incoming['enabled'] = false;
+		$notes[] = __( 'Nika was left switched off because this site has no AI key yet. Add one, then turn it on.', 'nika-site-guide' );
+	}
+
+	// The private keys this site already holds are kept, not blanked, because
+	// they were never in the file to replace them with.
+	$merged = array_merge( $current, $incoming );
+	foreach ( nika_private_keys() as $private ) $merged[ $private ] = $current[ $private ];
+
+	return array( 'settings' => nika_sanitize_settings( $merged ), 'notes' => array_values( array_unique( $notes ) ) );
+}
 
 /**
  * What each package includes, in one table.
