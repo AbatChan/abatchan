@@ -590,9 +590,14 @@ export default async function handler(req,res){
         const formHasState=['name','email','type','message'].some(field=>String(pageContext?.formState?.[field]||'').trim());
         const replacementsVerified=requestedReplaceFields.every(field=>Boolean(formPrefill?.[field]));
         const preparationCorrection=!formHasState&&requestedReplaceFields.length>0&&replacementsVerified;
+        // Asked to replace a field but sent no value to put in it. There is
+        // nothing to apply, so the turn becomes a question. The model usually
+        // words that better than this does, and its wording is used when it
+        // sent any; the sentence below is only for a turn that arrived silent.
         if(requestedReplaceFields.length&&!replaceFields.length&&!preparationCorrection){
           const requested=requestedReplaceFields.length===1?requestedReplaceFields[0].replace('type','project type'):'requested fields';
-          res.write(`What exact ${requested} should I use? Send the complete replacement value and I’ll update only that field.`);
+          const asked=[departure,authoredArrival].map(item=>String(item||'').trim()).find(item=>item.includes('?'));
+          res.write(asked||`What exact ${requested} should I use? Send the complete replacement value and I’ll update only that field.`);
           wrote=true;
           res.end();
           return;

@@ -137,6 +137,11 @@ check('the model writes the journey, the server fills gaps',chatStream.includes(
 // on the page the model is reading.
 check('a sentence naming a different address loses to the template',chatStream.includes('const namesOtherAddress=')&&chatStream.includes('This checks the prose against the value, not the value'));
 
+// The last canned sentence in this path. It only fires when the model asked to
+// replace a field and sent nothing to put in it, and even then its own question
+// is preferred when it wrote one.
+check('a replacement with no value asks in the model\'s words first',chatStream.includes("const asked=[departure,authoredArrival].map(item=>String(item||'').trim()).find(item=>item.includes('?'));")&&chatStream.includes('asked||`What exact'));
+
 check('the model is told to work values out from loose phrasing',role.includes('however loosely they put it')&&role.includes('my email is my name at gmail'));
 check('to ask only when it has nothing to go on',role.includes('nothing to base a value on, ask for it rather than inventing'));
 check('and to close by asking for a review, in its own words',role.includes('check the fields before sending, in your own words and different each time'));
