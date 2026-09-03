@@ -480,7 +480,15 @@ qa('.desktop-nav,.mobile-tabs').forEach(nav=>{
   let frame=0,ready=false,pointerId=null,startX=0,startY=0,lastX=0,lastT=0;
   let dragging=false,preview=null,suppressClickUntil=0,committing=false,pendingCommit=false,commitLink=null;
 
-  const active=()=>nav.querySelector('a.active')||links[0];
+  // Pages outside the five primary tabs, Privacy and Terms among them, have no
+  // active link at all. The lens used to fall back to links[0], so reading the
+  // privacy page showed Home lit up: a claim about where the visitor is, made by
+  // an animation, and wrong. At rest on those pages the lens is simply absent.
+  // It still tracks a hover or a drag, because a pointer following the pointer
+  // is not a claim about anything.
+  const current=()=>nav.querySelector('a.active');
+  const active=()=>current()||links[0];
+  let unplaced=!current();
   const metrics=link=>{
     const host=nav.getBoundingClientRect(),rect=link.getBoundingClientRect();
     return {x:rect.left-host.left,width:rect.width};
@@ -489,7 +497,7 @@ qa('.desktop-nav,.mobile-tabs').forEach(nav=>{
     lens.style.width=Math.max(0,width)+'px';
     lens.style.transform=`translate3d(${x}px,0,0) scaleX(${1+stretch}) scaleY(${1-stretch*.24}) skewX(${skew}deg)`;
     lens.style.setProperty('--lens-direction',skew<-.3?'0%':skew>.3?'100%':'50%');
-    lens.style.opacity=ready?'1':'0';
+    lens.style.opacity=ready&&!(unplaced&&!preview&&!dragging&&!commitLink)?'1':'0';
   };
   const place=(link,instant=false)=>{
     if(!link||nav.offsetWidth===0)return;
@@ -534,9 +542,10 @@ qa('.desktop-nav,.mobile-tabs').forEach(nav=>{
   },null)?.link;
   const settle=(instant=false)=>{
     clearPreview();
-    const current=commitLink||active();
-    links.forEach(item=>item.classList.toggle('is-lens-current',item===current));
-    place(current,instant);
+    unplaced=!current()&&!commitLink;
+    const focus=commitLink||active();
+    links.forEach(item=>item.classList.toggle('is-lens-current',!unplaced&&item===focus));
+    place(focus,instant);
   };
 
   nav.addEventListener('pointerover',event=>{

@@ -38,5 +38,13 @@ check('the mobile header keeps one centre anchor while resizing',styles.includes
 check('focus and touch restore full navigation',script.includes("item.addEventListener('pointerdown',expand")&&script.includes("item.addEventListener('focusin',expand)"));
 check('reduced motion removes the spring',script.includes("matchMedia('(prefers-reduced-motion: reduce)')")&&styles.includes('@media(prefers-reduced-motion:reduce)'));
 
+console.log('\n=== a page outside the primary tabs lights none of them ===');
+// Reading /privacy showed the lens sitting under Home. The lens is a claim
+// about where the visitor is, and on a page with no tab that claim is false.
+check('no active link means no resting lens',script.includes("const current=()=>nav.querySelector('a.active');")&&script.includes("unplaced=!current()&&!commitLink;"));
+check('hover and drag still move it',script.includes("ready&&!(unplaced&&!preview&&!dragging&&!commitLink)"));
+check('and no tab is marked current either',script.includes("item.classList.toggle('is-lens-current',!unplaced&&item===focus)"));
+check('the drag anchor still falls back, so geometry never goes null',script.includes('const active=()=>current()||links[0];'));
+
 if(failed)process.exit(1);
 console.log('\nall passed');

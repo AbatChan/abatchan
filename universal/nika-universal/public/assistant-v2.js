@@ -1014,8 +1014,14 @@
       // Work even once the visitor has walked to another page.
       // So keep the turn, keep their message, and replace the reply with a
       // stand-in that carries no destination and defers to the live route.
+      // The stand-in is bracketed rather than written as a sentence because a
+      // sentence gets copied. "That request was completed earlier." read as a
+      // perfectly good reply, and the model started answering live questions
+      // with it: a visitor asking to see something was told their request had
+      // already been handled. A bracketed note reads as machinery, and the
+      // prompt rules say never to repeat one.
       return budget(recent.map(item=>item.journeyRoute
-        ? {...item,content:'That request was completed earlier.',journeyRoute:false}
+        ? {...item,content:'[earlier navigation, already delivered]',journeyRoute:false}
         : item
       ));
     };

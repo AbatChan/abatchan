@@ -58,6 +58,16 @@ const pkg = JSON.parse(readFileSync(join(universal, 'package.json'), 'utf8'));
 if (!plugin.includes(`Version:           ${version}`) || pkg.version !== version) {
   throw new Error(`Adapter versions must both equal ${version}.`);
 }
+// The readmes carry the version too, and they are the first thing a customer
+// opens. 1.5.3 shipped saying "Nika Universal 1.5.2" because only the two
+// machine-readable versions were checked here.
+const readmes = [
+  ['wordpress/nika-site-guide/readme.txt', readFileSync(join(wordpress, 'readme.txt'), 'utf8'), `Stable tag: ${version}`],
+  ['universal/nika-universal/README.md', readFileSync(join(universal, 'README.md'), 'utf8'), `# Nika Universal ${version}`]
+];
+for (const [name, text, expected] of readmes) {
+  if (!text.includes(expected)) throw new Error(`${name} must say "${expected}".`);
+}
 
 const checks = spawnSync(process.execPath, [join(root, 'tests', 'run.mjs')], { cwd: root, stdio: 'inherit' });
 if (checks.status !== 0) process.exit(checks.status || 1);

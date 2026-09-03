@@ -104,6 +104,15 @@ check('each of the three questions takes a different angle',adminGenerator.inclu
 check('no single angle can claim all three cards',!adminGenerator.includes('const angle = angles[Math.floor(Math.random() * angles.length)];')&&adminGenerator.includes('No two questions may be about the same product or page'));
 check('the reason is recorded next to the fix',adminGenerator.includes('a quarter of the time that ground was a single product')||adminGenerator.includes('quarter of the time'));
 
+console.log('\n=== an internal note is never spoken to a visitor ===');
+// "That request was completed earlier." was a well-formed sentence, so the model
+// started using it as its own reply: a visitor asking to be shown something was
+// told their request had already been handled. Twice, in a row.
+const guide=readFileSync(new URL('../assistant-v2.js',import.meta.url),'utf8');
+const role=readFileSync(new URL('../lib/prompt/engine.js',import.meta.url),'utf8');
+check('the placeholder reads as machinery, not as prose',guide.includes("content:'[earlier navigation, already delivered]'")&&!guide.includes("content:'That request was completed earlier.'"));
+check('and the model is told never to repeat one',role.includes('Text in square brackets inside the conversation history is an internal note')&&role.includes('Never repeat one')&&role.includes("the visitor's current message is still unanswered"));
+
 console.log('\n=== the licence endpoint answers, it never blocks ===');
 // The endpoint and the vocabulary it answers in are two files now, because
 // /api/download has to reach the same verdict about the same key. Read both:
