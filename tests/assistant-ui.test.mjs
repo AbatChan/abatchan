@@ -118,6 +118,19 @@ check('what it said is what it gets back',guide.includes('content:item.journeyCo
 check('a repeated request is work to do, not something to defer',role.includes('Every visitor message is a live request')&&role.includes('never a reason to decline, defer, or reply that something was handled before'));
 check('and a short follow-up is resolved from the conversation',role.includes('Resolve what a short follow-up refers to from the conversation')&&role.includes('Highlight it')&&role.includes('section_requested true'));
 
+console.log('\n=== the form says what it refused, not only what it did ===');
+// Name and email accept only what the visitor typed. Refusing silently is how
+// "fill it with dummy data" produced a confirmation naming the two fields that
+// survived, with nothing about the two that did not.
+const chatStream=readFileSync(new URL('../api/chat-stream.js',import.meta.url),'utf8');
+check('what the model proposed is recorded before verification empties it',chatStream.includes('const proposedFields=Object.entries(formPrefill||{})')&&chatStream.includes('const droppedFields=proposedFields.filter(field=>!formPrefill?.[field]);'));
+check('a refused field is named in the reply',chatStream.includes('const droppedNote=droppedFields.length')&&chatStream.includes('I could not fill'));
+check('with the way forward, not just the refusal',chatStream.includes('typed them yourself')&&chatStream.includes('Send the exact'));
+// If every field is refused there is nothing to confirm, and the model's own
+// arrival would have claimed the form was filled.
+check('a wholly refused prefill does not borrow the model\'s success line',chatStream.includes('`I did not change the form.${droppedNote}`'));
+check('the guide is told not to offer what it cannot do',role.includes('never offer to make one up')&&role.includes('placeholder, sample and dummy values'));
+
 console.log('\n=== the licence endpoint answers, it never blocks ===');
 // The endpoint and the vocabulary it answers in are two files now, because
 // /api/download has to reach the same verdict about the same key. Read both:

@@ -599,6 +599,9 @@ export default async function handler(req,res){
           const applied=String(preparedForm?.[field]||'').trim().toLowerCase();
           return Boolean(applied)&&applied===String(formPrefill?.[field]||'').trim().toLowerCase();
         };
+        // What the model asked for, recorded before verification empties any of
+        // it, so the visitor can be told which fields did not make it and why.
+        const proposedFields=Object.entries(formPrefill||{}).filter(([,value])=>Boolean(value)).map(([field])=>field);
         const requestedReplaceFields=[...new Set((Array.isArray(action.replace_fields)?action.replace_fields:[]).filter(field=>['name','email','type','message'].includes(field)))];
         const requestedReplaceSet=new Set(requestedReplaceFields);
         // The model interprets corrections from language and live form state.
@@ -627,6 +630,12 @@ export default async function handler(req,res){
           res.end();
           return;
         }
+        // A name or email the visitor never typed is emptied above. Saying
+        // nothing about it is how "fill in a dummy name and email" produced a
+        // cheerful confirmation that listed only the two fields that happened to
+        // survive, leaving the visitor to work out from the form itself that the
+        // other two were quietly refused.
+        const droppedFields=proposedFields.filter(field=>!formPrefill?.[field]);
         const hasPrefill=formPrefill&&Object.values(formPrefill).some(Boolean);
         // Build form confirmations from server-verified values rather than the
         // model's prose. This keeps the journey specific without allowing a
@@ -657,11 +666,21 @@ export default async function handler(req,res){
           : hasPrefill
             ? `Adding the verified ${joinDetails(preparedLabels)} to the project form.`
             : status;
-        const safeArrival=replacementDetails.length
+        // Name and email accept only what the visitor typed themselves, so a
+        // guessed or placeholder value is refused. That refusal is now said out
+        // loud, with the way forward, rather than left for them to notice.
+        const droppedNote=droppedFields.length
+          ? ` I could not fill ${joinDetails(droppedFields.map(fieldLabel))}: I only put contact details in the form when you have typed them yourself. Send the exact ${droppedFields.length===1?'value':'values'} to use and I will add ${droppedFields.length===1?'it':'them'}.`
+          : '';
+        const safeArrival=(replacementDetails.length
           ? `The form now has ${joinDetails(replacementResults)}. Review everything before opening the email.`
           : hasPrefill
             ? `The enquiry form now includes ${joinDetails(preparationDetails)}. Review each field before opening the email.`
-            : authoredArrival;
+            // Every field was refused, so there is nothing to confirm. The
+            // model's own arrival would have claimed the form was filled.
+            : droppedFields.length
+              ? `I did not change the form.${droppedNote}`
+              : authoredArrival)+(hasPrefill?droppedNote:'');
         const arrival=!requiresApproval&&relatedMarkup?`${safeArrival} ${relatedMarkup}`:safeArrival;
         const authored=[safeDeparture,safeStatus,arrival,...relatedLinks.map(item=>item.label)];
         const safeJourney=authored.every(Boolean)&&authored.every(item=>!leaks(item,tenant.canaries));

@@ -486,6 +486,13 @@ deepSeekMode = 'form-prefill';
 result = await call('7.7.7.8', 'Prepare the form for my booking automation.');
 check('an unsupplied name is stripped', decodeURIComponent(result.text).includes('"name":""'), true);
 check('an unsupplied email is stripped', decodeURIComponent(result.text).includes('"email":""'), true);
+// Stripping them silently is how "fill it with dummy data" produced a cheerful
+// confirmation naming only the two fields that happened to survive, leaving the
+// visitor to notice from the form itself that the other two were refused.
+const strippedArrival = JSON.parse(decodeURIComponent((decodeURIComponent(result.text).match(/abatchan-nav:[^:]+:([\s\S]+?)-->/) || [])[1] || '{}')).arrival || '';
+check('the visitor is told which fields were refused', /could not fill/.test(strippedArrival) && /name \/ company/.test(strippedArrival) && /email address/.test(strippedArrival), true);
+check('and why, in terms they can act on', /typed them yourself/.test(strippedArrival) && /exact values/.test(strippedArrival), true);
+check('while the fields that were verified still confirm', /project type|project context/.test(strippedArrival), true);
 
 console.log('\n=== provider tool-call protocol never reaches the visitor ===');
 // DeepSeek sometimes serialises a second tool attempt as DSML inside
