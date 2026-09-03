@@ -97,6 +97,16 @@
 }
 .nika-generate:hover, .nika-generate:focus-visible { color: #fff; background: var(--nika-indigo); border-color: var(--nika-indigo); outline: 0; }
 .nika-generate:disabled { cursor: wait; opacity: .62; }
+
+/* A control the package does not include. It stays a real button: full contrast,
+   readable label, focusable. Only the chip beside it says what it costs, because
+   a greyed-out control reads as broken and sends the owner looking for a fault
+   that is not there. */
+.nika-generate.is-locked { color: var(--nika-ink-soft, #5c5c6b); background: #f6f6f8; border-color: #e2e2ea; }
+.nika-generate.is-locked:hover, .nika-generate.is-locked:focus-visible { color: var(--nika-indigo-dark); background: #f1f1ff; border-color: #d8d8ff; }
+.nika-lock { margin-left: 2px; padding: 2px 6px; border-radius: 999px; background: var(--nika-indigo, #6366f1); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.nika-package-note { margin: 6px 0 0; color: var(--nika-ink-soft, #5c5c6b); font-size: 12px; line-height: 1.5; }
+.nika-package-note a { color: var(--nika-indigo-dark); }
 .nika-launch-card { display: flex; align-items: center; justify-content: space-between; gap: 28px; border-color: #d8d8f8; }
 .nika-launch-card h2 { font-size: 24px; }
 .nika-lock { align-self: flex-start; white-space: nowrap; padding: 7px 10px; color: #5555d8; background: #f1f1ff; border-radius: 999px; font-size: 12px; font-weight: 700; }

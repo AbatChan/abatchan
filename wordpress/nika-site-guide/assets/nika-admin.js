@@ -174,6 +174,57 @@
     card?.querySelector('.nika-card__toggle')?.click();
   }, true);
 
+  /* What this package includes ---------------------------------------------- */
+
+  // A control the package does not include is shown, labelled and explained. It
+  // is never hidden, because a hidden control reads as "Nika cannot do this"
+  // rather than "this is in Business", and the owner goes looking for a feature
+  // that is right there.
+  //
+  // Everything gated this way is a shortcut. Match site theme fills in colour
+  // fields that stay editable by hand on every package, so the destination is
+  // always reachable and only the convenience is bought. Nothing here can stop
+  // Nika answering, navigating or highlighting.
+  const capabilities = new Set(window.NikaAdmin.capabilities || []);
+  const packageNames = window.NikaAdmin.packageNames || {};
+  const pricingUrl = window.NikaAdmin.pricing || '';
+  const included = (name) => !name || capabilities.has(name);
+
+  const explainPackage = (control) => {
+    const name = packageNames[control.dataset.nikaPackage || ''] || '';
+    let note = control.parentElement && control.parentElement.querySelector('.nika-package-note');
+    if (!note) {
+      note = document.createElement('p');
+      note.className = 'nika-package-note';
+      note.setAttribute('role', 'status');
+      (control.parentElement || control).append(note);
+    }
+    const label = (control.querySelector('span') || control).textContent.trim();
+    note.textContent = `${label} is included in ${name}. `;
+    if (pricingUrl) {
+      const link = document.createElement('a');
+      link.href = pricingUrl;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = 'See packages';
+      note.append(link);
+    }
+  };
+
+  // Returns whether the control may run. Marks it once, on the way through.
+  const allowed = (control) => {
+    const capability = control && control.dataset.nikaCapability;
+    if (included(capability)) return true;
+    if (!control.querySelector('.nika-lock')) {
+      const chip = document.createElement('span');
+      chip.className = 'nika-lock';
+      chip.textContent = packageNames[control.dataset.nikaPackage || ''] || '';
+      control.append(chip);
+      control.classList.add('is-locked');
+    }
+    return false;
+  };
+
   /* Match the site's own palette -------------------------------------------- */
 
   // The theme's designer already chose these colours, so an owner starts from
@@ -219,7 +270,11 @@
     const darkest = () => paletteEntries.map(([, entry]) => entry.color).sort((a, b) => luminance(a) - luminance(b))[0] || '';
     const lightest = () => paletteEntries.map(([, entry]) => entry.color).sort((a, b) => luminance(b) - luminance(a))[0] || '';
 
+    // Marked on load so the package is visible before anyone clicks, not as a
+    // surprise afterwards.
+    allowed(matchTheme);
     matchTheme.addEventListener('click', () => {
+      if (!allowed(matchTheme)) { explainPackage(matchTheme); return; }
       const accent = pickAccent() || pick('primary', 'accent', 'brand', 'link') || paletteEntries[0][1].color;
       const surface = pick('background', 'base', 'dark', 'contrast') || darkest();
       const ink = pick('foreground', 'text', 'contrast') || lightest();

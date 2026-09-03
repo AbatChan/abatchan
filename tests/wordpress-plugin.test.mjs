@@ -225,5 +225,32 @@ check('external AI services are disclosed',readme.includes('== Third-party servi
 check('readme promises no form submission',readme.includes('does not submit forms'));
 check('readme distinguishes controls from safeguards',readme.includes('Which limits can I control?')&&readme.includes('cannot be disabled'));
 
+console.log('\n=== a package withholds a convenience, never the product ===');
+const adminScript=readFileSync(new URL('../wordpress/nika-site-guide/assets/nika-admin.js',import.meta.url),'utf8');
+const adminStyles=readFileSync(new URL('../wordpress/nika-site-guide/assets/nika-admin.css',import.meta.url),'utf8');
+
+check('one table names what each package includes',php.includes('function nika_packages()')&&php.includes("'business' => array( 'theme_match'")&&php.includes("'agency'   => array( 'white_label'"));
+check('packages are cumulative, so Business keeps everything Personal had',php.includes('$granted = array_merge( $granted, $capabilities );')&&php.includes('if ( $package === nika_tier() ) break;'));
+// The whole point of the licence design is that it cannot switch anything off.
+// If a capability ever guards answering, navigation or highlighting, that has
+// stopped being true and this catches it.
+check('no capability guards the guide itself',!/nika_can\(\s*'(?:navigation|dictation|answers|highlight|chat)'/.test(php));
+check('the guide runs the same on every package',php.includes('a package can withhold a convenience, never the product'));
+
+console.log('\n=== a licence check that fails never takes a feature away ===');
+check('an unreachable service keeps the last confirmed package',php.includes("if ( ! empty( $state['degraded'] ) || 'unreachable' === $status ) {")&&php.includes("return $known ?: 'personal';"));
+check('being over the site count is not a downgrade',php.includes("if ( 'valid' !== $status && 'over-limit' !== $status ) $tier = 'personal';"));
+check('the confirmed package is remembered outside the transient',php.includes("get_option( 'nika_confirmed_package'")&&php.includes("update_option( 'nika_confirmed_package'"));
+
+console.log('\n=== the shortcut is gated, the destination stays open ===');
+check('match site theme carries its package in the markup',php.includes("data-nika-capability=\"theme_match\"")&&php.includes("nika_capability_package( 'theme_match' )"));
+check('a gated control is shown and explained, never hidden',adminScript.includes('const allowed = (control)')&&adminScript.includes("chip.className = 'nika-lock'")&&adminScript.includes('is included in')&&!adminScript.includes('matchTheme.hidden = true'));
+check('the package is marked before the click, not after',adminScript.includes('allowed(matchTheme);\n    matchTheme.addEventListener'));
+check('it still looks like a working button',adminStyles.includes('.nika-generate.is-locked')&&!adminStyles.includes('.nika-generate.is-locked { cursor: not-allowed'));
+// Match site theme only fills in fields the owner can type into by hand. If it
+// ever wrote something unreachable manually, gating it would gate the product.
+check('every colour it sets has its own editable field',['accent','panel_colour','gradient_from','gradient_to','scrollbar_colour','shadow_colour','text_colour','icon_colour'].every(name=>php.includes(`[${name}]`)));
+check('the licence card names the package in force',php.includes('$package = nika_package_name( strtolower(')&&php.includes('%1$s is active. Updates and support until %2$s.'));
+
 if(failed)process.exit(1);
 console.log('\nall passed');

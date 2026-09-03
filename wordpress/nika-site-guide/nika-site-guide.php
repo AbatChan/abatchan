@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.5.3
+ * Version:           1.5.4
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.5.3';
+const NIKA_VERSION = '1.5.4';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
@@ -181,6 +181,11 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 		'ipEndpoint' => rest_url( 'nika/v1/admin/ip' ),
 		'bundledAvatar' => plugin_dir_url( __FILE__ ) . 'assets/nika-admin-icon.png',
 		'themePalette' => nika_theme_palette(),
+		'package' => nika_tier(),
+		'packageName' => nika_package_name( nika_tier() ),
+		'capabilities' => nika_capabilities(),
+		'packageNames' => array( 'business' => nika_package_name( 'business' ), 'agency' => nika_package_name( 'agency' ) ),
+		'pricing' => 'https://abatchan.com/nika#beta-plans',
 		'chatEndpoint' => untrailingslashit( rest_url( 'nika/v1' ) ),
 		'assetBase' => untrailingslashit( plugin_dir_url( __FILE__ ) . 'assets' ),
 		'shell' => add_query_arg( 'ver', NIKA_VERSION, plugin_dir_url( __FILE__ ) . 'assets/guide-shell.js' ),
@@ -270,13 +275,20 @@ function nika_licence_forget() {
 function nika_licence_summary( $state ) {
 	switch ( $state['state'] ?? 'none' ) {
 		case 'valid':
+			// Name the package. The settings screen marks controls with the
+			// package they belong to, so the owner needs to see which one they
+			// are on without going to look it up in an old email.
+			$package = nika_package_name( strtolower( (string) ( $state['tier'] ?? 'personal' ) ) );
 			if ( 'development' === ( $state['siteKind'] ?? '' ) ) {
-				return __( 'Active. This looks like a development or staging site, so it does not use one of your sites.', 'nika-site-guide' );
+				/* translators: %s: package name. */
+				return sprintf( __( '%s is active. This looks like a development or staging site, so it does not use one of your sites.', 'nika-site-guide' ), $package );
 			}
 			$until = $state['updatesUntil'] ? date_i18n( get_option( 'date_format' ), strtotime( $state['updatesUntil'] ) ) : '';
 			return $until
-				? sprintf( __( 'Active. Updates and support until %s.', 'nika-site-guide' ), $until )
-				: __( 'Active.', 'nika-site-guide' );
+				/* translators: 1: package name, 2: date. */
+				? sprintf( __( '%1$s is active. Updates and support until %2$s.', 'nika-site-guide' ), $package, $until )
+				/* translators: %s: package name. */
+				: sprintf( __( '%s is active.', 'nika-site-guide' ), $package );
 		case 'over-limit':
 			return __( 'This key is on more sites than its plan covers. Nika keeps working here; contact Abat to add sites.', 'nika-site-guide' );
 		case 'unreachable':
@@ -330,7 +342,7 @@ function nika_settings_page() {
 				</section>
 
 				<section class="nika-card" id="nika-identity">
-					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Assistant', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Name and appearance', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Set the assistant name, message field, position, and colour.', 'nika-site-guide' ); ?></p></div><div class="nika-card__actions"><button type="button" class="nika-generate" id="nika-match-theme" hidden><svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true" focusable="false"><path d="M10 2.6a7.4 7.4 0 1 0 0 14.8c1 0 1.6-.7 1.6-1.5 0-.9-.7-1.4-.7-2.1 0-.6.5-1.1 1.2-1.1h1.4A4 4 0 0 0 17.4 8c0-3-3.3-5.4-7.4-5.4Z" fill="none" stroke="currentColor" stroke-width="1.6"></path><circle cx="7" cy="8" r="1.1" fill="currentColor"></circle><circle cx="10.4" cy="6" r="1.1" fill="currentColor"></circle></svg><span><?php esc_html_e( 'Match site theme', 'nika-site-guide' ); ?></span></button><button type="button" class="nika-generate" id="nika-reset-appearance" data-nika-defaults="<?php
+					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Assistant', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Name and appearance', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'Set the assistant name, message field, position, and colour.', 'nika-site-guide' ); ?></p></div><div class="nika-card__actions"><button type="button" class="nika-generate" id="nika-match-theme" data-nika-capability="theme_match" data-nika-package="<?php echo esc_attr( nika_capability_package( 'theme_match' ) ); ?>" hidden><svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true" focusable="false"><path d="M10 2.6a7.4 7.4 0 1 0 0 14.8c1 0 1.6-.7 1.6-1.5 0-.9-.7-1.4-.7-2.1 0-.6.5-1.1 1.2-1.1h1.4A4 4 0 0 0 17.4 8c0-3-3.3-5.4-7.4-5.4Z" fill="none" stroke="currentColor" stroke-width="1.6"></path><circle cx="7" cy="8" r="1.1" fill="currentColor"></circle><circle cx="10.4" cy="6" r="1.1" fill="currentColor"></circle></svg><span><?php esc_html_e( 'Match site theme', 'nika-site-guide' ); ?></span></button><button type="button" class="nika-generate" id="nika-reset-appearance" data-nika-defaults="<?php
 					$defaults = nika_defaults();
 					echo esc_attr( wp_json_encode( array_intersect_key( $defaults, array_flip( array( 'accent', 'position', 'avatar', 'launcher_icon', 'panel_colour', 'panel_opacity', 'gradient_from', 'gradient_to', 'scrollbar_colour', 'shadow_colour', 'text_colour', 'icon_colour', 'logo_size', 'mark_size', 'disclaimer', 'placeholder' ) ) ) ) );
 					?>"><svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true" focusable="false"><path d="M4 10a6 6 0 1 1 1.8 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path><path d="M4 5.6V10h4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg><span><?php esc_html_e( 'Reset appearance', 'nika-site-guide' ); ?></span></button></div></div>
@@ -1548,6 +1560,92 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ( $li
 	array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=nika-site-guide' ) ) . '">' . esc_html__( 'Settings', 'nika-site-guide' ) . '</a>' );
 	return $links;
 } );
+
+/**
+ * What each package includes, in one table.
+ *
+ * The settings screen, the upgrade prompts, the pricing page and the commercial
+ * sheet the guide answers from all have to agree about this, and the only way
+ * they do is by reading the same list. Packages are cumulative: Business is
+ * Personal plus its own, Agency is Business plus its own.
+ *
+ * A capability is never something Nika needs in order to work. Every entry here
+ * is a shortcut, a piece of polish or a report. Nika answers visitors, navigates
+ * and highlights identically on all three, with no key at all, and that is the
+ * line: a package can withhold a convenience, never the product.
+ */
+function nika_packages() {
+	return array(
+		'personal' => array(),
+		'business' => array( 'theme_match', 'unbranded', 'config_transfer', 'question_report' ),
+		'agency'   => array( 'white_label', 'client_presets', 'activation_dashboard' ),
+	);
+}
+
+/** The package a capability first appears in, for the prompt that explains it. */
+function nika_capability_package( $capability ) {
+	foreach ( nika_packages() as $package => $capabilities ) {
+		if ( in_array( $capability, $capabilities, true ) ) return $package;
+	}
+	return '';
+}
+
+/** Human names, so no screen has to translate a slug into something readable. */
+function nika_package_name( $package ) {
+	switch ( $package ) {
+		case 'business': return __( 'Business', 'nika-site-guide' );
+		case 'agency': return __( 'Agency', 'nika-site-guide' );
+	}
+	return __( 'Personal', 'nika-site-guide' );
+}
+
+/**
+ * Which package this site is entitled to right now.
+ *
+ * Two rules keep this from ever taking something away by accident:
+ *
+ *   1. An unreachable licence service is not a downgrade. The last package we
+ *      confirmed is remembered, and it stands until a definite answer replaces
+ *      it. A customer whose Business features vanished because our endpoint had
+ *      a bad minute would be right to be furious.
+ *   2. Being over the site count is not a downgrade either, for the same reason
+ *      it never blocks the guide: they bought the package, they are simply using
+ *      it on more sites than it covers, and that is a conversation.
+ *
+ * No key resolves to Personal. Nothing here can make Nika stop working.
+ */
+function nika_tier() {
+	$state = nika_licence_state();
+	$known = (string) get_option( 'nika_confirmed_package', '' );
+	$status = (string) ( $state['state'] ?? 'none' );
+
+	// Degraded or unreachable: keep what we last confirmed rather than guessing
+	// downwards. "none" means there is no key to check, which is definite.
+	if ( ! empty( $state['degraded'] ) || 'unreachable' === $status ) {
+		return $known ?: 'personal';
+	}
+
+	$tier = strtolower( (string) ( $state['tier'] ?? '' ) );
+	if ( ! array_key_exists( $tier, nika_packages() ) ) $tier = 'personal';
+	if ( 'valid' !== $status && 'over-limit' !== $status ) $tier = 'personal';
+
+	if ( $tier !== $known ) update_option( 'nika_confirmed_package', $tier, false );
+	return $tier;
+}
+
+/** Everything the current package includes, Personal upward. */
+function nika_capabilities() {
+	$granted = array();
+	foreach ( nika_packages() as $package => $capabilities ) {
+		$granted = array_merge( $granted, $capabilities );
+		if ( $package === nika_tier() ) break;
+	}
+	return $granted;
+}
+
+function nika_can( $capability ) {
+	return in_array( $capability, nika_capabilities(), true );
+}
 
 /**
  * Ask abatchan.com what the current release is, and whether this site may have it.
