@@ -120,6 +120,20 @@ check('what it said is what it gets back',guide.includes('content:item.journeyCo
 check('a repeated request is work to do, not something to defer',role.includes('Every visitor message is a live request')&&role.includes('never a reason to decline, defer, or reply that something was handled before'));
 check('and a short follow-up is resolved from the conversation',role.includes('Resolve what a short follow-up refers to from the conversation')&&role.includes('Highlight it')&&role.includes('section_requested true'));
 
+console.log('\n=== a cross-page journey resumes in its own bubble ===');
+// The handoff attached to whichever bot bubble was last in the log. After
+// another turn that is somebody else's, so the card showed two progress rows:
+// its own, done, plus a stale one that span for ever because the bubble it
+// landed on had already completed and completeJourney returns early on those.
+check('the bubble that starts a journey is stamped',assistant.includes("bubble.dataset.journeyId=`j${Date.now().toString(36)}"));
+check('and the stamp is stored, because the page is about to reload',assistant.includes('const stored=transcript.find(item=>item.journey===journey);')&&assistant.includes('stored.journey.journeyId=bubble.dataset.journeyId;writeStored(transcript)'));
+check('it is restored onto the rebuilt bubble',assistant.includes('if(metadata?.journey?.journeyId)el.dataset.journeyId=metadata.journey.journeyId;'));
+check('the handoff carries it across the navigation',assistant.includes("journeyId:bubble?.dataset.journeyId||''"));
+check('and resumes on that bubble by name',assistant.includes('const own=handoff.journeyId?bubbles.find(item=>item.dataset.journeyId===handoff.journeyId):null;'));
+// A handoff written by an older release has no stamp. Borrowing a finished
+// bubble is what caused the permanent spinner, so it is never borrowed.
+check('a finished bubble is never borrowed as a fallback',assistant.includes("const bubble=own||(newest&&!newest.dataset.journeyComplete?newest:null);")&&assistant.includes('if(!bubble)return;'));
+
 console.log('\n=== a page that opened without its section says so ===');
 // A page journey carrying a hash was judged on the page alone. When the anchor
 // did not exist the browser scrolled nowhere, the visitor sat at the top, and

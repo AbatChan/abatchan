@@ -1801,6 +1801,7 @@
       if(who==='bot'){
         el.appendChild(content);
         render(content,text);enhanceActions(content);
+        if(metadata?.journey?.journeyId)el.dataset.journeyId=metadata.journey.journeyId;
         if(metadata?.journey)restoreJourney(el,metadata.journey);
       }else{
         if(Array.isArray(metadata?.attachments)&&metadata.attachments.length)el.classList.add('has-attachments');
@@ -2096,13 +2097,24 @@
             }catch{return false}
           })
         : [];
+      // Stamped before anything can navigate. A handoff resumes on the next page
+      // and has to find the bubble it came from; without this it took whichever
+      // bot bubble was last, which after another turn is somebody else's.
+      if(bubble&&!bubble.dataset.journeyId){
+        bubble.dataset.journeyId=`j${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`;
+        // Written into the stored turn as well: the page is about to reload and
+        // the bubble is rebuilt from storage, so a DOM-only stamp would not
+        // survive the one journey that needs it.
+        const stored=transcript.find(item=>item.journey===journey);
+        if(stored?.journey){stored.journey.journeyId=bubble.dataset.journeyId;writeStored(transcript)}
+      }
       journeyStep(bubble,sequence.length>1?sequence[0].status:journey.status);
       // One paint so the progress row is visible, then start immediately. The
       // departure has already finished streaming, so anything longer than a
       // frame is delay the visitor feels for nothing.
       afterPaint(async()=>{
         if(publicPath(url)!==pagePath()){
-          navigateTo(journey.href,journey.label,journey);
+          navigateTo(journey.href,journey.label,{...journey,journeyId:bubble?.dataset.journeyId||''});
           return;
         }
         if(sequence.length>1){
@@ -2159,7 +2171,16 @@
           const keepPageVisible=matchMedia('(max-width:640px)').matches;
           if(!keepPageVisible&&!panel.classList.contains('is-open'))launch.click();
           const url=new URL(handoff.href,location.href);
-          const bubble=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')].at(-1);
+          // The bubble this journey started in, by name. Falling back to the
+          // newest one is what produced a card with two progress rows: this
+          // journey's status landed on a later turn's bubble, which had already
+          // finished, so completeJourney returned early and the row span for
+          // ever. A finished bubble is never borrowed now.
+          const bubbles=[...log.querySelectorAll('.assist-msg.bot[data-chat-entry="true"]')];
+          const own=handoff.journeyId?bubbles.find(item=>item.dataset.journeyId===handoff.journeyId):null;
+          const newest=bubbles.at(-1);
+          const bubble=own||(newest&&!newest.dataset.journeyComplete?newest:null);
+          if(!bubble)return;
           journeyStep(bubble,handoff.status);
           const revealResult=await revealTargetWhenReady(url,handoff.label,handoff.section_requested===true,handoff.request||'');
           const formResult=prepareProjectForm(handoff);
