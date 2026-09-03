@@ -240,6 +240,28 @@ function adminAllowed(req) {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
+// The questions this installation could not answer, most frequent first. Grouped
+// by question, so twenty people asking the same thing read as one row with a
+// count, which is the number that decides whether to write the page.
+function unansweredQuestions(limit = 12) {
+  const entries = readJson(FEEDBACK_PATH, []);
+  const grouped = new Map();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    if (!entry || !['unresolved', 'problem', 'down'].includes(String(entry.verdict || ''))) continue;
+    const question = String(entry.question || '').trim();
+    if (!question) continue;
+    const key = question.toLowerCase();
+    const row = grouped.get(key) || { question, count: 0, last: '', path: String(entry.path || ''), reported: false };
+    row.count += 1;
+    if (String(entry.at || '') > row.last) row.last = String(entry.at || '');
+    if (entry.verdict === 'problem' || entry.verdict === 'down') row.reported = true;
+    grouped.set(key, row);
+  }
+  return [...grouped.values()]
+    .sort((a, b) => (b.count === a.count ? String(b.last).localeCompare(String(a.last)) : b.count - a.count))
+    .slice(0, Math.max(1, limit));
+}
+
 function adminConfig() {
   const { config } = siteData();
   const state = licence.state();
@@ -257,13 +279,16 @@ function adminConfig() {
       package: state.tier,
       packageName: PACKAGE_NAMES[state.tier] || PACKAGE_NAMES.personal,
       capabilities: licence.capabilities(),
-      packageFor: { unbranded: PACKAGE_NAMES[packageFor('unbranded')] || '', config_transfer: PACKAGE_NAMES[packageFor('config_transfer')] || '' },
+      packageFor: { unbranded: PACKAGE_NAMES[packageFor('unbranded')] || '', config_transfer: PACKAGE_NAMES[packageFor('config_transfer')] || '', question_report: PACKAGE_NAMES[packageFor('question_report')] || '' },
       sitesAllowed: state.sitesAllowed,
       sitesUsed: state.sitesUsed,
       updatesUntil: state.updatesUntil,
       siteKind: state.siteKind,
       message: state.message
-    }
+    },
+    // Only sent when the package includes it, so the browser never holds a
+    // report this installation has not bought.
+    unanswered: licence.can('question_report') ? unansweredQuestions() : null
   };
 }
 
@@ -744,7 +769,10 @@ const chatStream = (req, res) => chat(req, res, true);
 async function guideFeedback(req, res) {
   const body = await bodyJson(req);
   const verdict = String(body?.verdict || body?.rating || '').toLowerCase();
-  if (!['helpful', 'problem', 'up', 'down'].includes(verdict)) return send(res, 400, { error: 'Unknown feedback.' });
+  // "unresolved" is the browser reporting that it asked for somewhere and did
+  // not arrive, which is how most misses get recorded: almost nobody presses a
+  // thumb.
+  if (!['helpful', 'problem', 'up', 'down', 'unresolved'].includes(verdict)) return send(res, 400, { error: 'Unknown feedback.' });
   const entries = readJson(FEEDBACK_PATH, []);
   const list = Array.isArray(entries) ? entries : [];
   list.unshift({
@@ -752,6 +780,7 @@ async function guideFeedback(req, res) {
     question: text(body?.question, 400),
     answer: text(body?.answer, 1200),
     path: text(body?.page, 300),
+    reason: text(body?.reason, 40),
     at: new Date().toISOString()
   });
   const temporary = `${FEEDBACK_PATH}.tmp`;

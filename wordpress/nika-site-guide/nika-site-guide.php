@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.6.1
+ * Version:           1.6.2
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.6.1';
+const NIKA_VERSION = '1.6.2';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
@@ -445,6 +445,38 @@ function nika_settings_page() {
 					$transfer = nika_can( 'config_transfer' );
 					$transfer_package = nika_package_name( nika_capability_package( 'config_transfer' ) );
 					?>
+					<?php
+					// Shown on every package, like the rest of them, so an owner
+					// can see what the report is before deciding it is worth
+					// having. The questions themselves are the product.
+					$reporting = nika_can( 'question_report' );
+					$report_package = nika_package_name( nika_capability_package( 'question_report' ) );
+					$unanswered = $reporting ? nika_unanswered_questions() : array();
+					?>
+					<div class="nika-transfer nika-unanswered">
+						<span class="nika-field__head"><span><b><?php esc_html_e( 'Questions Nika could not answer', 'nika-site-guide' ); ?><?php if ( ! $reporting ) : ?> <span class="nika-lock"><?php echo esc_html( $report_package ); ?></span><?php endif; ?></b></span></span>
+						<p class="nika-field__note"><?php echo esc_html( $reporting
+							? __( 'Visitors who asked for something and did not get it. Most asked first. Nothing here identifies anyone.', 'nika-site-guide' )
+							: sprintf( __( 'See what visitors asked for and did not get, so you can write the page they were looking for. Included in %s.', 'nika-site-guide' ), $report_package ) ); ?></p>
+						<?php if ( $reporting ) : ?>
+							<?php if ( $unanswered ) : ?>
+								<ol class="nika-unanswered__list">
+									<?php foreach ( $unanswered as $row ) : ?>
+										<li>
+											<span class="nika-unanswered__q"><?php echo esc_html( $row['question'] ); ?></span>
+											<span class="nika-unanswered__meta">
+												<?php echo esc_html( sprintf( _n( 'asked %d time', 'asked %d times', $row['count'], 'nika-site-guide' ), $row['count'] ) ); ?>
+												<?php if ( $row['path'] ) : ?>· <?php echo esc_html( $row['path'] ); ?><?php endif; ?>
+												<?php if ( $row['reported'] ) : ?>· <?php esc_html_e( 'reported by a visitor', 'nika-site-guide' ); ?><?php endif; ?>
+											</span>
+										</li>
+									<?php endforeach; ?>
+								</ol>
+							<?php else : ?>
+								<p class="nika-field__note"><?php esc_html_e( 'Nothing yet. A question appears here when Nika is asked for a place it cannot reach, or when a visitor reports a reply.', 'nika-site-guide' ); ?></p>
+							<?php endif; ?>
+						<?php endif; ?>
+					</div>
 					<div class="nika-transfer">
 						<span class="nika-field__head"><span><b><?php esc_html_e( 'Move settings between sites', 'nika-site-guide' ); ?></b><?php if ( ! $transfer ) : ?> <span class="nika-lock"><?php echo esc_html( $transfer_package ); ?></span><?php endif; ?></span></span>
 						<p class="nika-field__note"><?php echo esc_html( $transfer
@@ -1544,7 +1576,10 @@ function nika_guide_feedback_response( WP_REST_Request $request ) {
 	if ( ! nika_origin_allowed() ) return new WP_Error( 'nika_origin', __( 'This browser origin is not allowed.', 'nika-site-guide' ), array( 'status' => 403 ) );
 	$body = $request->get_json_params();
 	$verdict = sanitize_key( $body['verdict'] ?? $body['rating'] ?? '' );
-	if ( ! in_array( $verdict, array( 'helpful', 'problem', 'up', 'down' ), true ) ) return new WP_Error( 'nika_feedback', __( 'Unknown feedback.', 'nika-site-guide' ), array( 'status' => 400 ) );
+	// "unresolved" is not a visitor opinion. It is the browser reporting that it
+	// asked for somewhere and did not arrive, which is the only way most misses
+	// are ever recorded: almost nobody presses a thumb.
+	if ( ! in_array( $verdict, array( 'helpful', 'problem', 'up', 'down', 'unresolved' ), true ) ) return new WP_Error( 'nika_feedback', __( 'Unknown feedback.', 'nika-site-guide' ), array( 'status' => 400 ) );
 	$entries = get_option( 'nika_site_guide_feedback', array() );
 	if ( ! is_array( $entries ) ) $entries = array();
 	array_unshift( $entries, array(
@@ -1552,6 +1587,7 @@ function nika_guide_feedback_response( WP_REST_Request $request ) {
 		'question' => sanitize_textarea_field( mb_substr( (string) ( $body['question'] ?? '' ), 0, 400 ) ),
 		'answer' => sanitize_textarea_field( mb_substr( (string) ( $body['answer'] ?? '' ), 0, 1200 ) ),
 		'path' => sanitize_text_field( $body['page'] ?? '' ),
+		'reason' => sanitize_key( (string) ( $body['reason'] ?? '' ) ),
 		'at' => time(),
 	) );
 	update_option( 'nika_site_guide_feedback', array_slice( $entries, 0, 200 ), false );
@@ -1694,6 +1730,43 @@ function nika_import_settings( $document ) {
 	foreach ( nika_private_keys() as $private ) $merged[ $private ] = $current[ $private ];
 
 	return array( 'settings' => nika_sanitize_settings( $merged ), 'notes' => array_values( array_unique( $notes ) ) );
+}
+
+/**
+ * The questions this site could not answer, most frequent first.
+ *
+ * Two sources, and the second is the one that makes this worth reading. A
+ * visitor pressing "report a problem" is rare. A journey that asked for a place
+ * and did not arrive is recorded without anyone doing anything, and it names a
+ * gap in the site rather than a fault in the guide: a page that was asked for
+ * and does not exist, a section nobody built.
+ *
+ * Grouped by question so twenty people asking the same thing read as one row
+ * with a count on it, which is the number that decides whether to write the
+ * page.
+ */
+function nika_unanswered_questions( $limit = 12 ) {
+	$entries = get_option( 'nika_site_guide_feedback', array() );
+	if ( ! is_array( $entries ) ) return array();
+	$grouped = array();
+	foreach ( $entries as $entry ) {
+		if ( ! is_array( $entry ) ) continue;
+		$verdict = (string) ( $entry['verdict'] ?? '' );
+		if ( ! in_array( $verdict, array( 'unresolved', 'problem', 'down' ), true ) ) continue;
+		$question = trim( (string) ( $entry['question'] ?? '' ) );
+		if ( '' === $question ) continue;
+		$key = mb_strtolower( $question );
+		if ( ! isset( $grouped[ $key ] ) ) {
+			$grouped[ $key ] = array( 'question' => $question, 'count' => 0, 'last' => 0, 'path' => (string) ( $entry['path'] ?? '' ), 'reason' => (string) ( $entry['reason'] ?? '' ), 'reported' => false );
+		}
+		$grouped[ $key ]['count']++;
+		$grouped[ $key ]['last'] = max( $grouped[ $key ]['last'], (int) ( $entry['at'] ?? 0 ) );
+		// A visitor who took the trouble to press the button outranks a silent
+		// miss when the row is described.
+		if ( in_array( $verdict, array( 'problem', 'down' ), true ) ) $grouped[ $key ]['reported'] = true;
+	}
+	uasort( $grouped, function ( $a, $b ) { return $b['count'] === $a['count'] ? $b['last'] <=> $a['last'] : $b['count'] <=> $a['count']; } );
+	return array_slice( array_values( $grouped ), 0, max( 1, (int) $limit ) );
 }
 
 /**

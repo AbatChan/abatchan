@@ -111,6 +111,13 @@
 /* Moving a configuration between sites. Sits under the licence key because that
    is what decides whether it is available. */
 .nika-transfer { display: grid; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e8e8ef; }
+
+/* The unanswered-question report. A list of things the site does not say yet, so
+   it reads as a to-do rather than an error log. */
+.nika-unanswered__list { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 8px; }
+.nika-unanswered__list li { color: #171827; font-size: 13px; line-height: 1.45; }
+.nika-unanswered__q { display: block; font-weight: 650; }
+.nika-unanswered__meta { display: block; margin-top: 2px; color: #777b89; font-size: 12px; font-variant-numeric: tabular-nums; }
 .nika-transfer .nika-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .nika-transfer .nika-field__note { margin: 0; }
 .nika-admin .nika-generator-status[data-tone="error"] { color: #8a1f1f; }

@@ -72,6 +72,9 @@ const checks = [
   ['a file that is not an export is refused', server.includes("document_.nika !== 'settings'") && server.includes('is not a Nika settings export')],
   ['images from the other site are dropped rather than hotlinked', server.includes("for (const field of ['avatar', 'launcherIcon'])") && server.includes('hosted on the site the file came from')],
   ['the guide is not switched on where there is no AI key', server.includes('if (incoming.enabled !== false && !API_KEY)')],
+  ['the report is only sent when the package includes it', server.includes("licence.can('question_report') ? unansweredQuestions() : null")],
+  ['the browser tells an empty report from an excluded one', adminJs.includes('Array.isArray(licence.unanswered)?licence.unanswered:null') && adminJs.includes('if(!rows){') && adminJs.includes('}else if(!rows.length){')],
+  ['questions are grouped and counted, not listed per visitor', server.includes('function unansweredQuestions(') && server.includes('row.count += 1;')],
   ['the licence is explained where an owner will look for it', readme.includes('NIKA_LICENCE_KEY') && readme.includes('Nika runs with or without a key')],
 
   ['uses customer environment API key', server.includes('process.env.NIKA_AI_API_KEY')],

@@ -29,6 +29,26 @@
     document.querySelector('#branding-note').textContent=unbranded
       ?'One small line under the message box crediting Nika. Turn it off to run the guide unbranded.'
       :`One small line under the message box crediting Nika. Removing it is included in ${packageFor.unbranded||'Business'}.`;
+    // The list is only ever sent when the package includes it, so an empty one
+    // and an unavailable one are different things and read differently.
+    const list=document.querySelector('#unanswered-list'),chip=document.querySelector('#unanswered-package'),note=document.querySelector('#unanswered-note');
+    const rows=Array.isArray(licence.unanswered)?licence.unanswered:null;
+    chip.hidden=Boolean(rows);chip.textContent=packageFor.question_report||'';
+    list.innerHTML='';
+    if(!rows){
+      note.textContent=`See what visitors asked for and did not get, so you can write the page they were looking for. Included in ${packageFor.question_report||'Business'}.`;
+    }else if(!rows.length){
+      note.textContent='Nothing yet. A question appears here when Nika is asked for a place it cannot reach, or when a visitor reports a reply.';
+    }else{
+      note.textContent='Visitors who asked for something and did not get it. Most asked first. Nothing here identifies anyone.';
+      for(const row of rows){
+        const li=document.createElement('li');
+        const q=document.createElement('span');q.className='nika-unanswered__q';q.textContent=row.question;
+        const meta=document.createElement('span');meta.className='nika-unanswered__meta';
+        meta.textContent=[`asked ${row.count} time${row.count===1?'':'s'}`,row.path,row.reported?'reported by a visitor':''].filter(Boolean).join(' · ');
+        li.append(q,meta);list.append(li);
+      }
+    }
     mark(document.querySelector('#export-config'),'config_transfer');
     mark(document.querySelector('#import-config'),'config_transfer');
   };

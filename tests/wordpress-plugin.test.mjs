@@ -316,5 +316,31 @@ check('the plugin tells the model a repeat is live work',php.includes(guidance)&
 check('and how to resolve a short follow-up',php.includes(followUp)&&php.includes('set section_requested true'));
 check('Universal carries the same two rules',universalServer.includes(guidance)&&universalServer.includes(followUp));
 
+console.log('\n=== the questions the site could not answer ===');
+// A visitor pressing "report a problem" is rare, so a report built only from
+// thumbs is a report nobody reads. The signal that makes this useful is the one
+// nobody has to send: the browser asked for a place and did not arrive.
+check('the browser reports a verified miss on its own',canonical.includes('const reportUnresolved=(question,reason)=>')&&canonical.includes("verdict:'unresolved'"));
+check('from the verified result, not the model\'s wording',canonical.includes("if(result&&result.outcome!=='completed'&&result.outcome!=='cancelled'){")&&canonical.includes("result.target_found===false?'section-missing'"));
+// A report that carried who asked would be a different product with different
+// obligations, and the privacy page would stop being true.
+check('only the question and the reason travel',canonical.includes('No identity, no session, nothing')&&!/verdict:'unresolved'[^}]*(?:ip|session|visitor|id:)/.test(canonical));
+check('a cancelled journey is not a failure',canonical.includes("result.outcome!=='cancelled'"));
+
+check('both editions accept the signal',php.includes("'down', 'unresolved' ), true )")&&universalServer.includes("'down', 'unresolved'].includes(verdict)"));
+check('and record why it was unresolved',php.includes("'reason' => sanitize_key(")&&universalServer.includes('reason: text(body?.reason, 40)'));
+
+// Twenty people asking the same thing is one row with a count on it, because the
+// count is what decides whether the page is worth writing.
+check('questions are grouped, not listed one per visitor',php.includes('function nika_unanswered_questions(')&&php.includes('$grouped[ $key ][\'count\']++;')&&universalServer.includes('function unansweredQuestions('));
+check('and ordered by how often they were asked',php.includes("$b['count'] === $a['count'] ? $b['last'] <=> $a['last'] : $b['count'] <=> $a['count']")&&universalServer.includes('b.count === a.count ? String(b.last).localeCompare(String(a.last)) : b.count - a.count'));
+check('a visitor-reported one is marked as such',php.includes("$grouped[ $key ]['reported'] = true;")&&universalServer.includes('row.reported = true;'));
+
+check('the report is a package feature, checked on the server',php.includes("nika_can( 'question_report' )")&&universalServer.includes("licence.can('question_report') ? unansweredQuestions() : null"));
+// Empty and unavailable are different things and have to read differently: one
+// says write nothing, the other says buy something.
+check('an empty report is not confused with an excluded one',php.includes('Nothing yet. A question appears here')&&php.includes('See what visitors asked for and did not get'));
+check('the list is rendered from the grouped rows',php.includes('nika-unanswered__list')&&php.includes("_n( 'asked %d time', 'asked %d times'"));
+
 if(failed)process.exit(1);
 console.log('\nall passed');

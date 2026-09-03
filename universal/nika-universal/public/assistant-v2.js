@@ -1988,9 +1988,33 @@
       return text.trim();
     };
 
+    // A question the guide could not deliver on is worth more to the owner than
+    // any answer it got right, and until now nothing recorded one. A visitor has
+    // to press a thumb for the owner to hear about a failure, and almost nobody
+    // does. These are the misses the browser can prove: it asked for a place and
+    // did not end up there.
+    //
+    // Only the question and the reason travel. No identity, no session, nothing
+    // that could turn a report into a record of a person.
+    const reportUnresolved=(question,reason)=>{
+      const asked=String(question||'').trim();
+      if(!asked)return;
+      try{
+        fetch(apiUrl(ROUTES.feedback),{method:'POST',headers:apiHeaders({'Content-Type':'application/json'}),body:JSON.stringify({
+          verdict:'unresolved',reason,question:asked.slice(0,400),page:pagePath()
+        })}).catch(()=>{});
+      }catch{}
+    };
+
     const completeJourney=async(bubble,journey,result)=>{
       if(!bubble||!journey?.arrival||bubble.dataset.journeyComplete)return;
       bubble.dataset.journeyComplete='true';
+      // Reported from the verified result, not from the model's prose, so a
+      // confidently worded failure still counts as one.
+      if(result&&result.outcome!=='completed'&&result.outcome!=='cancelled'){
+        const asked=[...transcript].reverse().find(item=>item.role==='user')?.content||'';
+        reportUnresolved(asked,result.target_found===false?'section-missing':`journey-${result.outcome}`);
+      }
       // The progress row stays active across the verified continuation request
       // so the visitor sees work in progress until the conclusion starts, not a
       // finished-looking row waiting on the model's first token.
