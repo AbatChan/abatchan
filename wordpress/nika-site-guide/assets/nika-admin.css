@@ -128,6 +128,11 @@
 .nika-presets__name { font-size: 13px; font-weight: 650; }
 .nika-presets__meta { flex: 1 1 auto; color: #777b89; font-size: 12px; font-variant-numeric: tabular-nums; }
 .nika-presets__actions { display: flex; gap: 6px; }
+
+/* The two white-label fields sit side by side and stack on a narrow screen,
+   like every other pair in this page. */
+.nika-grid--two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 6px; }
+@media (max-width: 782px) { .nika-grid--two { grid-template-columns: 1fr; } }
 .nika-presets__delete { color: #8a1f1f; background: #fdf1f1; border-color: #f2d6d6; }
 .nika-presets__delete:hover, .nika-presets__delete:focus-visible { color: #fff; background: #a52a2a; border-color: #a52a2a; }
 .nika-transfer .nika-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -182,6 +182,8 @@ function siteData() {
       // Absent means branded, the same reading the loaders use, so a config file
       // written before this existed does not become an unbranded install.
       branding: config.branding !== false,
+      adminLabel: text(config.adminLabel, 40),
+      adminIcon: imageUrl(config.adminIcon),
       launcherIcon: imageUrl(config.launcherIcon),
       position: config.position === 'left' ? 'left' : 'right',
       contextCharacters: numberBetween(config.contextCharacters, 1000, 20000, 12000),
@@ -357,6 +359,11 @@ function adminConfig() {
     keyConfigured: Boolean(API_KEY),
     endpointConfigured: Boolean(ENDPOINT),
     environmentExemptions: ENV_EXEMPT_IPS.length,
+    // Resolved here rather than in the browser, and checked on read as well as
+    // on save, so a package that lapses puts the name back without throwing away
+    // what the agency typed.
+    adminLabelInUse: (licence.can('white_label') && config.adminLabel) || 'Nika',
+    adminIconInUse: (licence.can('white_label') && config.adminIcon) || '/nika/nika-logo.png',
     // The key itself is never sent back, only what it entitles this site to.
     licence: {
       configured: Boolean(LICENCE_KEY),
@@ -403,9 +410,16 @@ function saveAdminConfig(input) {
     logoSize: numberBetween(input.logoSize, 14, 64, 26),
     markSize: numberBetween(input.markSize, 14, 44, 24),
     disclaimer: text(input.disclaimer, 160),
-    // Gated where the value is written, not in the admin page. A hand-made POST
-    // reaches this function too, and this is the only way in.
-    branding: licence.can('unbranded') ? input.branding !== false : true,
+    // The capability decides what is used, never what is kept. Overwriting the
+    // stored value on a package that has lapsed means an owner who saves any
+    // unrelated setting loses what they typed, permanently, and renewing hands
+    // them back an empty field. Both are gated again on read, which is what
+    // actually puts our name and our line back.
+    branding: licence.can('unbranded') ? input.branding !== false : current.branding !== false,
+    // What the admin page calls the guide. The visitor side has always been
+    // fully re-skinnable on every package; this is the half that was still ours.
+    adminLabel: licence.can('white_label') ? text(input.adminLabel, 40) : text(current.adminLabel, 40),
+    adminIcon: licence.can('white_label') ? imageUrl(input.adminIcon) : imageUrl(current.adminIcon),
     launcherIcon: imageUrl(input.launcherIcon),
     position: input.position === 'left' ? 'left' : 'right',
     contextCharacters: numberBetween(input.contextCharacters, 1000, 20000, 12000),

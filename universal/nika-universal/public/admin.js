@@ -6,7 +6,12 @@
   const notify=(message,error=false)=>{toast.textContent=message;toast.className=`nika-toast show${error?' error':''}`;setTimeout(()=>toast.className='nika-toast',4200)};
   const split=value=>String(value||'').split(/[\s,]+/).map(item=>item.trim()).filter(Boolean);
   const suggestionMarkup=(items=[])=>{suggestions.innerHTML='';[0,1,2].forEach(index=>{const item=items[index]||{};const node=document.createElement('div');node.className='nika-suggestion';node.innerHTML=`<label>Title<input name="suggestion-${index}-label" maxlength="90"></label><label>Supporting text<input name="suggestion-${index}-description" maxlength="120"></label>`;node.querySelector(`[name$="label"]`).value=item.label||'';node.querySelector(`[name$="description"]`).value=item.description||'';suggestions.append(node)})};
-  const fill=data=>{const map=fields();for(const [name,el] of Object.entries(map)){if(name.startsWith('suggestion-'))continue;const value=data[name];if(el.type==='checkbox')el.checked=Boolean(value);else if(name==='excludedPaths'||name==='exemptIps')el.value=Array.isArray(value)?value.join('\n'):value||'';else if(value!==undefined)el.value=value}suggestionMarkup(data.suggestions);document.querySelectorAll('[data-nika-image] input').forEach(el=>el.dispatchEvent(new Event('nika:fill')));renderPreview();document.querySelector('#provider').textContent=data.provider||'Not connected';document.querySelector('#model').textContent=data.model||'Not connected';document.querySelector('#key').textContent=data.keyConfigured?'Configured':'Not configured';showLicence(data.licence||{});login.hidden=true;settings.hidden=false};
+  const fill=data=>{const map=fields();for(const [name,el] of Object.entries(map)){if(name.startsWith('suggestion-'))continue;const value=data[name];if(el.type==='checkbox')el.checked=Boolean(value);else if(name==='excludedPaths'||name==='exemptIps')el.value=Array.isArray(value)?value.join('\n'):value||'';else if(value!==undefined)el.value=value}suggestionMarkup(data.suggestions);document.querySelectorAll('[data-nika-image] input').forEach(el=>el.dispatchEvent(new Event('nika:fill')));renderPreview();const brand=document.querySelector('.nika-brand');
+    if(brand){brand.querySelector('span').textContent=data.adminLabelInUse||'Nika';brand.querySelector('img').src=data.adminIconInUse||'/nika/nika-logo.png'}
+    document.title=`${data.adminLabelInUse||'Nika'} settings`;
+    const heading=document.querySelector('.nika-hero h1');
+    if(heading)heading.textContent=`Set up ${data.adminLabelInUse||'Nika'} for this website.`;
+    document.querySelector('#provider').textContent=data.provider||'Not connected';document.querySelector('#model').textContent=data.model||'Not connected';document.querySelector('#key').textContent=data.keyConfigured?'Configured':'Not configured';showLicence(data.licence||{});login.hidden=true;settings.hidden=false};
   // A control the package does not include stays visible, readable and labelled.
   // Hidden, it reads as "Nika cannot do this" and the owner goes looking.
   let capabilities=new Set(),packageFor={};
@@ -49,6 +54,16 @@
         li.append(q,meta);list.append(li);
       }
     }
+    // The header follows the resolved value the server sent, not the field, so a
+    // lapsed package shows the real name even while the typed one is still saved.
+    const white=capabilities.has('white_label');
+    document.querySelector('#whitelabel-package').hidden=white;
+    document.querySelector('#whitelabel-package').textContent=packageFor.white_label||'';
+    document.querySelector('#whitelabel-fields').hidden=!white;
+    document.querySelector('#whitelabel-note').textContent=white
+      ?'What this page and its header call the guide. Visitors already see whatever you set under Assistant identity, on every package.'
+      :`Rename this dashboard so a client does not see our name. Included in ${packageFor.white_label||'Agency'}.`;
+
     // Presets are Agency. The endpoint refuses without it too; this only decides
     // what the page offers.
     const presets=capabilities.has('client_presets');

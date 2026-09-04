@@ -272,7 +272,7 @@ check('the line survives a small screen',canonicalGuideCss.includes('.assist-bra
 check('and states its own box model like the note above it',canonicalGuideCss.includes('.assist-brand{')&&canonicalGuideCss.includes('margin:0 0 4px!important'));
 check('the foot spacing is one consistent step',canonicalGuideCss.includes('.assist-note{padding:0 16px;')&&canonicalGuideCss.includes('margin:4px 0 0!important')&&canonicalGuideCss.includes('gap:6px;margin:4px 12px;'));
 
-check('removing it is a package capability, not a free checkbox',php.includes("'branding' => nika_can( 'unbranded' ) ? ! empty( $input['branding'] ) : true,"));
+check('removing it is a package capability, not a free checkbox',php.includes("'branding' => nika_can( 'unbranded' ) ? ! empty( $input['branding'] ) : (bool) ( $old['branding'] ?? true ),"));
 // The form is not the boundary. A hidden input or a hand-made POST goes through
 // sanitisation like everything else, which is where the capability is checked.
 check('the capability is enforced on save, not in the form',php.includes('Enforced on save, not in the form'));
@@ -372,6 +372,27 @@ check('one write route, because it is one permission over one list',php.includes
 // cannot be dismissed by a stray click the way a dialog can.
 check('applying asks before it replaces anything',adminJs.includes("apply.querySelector('span').textContent = 'Apply, replacing these settings?'"));
 check('the card is shown to every package, marked with its own',php.includes("esc_html_e( 'Saved presets', 'nika-site-guide' )")&&php.includes("nika_capability_package( 'client_presets' )"));
+
+console.log('\n=== the dashboard can carry the agency\'s name ===');
+// The visitor side has always been fully re-skinnable on every package: name,
+// avatar, launcher icon, every colour, custom CSS. This is the half that was
+// still ours, and it is what a client sees over the agency's shoulder.
+check('the menu and the page follow the configured name',php.includes('function nika_admin_label(')&&php.includes('function nika_admin_icon(')&&php.includes('$label = nika_admin_label();')&&php.includes('nika_admin_icon(),'));
+check('and fall back to Nika when the field is empty',php.includes("return $label !== '' ? $label : __( 'Nika', 'nika-site-guide' );"));
+check('the capability is checked on read, not only on save',php.includes("$label = nika_can( 'white_label' ) ? trim( (string) ( $s['admin_label'] ?? '' ) ) : '';"));
+
+// A lapsed package must not destroy what the owner typed. Overwriting on save
+// means one unrelated save loses it for ever, and renewing returns an empty
+// field. The capability decides what is used, never what is kept.
+check('a lapsed package keeps the typed name',php.includes("(string) ( $old['admin_label'] ?? '' )")&&php.includes("(string) ( $old['admin_icon'] ?? '' )"));
+check('and keeps the branding preference too',php.includes("(bool) ( $old['branding'] ?? true )")&&php.includes('never what is kept'));
+check('Universal does the same on both',universalServer.includes("text(current.adminLabel, 40)")&&universalServer.includes('current.branding !== false'));
+check('and resolves the name server-side for its own header',universalServer.includes("adminLabelInUse: (licence.can('white_label') && config.adminLabel) || 'Nika'")&&adminJs.includes('disclaimer'));
+
+// Overselling this is the easy mistake: WordPress reads the plugin name from the
+// file header, so the Plugins screen cannot be renamed by any setting.
+check('the limit is stated rather than glossed',php.includes('The Plugins screen still lists this as Nika Site Guide')&&php.includes('WordPress reads that name from the plugin file itself'));
+check('and the card says the widget was never the gated part',php.includes('Visitors already see whatever you set under Assistant identity, on every package.'));
 
 if(failed)process.exit(1);
 console.log('\nall passed');

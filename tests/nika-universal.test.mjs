@@ -62,7 +62,7 @@ const checks = [
   ['nothing in the licence path can stop the guide', !server.includes('if (!licence.can') || !/if \(!licence\.can\('(?:navigation|dictation)/.test(server)],
 
   ['branding follows the package, and absent means branded', server.includes("branding: licence.can('unbranded') ? config.branding !== false : true") && server.includes('branding: config.branding !== false')],
-  ['and is gated where the value is written, not in the admin page', server.includes("branding: licence.can('unbranded') ? input.branding !== false : true") && server.includes('A hand-made POST')],
+  ['and is gated where the value is written, not in the admin page', server.includes("branding: licence.can('unbranded') ? input.branding !== false : current.branding !== false") && server.includes('never what is kept')],
 
   ['moving a configuration checks the package as well as the token', server.includes("if (!licence.can('config_transfer'))") && server.includes("'/nika/admin/config-export'") && server.includes("'/nika/admin/config-import'")],
   // The AI key, admin token and licence key are all env-only, so the export is

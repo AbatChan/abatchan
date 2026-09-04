@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.6.7
+ * Version:           1.6.8
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.6.7';
+const NIKA_VERSION = '1.6.8';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
@@ -38,7 +38,7 @@ function nika_defaults() {
 		'dictation_language' => 'en-US', 'accent' => '#6366f1', 'position' => 'right',
 		'avatar' => '', 'launcher_icon' => '',
 		'panel_colour' => '#0f0f12', 'panel_opacity' => 72,
-		'gradient_from' => '#8184ff', 'gradient_to' => '#4338ca', 'scrollbar_colour' => '#6366f1', 'shadow_colour' => '#4f46e5', 'text_colour' => '#f5f5f3', 'icon_colour' => '#ffffff', 'licence_key' => '', 'custom_css' => '', 'branding' => true,
+		'gradient_from' => '#8184ff', 'gradient_to' => '#4338ca', 'scrollbar_colour' => '#6366f1', 'shadow_colour' => '#4f46e5', 'text_colour' => '#f5f5f3', 'icon_colour' => '#ffffff', 'licence_key' => '', 'custom_css' => '', 'branding' => true, 'admin_label' => '', 'admin_icon' => '',
 		'logo_size' => 26, 'mark_size' => 24,
 		'disclaimer' => "Answers use this website's configured content. Review important information.",
 		'context_characters' => 12000, 'history_turns' => 10, 'excluded_paths' => '',
@@ -139,7 +139,15 @@ function nika_sanitize_settings( $input ) {
 		// Enforced on save, not in the form. A hidden input or a hand-made POST is
 		// how a checkbox gate gets walked around, and this is the only place every
 		// path to the option goes through.
-		'branding' => nika_can( 'unbranded' ) ? ! empty( $input['branding'] ) : true,
+		// The capability decides what is used, never what is kept. Overwriting the
+		// stored value on a package that has lapsed means an owner who saves any
+		// unrelated setting loses what they typed, permanently, and renewing gives
+		// them back an empty field. Both are gated again on read, which is what
+		// actually puts our name and our line back.
+		'branding' => nika_can( 'unbranded' ) ? ! empty( $input['branding'] ) : (bool) ( $old['branding'] ?? true ),
+		// An empty label means the plugin's own name, so clearing it undoes a rename.
+		'admin_label' => nika_can( 'white_label' ) ? sanitize_text_field( wp_unslash( $input['admin_label'] ?? '' ) ) : (string) ( $old['admin_label'] ?? '' ),
+		'admin_icon' => nika_can( 'white_label' ) ? nika_sanitize_image_url( $input['admin_icon'] ?? '' ) : (string) ( $old['admin_icon'] ?? '' ),
 		'disclaimer' => sanitize_text_field( wp_unslash( $input['disclaimer'] ?? '' ) ),
 		'context_characters' => min( 20000, max( 1000, absint( $input['context_characters'] ?? 12000 ) ) ),
 		'history_turns' => min( 20, max( 1, absint( $input['history_turns'] ?? 10 ) ) ),
@@ -156,14 +164,39 @@ add_action( 'admin_init', function () {
 	wp_safe_redirect( admin_url( 'admin.php?page=nika-site-guide' ) );
 	exit;
 }, 20 );
+/**
+ * What this plugin calls itself inside the WordPress admin.
+ *
+ * An agency setting Nika up in front of a client does not want the client's
+ * dashboard to advertise a tool they are paying the agency for. The visitor side
+ * has always been fully re-skinnable on every package, name, avatar, launcher
+ * icon, every colour and custom CSS; this is the half that was still ours.
+ *
+ * Both are checked on read as well as on save, so a package that lapses puts the
+ * name back without discarding what the agency typed.
+ */
+function nika_admin_label( $s = null ) {
+	$s = is_array( $s ) ? $s : nika_settings();
+	$label = nika_can( 'white_label' ) ? trim( (string) ( $s['admin_label'] ?? '' ) ) : '';
+	return $label !== '' ? $label : __( 'Nika', 'nika-site-guide' );
+}
+
+function nika_admin_icon( $s = null ) {
+	$s = is_array( $s ) ? $s : nika_settings();
+	$icon = nika_can( 'white_label' ) ? trim( (string) ( $s['admin_icon'] ?? '' ) ) : '';
+	return $icon !== '' ? $icon : plugin_dir_url( __FILE__ ) . 'assets/nika-admin-icon.png';
+}
+
 add_action( 'admin_menu', function () {
+	$label = nika_admin_label();
 	add_menu_page(
-		__( 'Nika Site Guide', 'nika-site-guide' ),
-		__( 'Nika', 'nika-site-guide' ),
+		/* translators: %s: the name this install uses for the guide. */
+		sprintf( __( '%s settings', 'nika-site-guide' ), $label ),
+		$label,
 		'manage_options',
 		'nika-site-guide',
 		'nika_settings_page',
-		plugin_dir_url( __FILE__ ) . 'assets/nika-admin-icon.png',
+		nika_admin_icon(),
 		58
 	);
 } );
@@ -336,8 +369,8 @@ function nika_settings_page() {
 	<div class="wrap nika-admin">
 		<div class="nika-feedback" aria-live="polite"><?php if ( $settings_saved ) : ?><div class="nika-feedback__message" role="status"><span><?php esc_html_e( 'Changes saved.', 'nika-site-guide' ); ?></span><button type="button" class="nika-feedback__dismiss" aria-label="<?php esc_attr_e( 'Dismiss', 'nika-site-guide' ); ?>">&times;</button></div><?php endif; ?></div>
 		<header class="nika-hero">
-			<div class="nika-hero__brand"><img src="<?php echo esc_url( plugin_dir_url( __FILE__ ) . 'assets/nika-admin-icon.png' ); ?>" alt=""><span><?php esc_html_e( 'Nika', 'nika-site-guide' ); ?></span></div>
-			<div class="nika-hero__copy"><p class="nika-kicker"><?php esc_html_e( 'WordPress settings', 'nika-site-guide' ); ?></p><h1><?php esc_html_e( 'Set up Nika for this website.', 'nika-site-guide' ); ?></h1><p><?php esc_html_e( 'Choose what Nika knows, how it appears, and which pages it may guide visitors to.', 'nika-site-guide' ); ?></p></div>
+			<div class="nika-hero__brand"><img src="<?php echo esc_url( nika_admin_icon( $s ) ); ?>" alt=""><span><?php echo esc_html( nika_admin_label( $s ) ); ?></span></div>
+			<div class="nika-hero__copy"><p class="nika-kicker"><?php esc_html_e( 'WordPress settings', 'nika-site-guide' ); ?></p><h1><?php /* translators: %s: the name this install uses for the guide. */ echo esc_html( sprintf( __( 'Set up %s for this website.', 'nika-site-guide' ), nika_admin_label( $s ) ) ); ?></h1><p><?php /* translators: %s: the name this install uses for the guide. */ echo esc_html( sprintf( __( 'Choose what %s knows, how it appears, and which pages it may guide visitors to.', 'nika-site-guide' ), nika_admin_label( $s ) ) ); ?></p></div>
 			<div class="nika-hero__meta"><span class="nika-status <?php echo $s['enabled'] ? 'is-live' : 'is-paused'; ?>"><i></i><?php echo esc_html( $s['enabled'] ? __( 'Visible to visitors', 'nika-site-guide' ) : __( 'Hidden from visitors', 'nika-site-guide' ) ); ?></span><a class="nika-button nika-button--ghost" href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open website', 'nika-site-guide' ); ?></a></div>
 		</header>
 
@@ -489,6 +522,23 @@ function nika_settings_page() {
 							<input type="file" id="nika-import-file" accept="application/json,.json" hidden>
 						</div>
 						<p class="nika-generator-status" id="nika-transfer-status" aria-live="polite"></p>
+					</div>
+					<?php
+					$white = nika_can( 'white_label' );
+					$white_package = nika_package_name( nika_capability_package( 'white_label' ) );
+					?>
+					<div class="nika-transfer nika-whitelabel">
+						<span class="nika-field__head"><span><b><?php esc_html_e( 'Name in this dashboard', 'nika-site-guide' ); ?><?php if ( ! $white ) : ?> <span class="nika-lock"><?php echo esc_html( $white_package ); ?></span><?php endif; ?></b></span></span>
+						<p class="nika-field__note"><?php echo esc_html( $white
+							? __( 'What the admin menu and this page call the guide. Visitors already see whatever you set under Assistant identity, on every package.', 'nika-site-guide' )
+							: sprintf( __( 'Rename the admin menu and this page, so a client dashboard does not carry our name. Included in %s.', 'nika-site-guide' ), $white_package ) ); ?></p>
+						<?php if ( $white ) : ?>
+							<div class="nika-grid nika-grid--two">
+								<label class="nika-field"><span><?php esc_html_e( 'Menu name', 'nika-site-guide' ); ?><?php echo nika_help( __( 'Leave empty to keep Nika.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[admin_label]" type="text" maxlength="40" value="<?php echo esc_attr( $s['admin_label'] ); ?>" placeholder="<?php esc_attr_e( 'Nika', 'nika-site-guide' ); ?>"></label>
+								<label class="nika-field"><span><?php esc_html_e( 'Menu icon URL', 'nika-site-guide' ); ?><?php echo nika_help( __( 'A square image from your media library. Leave empty to keep the Nika mark.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[admin_icon]" type="url" value="<?php echo esc_attr( $s['admin_icon'] ); ?>" placeholder="https://example.com/mark.png"></label>
+							</div>
+							<p class="nika-field__note"><?php esc_html_e( 'The Plugins screen still lists this as Nika Site Guide. WordPress reads that name from the plugin file itself, so no setting can change it.', 'nika-site-guide' ); ?></p>
+						<?php endif; ?>
 					</div>
 					<?php
 					$presets_on = nika_can( 'client_presets' );
