@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.6.6
+ * Version:           1.6.7
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.6.6';
+const NIKA_VERSION = '1.6.7';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
@@ -388,7 +388,7 @@ function nika_settings_page() {
 						<label class="nika-field"><span><?php esc_html_e( 'Icon colour', 'nika-site-guide' ); ?><?php echo nika_help( __( 'The composer glyphs: attach, microphone, send.', 'nika-site-guide' ) ); ?></span><span class="nika-colour"><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[icon_colour]" type="color" value="<?php echo esc_attr( $s['icon_colour'] ); ?>"><code><?php echo esc_html( strtoupper( $s['icon_colour'] ) ); ?></code></span></label>
 						<label class="nika-field"><span><?php esc_html_e( 'Bubble shadow colour', 'nika-site-guide' ); ?><?php echo nika_help( __( 'The glow cast by the closed bubble.', 'nika-site-guide' ) ); ?></span><span class="nika-colour"><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[shadow_colour]" type="color" value="<?php echo esc_attr( $s['shadow_colour'] ); ?>"><code><?php echo esc_html( strtoupper( $s['shadow_colour'] ) ); ?></code></span></label>
 						<label class="nika-field"><span><?php esc_html_e( 'Scrollbar colour', 'nika-site-guide' ); ?><?php echo nika_help( __( 'The conversation scrollbar.', 'nika-site-guide' ) ); ?></span><span class="nika-colour"><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[scrollbar_colour]" type="color" value="<?php echo esc_attr( $s['scrollbar_colour'] ); ?>"><code><?php echo esc_html( strtoupper( $s['scrollbar_colour'] ) ); ?></code></span></label>
-						<label class="nika-field nika-grid__wide"><span><?php esc_html_e( 'Note under the message box', 'nika-site-guide' ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[disclaimer]" maxlength="160" value="<?php echo esc_attr( $s['disclaimer'] ); ?>" placeholder="<?php esc_attr_e( "Answers use this website's configured content. Review important information.", 'nika-site-guide' ); ?>"><small><?php esc_html_e( 'Leave empty to keep the default note.', 'nika-site-guide' ); ?></small></label>
+						<label class="nika-field nika-grid__wide"><span><?php esc_html_e( 'Note under the message box', 'nika-site-guide' ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[disclaimer]" maxlength="160" value="<?php echo esc_attr( $s['disclaimer'] ); ?>" placeholder="<?php esc_attr_e( "Answers use this website's configured content. Review important information.", 'nika-site-guide' ); ?>"><small><?php esc_html_e( 'Leave empty to show no note at all.', 'nika-site-guide' ); ?></small></label>
 					</div>
 				</section>
 
@@ -851,9 +851,19 @@ function nika_theme_palette() {
  * The owner's own wording, falling back to the honest default rather than
  * leaving a visitor with no note at all.
  */
+/**
+ * The note above the message box, exactly as the owner left it.
+ *
+ * A fresh install already carries the default from nika_defaults(), so the
+ * fallback that used to be here only ever did one thing: stop an owner who
+ * cleared the field on purpose from clearing it. It is their site and their
+ * words about it, so an empty field now means no note.
+ *
+ * Unlike the credit line, this is not a package feature and must never become
+ * one. Charging to remove a caution is selling the right to tell visitors less.
+ */
 function nika_disclaimer( $s ) {
-	$text = trim( (string) ( $s['disclaimer'] ?? '' ) );
-	return $text ?: __( "Answers use this website's configured content. Review important information.", 'nika-site-guide' );
+	return trim( (string) ( $s['disclaimer'] ?? '' ) );
 }
 
 /**

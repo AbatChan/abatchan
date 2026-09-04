@@ -31,7 +31,11 @@ export default async function handler(req, res) {
     name: record.assistantName,
     subtitle: record.assistantSubtitle || `site help, backed by ${record.ownerName}`,
     placeholder: record.composerPlaceholder || 'Ask about your project…',
-    disclaimer: record.disclaimer || 'Site help only, no account access, payments, or promises.',
+    // Absent means never configured and gets the default; present and empty
+    // means it was cleared on purpose and stays cleared.
+    disclaimer: record.disclaimer === undefined || record.disclaimer === null
+      ? 'Site help only, no account access, payments, or promises.'
+      : String(record.disclaimer),
     chips: (record.chips || []).slice(0, 6),
     avatar: record.avatar || null,
     // The routes the widget may navigate to. Without these an embed refuses

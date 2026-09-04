@@ -24,6 +24,8 @@ const loadAssistantStyles = (href, into) => new Promise(resolve => {
   target.append(link);
 });
 
+const DEFAULT_DISCLAIMER = 'Site help only, no account access, payments, or promises.';
+
 export async function mountGuideShell(options = {}) {
   const cfg = {
     name: 'Nika',
@@ -48,7 +50,7 @@ export async function mountGuideShell(options = {}) {
     assetBase: '',
     apiBase: '',
     placeholder: 'Ask about your project…',
-    disclaimer: 'Site help only, no account access, payments, or promises.',
+    disclaimer: DEFAULT_DISCLAIMER,
     // One quiet line naming the software. It defaults on, because every install
     // that has not bought the right to remove it should carry it, including one
     // running with no licence key at all. Removing it is a Business feature and
@@ -73,6 +75,13 @@ export async function mountGuideShell(options = {}) {
     loadSettings: async () => null,
     ...options
   };
+
+  // Spreading an option whose value is undefined still overrides the default, and
+  // both loaders pass `disclaimer: config.disclaimer` straight through. A server
+  // that omits the field would therefore erase the note rather than fall back to
+  // it, which is not the same thing as an owner clearing it. Absent means use the
+  // default; a string, empty included, is the owner's own answer and stands.
+  if (options.disclaimer === undefined || options.disclaimer === null) cfg.disclaimer = DEFAULT_DISCLAIMER;
 
   const resolved={};
   // Appearance settings are applied as tokens the stylesheet already reads, so
@@ -200,7 +209,10 @@ export async function mountGuideShell(options = {}) {
     // it belongs where someone reads it before typing rather than after the
     // reply they have already acted on. The brand line stays at the bottom:
     // that one is a credit, and credits sit at the foot of the thing.
-    `<p class="assist-note">${cfg.disclaimer}</p>`+
+    // Nothing at all when it is empty, rather than a paragraph holding its own
+    // margin and line box open. An owner who cleared the note asked for the
+    // space back too.
+    (String(cfg.disclaimer||'').trim()?`<p class="assist-note">${cfg.disclaimer}</p>`:'')+
     '<form class="assist-form">'+
       '<div class="assist-attachment-list" aria-live="polite" hidden></div>'+
       '<p class="assist-attachment-error" role="alert" hidden></p>'+
@@ -408,8 +420,18 @@ export async function mountGuideShell(options = {}) {
       panel.setAttribute('aria-label',`${cfg.name}, ${cfg.siteName} assistant`);
       const composer=panel.querySelector('textarea');
       if(composer)composer.placeholder=cfg.placeholder;
+      // The live preview has to be able to empty it and fill it again, so the
+      // element is created and removed rather than only retitled.
       const note=panel.querySelector('.assist-note');
-      if(note)note.textContent=cfg.disclaimer;
+      const wanted=String(cfg.disclaimer||'').trim();
+      if(note&&!wanted)note.remove();
+      else if(note)note.textContent=cfg.disclaimer;
+      else if(wanted){
+        const fresh=document.createElement('p');
+        fresh.className='assist-note';
+        fresh.textContent=cfg.disclaimer;
+        panel.querySelector('.assist-form')?.before(fresh);
+      }
       if(host)applyAppearance(host);else{applyAppearance(panel);applyAppearance(launch)}
       applyCustomCss();
       if(changes.chips)renderSuggestions(changes.chips);

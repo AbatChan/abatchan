@@ -120,6 +120,31 @@ check('what it said is what it gets back',guide.includes('content:item.journeyCo
 check('a repeated request is work to do, not something to defer',role.includes('Every visitor message is a live request')&&role.includes('never a reason to decline, defer, or reply that something was handled before'));
 check('and a short follow-up is resolved from the conversation',role.includes('Resolve what a short follow-up refers to from the conversation')&&role.includes('Highlight it')&&role.includes('section_requested true'));
 
+console.log('\n=== an owner can remove the note, and absent is not removed ===');
+// The note is the owner's own words about their own site, so an empty field
+// means no note. It is deliberately not a package feature: charging to remove a
+// caution is selling the right to tell visitors less.
+check('an empty note renders nothing, not an empty paragraph',shell.includes("(String(cfg.disclaimer||'').trim()?`<p class=\"assist-note\">")&&shell.includes("</p>`:'')+"));
+// Spreading an option whose value is undefined still overrides the default, and
+// both loaders pass the server's value straight through.
+check('a field the server omitted falls back instead of vanishing',shell.includes('if (options.disclaimer === undefined || options.disclaimer === null) cfg.disclaimer = DEFAULT_DISCLAIMER;'));
+check('the live preview can empty it and fill it again',shell.includes('if(note&&!wanted)note.remove();')&&shell.includes("panel.querySelector('.assist-form')?.before(fresh);"));
+
+if(true){
+  const php=readFileSync(new URL('../wordpress/nika-site-guide/nika-site-guide.php',import.meta.url),'utf8');
+  const universal=readFileSync(new URL('../universal/nika-universal/server.mjs',import.meta.url),'utf8');
+  const guideConfig=readFileSync(new URL('../api/guide-config.js',import.meta.url),'utf8');
+  const wpAdmin=readFileSync(new URL('../wordpress/nika-site-guide/assets/nika-admin.js',import.meta.url),'utf8');
+  const uniAdmin=readFileSync(new URL('../universal/nika-universal/public/admin.js',import.meta.url),'utf8');
+  check('no edition puts the default back over a cleared field',php.includes("return trim( (string) ( $s['disclaimer'] ?? '' ) );")&&universal.includes("'disclaimer' in config ? text(config.disclaimer, 160) : DEFAULT_DISCLAIMER")&&guideConfig.includes('record.disclaimer === undefined || record.disclaimer === null'));
+  check('and the settings screen says what empty now does',php.includes('Leave empty to show no note at all.'));
+  // A preview that re-added the default would show the owner a note their
+  // visitors will not get.
+  check('both previews show what a visitor would see',wpAdmin.includes("disclaimer: value('disclaimer'),")&&uniAdmin.includes("disclaimer:val('disclaimer'),"));
+  // The credit is a package feature. This is not, and must not become one.
+  check('removing the note is free on every package',!php.includes("nika_can( 'unbranded' ) ? nika_disclaimer")&&!universal.includes("licence.can('unbranded') ? config.disclaimer"));
+}
+
 console.log('\n=== a cross-page journey resumes in its own bubble ===');
 // The handoff attached to whichever bot bubble was last in the log. After
 // another turn that is somebody else's, so the card showed two progress rows:

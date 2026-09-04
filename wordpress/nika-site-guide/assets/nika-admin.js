@@ -536,7 +536,9 @@
       customCss: value('custom_css'),
       logoSize: value('logo_size'),
       markSize: value('mark_size'),
-      disclaimer: value('disclaimer') || "Answers use this website's configured content. Review important information.",
+      // As typed, empty included. Substituting a default here would show the
+      // owner a note their visitors will not get.
+      disclaimer: value('disclaimer'),
       // The preview has to show what a visitor sees, so it reads the same
       // capability the saved setting is enforced against rather than the
       // checkbox alone.

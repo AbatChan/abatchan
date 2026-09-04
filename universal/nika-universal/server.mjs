@@ -34,6 +34,9 @@ const CONTENT_PATH = process.env.NIKA_CONTENT_FILE || join(ROOT, 'content.json')
 const DATA_DIR = process.env.NIKA_DATA_DIR || join(ROOT, 'data');
 const FEEDBACK_PATH = join(DATA_DIR, 'feedback.json');
 const PRESETS_PATH = join(DATA_DIR, 'presets.json');
+// Used only when the config has never carried the key. Once it does, whatever it
+// says stands, empty included.
+const DEFAULT_DISCLAIMER = "Answers use this website's configured content. Review important information.";
 const SITE_ROOT = process.env.NIKA_SITE_ROOT ? resolve(process.env.NIKA_SITE_ROOT) : '';
 const AUTO_INDEX_SECONDS = numberBetween(process.env.NIKA_AUTO_INDEX_SECONDS, 1, 86400, 60);
 let discovered = { expiresAt: 0, pages: [] };
@@ -172,7 +175,10 @@ function siteData() {
       customCss: cssWithoutBrandHiding(String(config.customCss || '').replace(/<\/\s*style/gi, '<\\/style').slice(0, 20000)),
       logoSize: numberBetween(config.logoSize, 14, 64, 26),
       markSize: numberBetween(config.markSize, 14, 44, 24),
-      disclaimer: text(config.disclaimer, 160),
+      // Absent means never configured, so it gets the default. Present and empty
+      // means the owner cleared it on purpose, and that is honoured: their
+      // server, their words about their own site.
+      disclaimer: 'disclaimer' in config ? text(config.disclaimer, 160) : DEFAULT_DISCLAIMER,
       // Absent means branded, the same reading the loaders use, so a config file
       // written before this existed does not become an unbranded install.
       branding: config.branding !== false,
@@ -942,7 +948,7 @@ const server = createServer(async (req, res) => {
     // Always on here, with no setting to turn it off. Universal has no licence
     // check yet, so a toggle would hand every install the Business feature for
     // nothing. The toggle ships with the licence check, not before it.
-    return send(res, 200, { enabled: config.enabled, name: config.name, subtitle: 'website guide', avatar: config.avatar || '/nika/nika-logo.png', launcherIcon: config.launcherIcon, disclaimer: config.disclaimer || "Answers use this website's configured content. Review important information.", branding: licence.can('unbranded') ? config.branding !== false : true, panelColour: config.panelColour, panelOpacity: config.panelOpacity, gradientFrom: config.gradientFrom, gradientTo: config.gradientTo, scrollbarColour: config.scrollbarColour, shadowColour: config.shadowColour, textColour: config.textColour, iconColour: config.iconColour, customCss: config.customCss, logoSize: config.logoSize, markSize: config.markSize, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
+    return send(res, 200, { enabled: config.enabled, name: config.name, subtitle: 'website guide', avatar: config.avatar || '/nika/nika-logo.png', launcherIcon: config.launcherIcon, disclaimer: config.disclaimer, branding: licence.can('unbranded') ? config.branding !== false : true, panelColour: config.panelColour, panelOpacity: config.panelOpacity, gradientFrom: config.gradientFrom, gradientTo: config.gradientTo, scrollbarColour: config.scrollbarColour, shadowColour: config.shadowColour, textColour: config.textColour, iconColour: config.iconColour, customCss: config.customCss, logoSize: config.logoSize, markSize: config.markSize, suggestions: config.suggestions, placeholder: config.placeholder, siteId: ORIGIN, pages: directory, blockedPaths: config.excludedPaths, autoNavigate: config.navigation, dictation: config.dictation, dictationLanguage: config.dictationLanguage, accent: config.accent, position: config.position, contextCharacters: config.contextCharacters, historyTurns: config.historyTurns });
   }
   if (req.method === 'POST' && url.pathname === '/nika/chat') {
     try { return await chat(req, res); } catch (error) { return send(res, error.status || 500, { error: error.status ? 'Invalid request.' : 'Nika encountered a server error.' }); }
