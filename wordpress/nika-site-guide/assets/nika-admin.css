@@ -105,7 +105,7 @@
 .nika-generate.is-locked { color: var(--nika-ink-soft, #5c5c6b); background: #f6f6f8; border-color: #e2e2ea; }
 .nika-generate.is-locked:hover, .nika-generate.is-locked:focus-visible { color: var(--nika-indigo-dark); background: #f1f1ff; border-color: #d8d8ff; }
 .nika-lock { margin-left: 2px; padding: 2px 6px; border-radius: 999px; background: var(--nika-indigo, #6366f1); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
-.nika-package-note { margin: 6px 0 0; color: var(--nika-ink-soft, #5c5c6b); font-size: 12px; line-height: 1.5; }
+.nika-package-note { margin: -14px 0 18px; color: var(--nika-ink-soft, #5c5c6b); font-size: 12.5px; line-height: 1.5; }
 .nika-package-note a { color: var(--nika-indigo-dark); }
 
 /* Moving a configuration between sites. Sits under the licence key because that
@@ -401,3 +401,39 @@
    read as things you do to it, which is what they are. */
 .nika-exemptions .nika-field__actions { justify-content: flex-start; margin-top: 2px; }
 .nika-exemptions .nika-field__head { justify-content: flex-start; }
+
+
+/* The card head is a title beside its actions, and the title was losing. With
+   only `margin-right:auto` it shrank to whatever the buttons left, so "Name and
+   appearance" wrapped to two lines and its description to four, beside a wide
+   empty gap. A basis and a floor fix it: the copy keeps a readable column, and
+   the actions wrap under it before the copy is squeezed. */
+.nika-card__head > div:first-child { flex: 1 1 380px; min-width: min(100%, 320px); }
+.nika-card__head .nika-card__actions { align-self: flex-start; }
+
+/* A feature the package includes. One heading, its own note, its own controls,
+   and no chip: the package is not in question here, so saying it would be
+   noise. */
+.nika-feature { display: grid; gap: 6px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e8e8ef; }
+.nika-feature__title { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.nika-feature__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.nika-feature__actions input[type="text"] { flex: 1 1 220px; min-height: 32px; padding: 0 10px; border: 1px solid #d8d9e2; border-radius: 8px; background: #fbfbfd; font: inherit; font-size: 13px; }
+
+/* What the package does not include. One block, one line each, one link. It used
+   to be four full sections, each with a chip, a description ending "Included in
+   Business." and controls that only explained themselves when pressed, which put
+   the same word on screen three times in a single row. */
+.nika-upsell { margin-top: 18px; padding: 16px; border: 1px solid #e8e8ef; border-radius: 12px; background: #fbfbfd; }
+.nika-upsell__title { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nika-muted, #777b89); }
+/* The list is the grid and each row contributes its cells to it, so the chips
+   and the descriptions line up down the block. A grid per row sized its own
+   columns to its own longest name, which staggered every chip. */
+.nika-upsell__list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr; gap: 10px; }
+.nika-upsell__list li { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; gap: 4px 10px; }
+.nika-upsell__name { font-size: 13px; font-weight: 650; color: #171827; }
+.nika-upsell__copy { color: var(--nika-muted, #777b89); font-size: 12.5px; line-height: 1.5; }
+.nika-upsell .nika-field__note { margin: 14px 0 0; }
+@media (min-width: 783px) {
+  .nika-upsell__list { grid-template-columns: max-content max-content minmax(0, 1fr); align-items: baseline; }
+  .nika-upsell__list li { display: contents; }
+}

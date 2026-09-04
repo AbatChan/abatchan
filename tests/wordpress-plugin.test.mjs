@@ -310,7 +310,11 @@ check('every skipped field is reported, never silently dropped',php.includes("ar
 check('both endpoints check the package, not just the WordPress role',php.includes("function nika_config_export_response()")&&php.includes("if ( ! nika_can( 'config_transfer' ) ) return nika_transfer_denied();")&&(php.match(/nika_can\( 'config_transfer' \) \) return nika_transfer_denied\(\);/g)||[]).length===2);
 check('and administrators still cannot reach them without the capability',php.includes("current_user_can( 'manage_options' )")&&php.includes("register_rest_route( 'nika/v1', '/admin/config-export'")&&php.includes("register_rest_route( 'nika/v1', '/admin/config-import'"));
 check('the refusal names the package instead of a slug',php.includes('Moving settings between sites is included in %s.'));
-check('the controls are shown to every package and marked with theirs',php.includes("id=\"nika-export-config\" data-nika-capability=\"config_transfer\"")&&php.includes("id=\"nika-import-config\" data-nika-capability=\"config_transfer\""));
+// The controls only render when the package includes them. A control that
+// cannot work is a line in the "Also available" list instead, which is what
+// stopped the same package name appearing three times in one row.
+check('unusable controls are not rendered as controls',php.includes("<?php if ( $transfer ) : ?>")&&php.includes('id="nika-export-config"')&&!php.includes('id="nika-export-config" data-nika-capability'));
+check('and become one line in a single list',php.includes('$locked[] = array(')&&php.includes("esc_html_e( 'Also available', 'nika-site-guide' )")&&php.includes('nika-upsell__list'));
 check('the page reloads after an import so the form cannot disagree with the database',adminScript.includes('window.location.reload()'));
 
 console.log('\n=== a repeated request is answered, not deflected ===');
@@ -342,7 +346,7 @@ check('questions are grouped, not listed one per visitor',php.includes('function
 check('and ordered by how often they were asked',php.includes("$b['count'] === $a['count'] ? $b['last'] <=> $a['last'] : $b['count'] <=> $a['count']")&&universalServer.includes('b.count === a.count ? String(b.last).localeCompare(String(a.last)) : b.count - a.count'));
 check('a visitor-reported one is marked as such',php.includes("$grouped[ $key ]['reported'] = true;")&&universalServer.includes('row.reported = true;'));
 
-check('the report is a package feature, checked on the server',php.includes("nika_can( 'question_report' )")&&universalServer.includes("licence.can('question_report') ? unansweredQuestions() : null"));
+check('the report is a package feature, checked on the server',php.includes("$feature( 'question_report'")&&universalServer.includes("licence.can('question_report') ? unansweredQuestions() : null"));
 // Empty and unavailable are different things and have to read differently: one
 // says write nothing, the other says buy something.
 check('an empty report is not confused with an excluded one',php.includes('Nothing yet. A question appears here')&&php.includes('See what visitors asked for and did not get'));
@@ -371,7 +375,7 @@ check('one write route, because it is one permission over one list',php.includes
 // Applying overwrites this site. The confirmation is the button changing, which
 // cannot be dismissed by a stray click the way a dialog can.
 check('applying asks before it replaces anything',adminJs.includes("apply.querySelector('span').textContent = 'Apply, replacing these settings?'"));
-check('the card is shown to every package, marked with its own',php.includes("esc_html_e( 'Saved presets', 'nika-site-guide' )")&&php.includes("nika_capability_package( 'client_presets' )"));
+check('a package feature names itself once, in one place',php.includes("esc_html_e( 'Saved presets', 'nika-site-guide' )")&&php.includes("$feature( 'client_presets'")&&!php.includes('Included in %s.'));
 
 console.log('\n=== the dashboard can carry the agency\'s name ===');
 // The visitor side has always been fully re-skinnable on every package: name,

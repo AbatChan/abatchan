@@ -192,12 +192,16 @@
 
   const explainPackage = (control) => {
     const name = packageNames[control.dataset.nikaPackage || ''] || '';
-    let note = control.parentElement && control.parentElement.querySelector('.nika-package-note');
+    // Under the card head, on its own line. Appended into the actions row it
+    // joined a flex line of buttons and drifted to the far right, a sentence
+    // floating in space beside the control it was about.
+    const head = control.closest('.nika-card__head') || control.parentElement;
+    let note = head.parentElement?.querySelector(':scope > .nika-package-note');
     if (!note) {
       note = document.createElement('p');
       note.className = 'nika-package-note';
       note.setAttribute('role', 'status');
-      (control.parentElement || control).append(note);
+      head.after(note);
     }
     const label = (control.querySelector('span') || control).textContent.trim();
     note.textContent = `${label} is included in ${name}. `;

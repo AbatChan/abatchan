@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.6.9
+ * Version:           1.7.1
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.6.9';
+const NIKA_VERSION = '1.7.1';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
@@ -473,91 +473,110 @@ function nika_settings_page() {
 					<p class="nika-field__note"><?php echo esc_html( sprintf( __( '%1$d of %2$d sites in use. Development and staging installs are not counted.', 'nika-site-guide' ), (int) $licence['sitesUsed'], (int) $licence['sitesAllowed'] ) ); ?></p>
 					<?php endif; ?>
 					<?php
-					// Shown on every package, labelled with the one that includes it,
-					// for the same reason the branding row is: an owner who cannot
-					// see the control assumes Nika cannot do it.
-					$transfer = nika_can( 'config_transfer' );
-					$transfer_package = nika_package_name( nika_capability_package( 'config_transfer' ) );
+					// Every feature in this card was rendering as a full section
+					// whether or not the package included it: heading, chip,
+					// description ending "Included in Business.", and controls
+					// that only explained themselves when pressed. Four of those
+					// stacked read as a wall of the same sentence, and the word
+					// Business appeared three times in one row of buttons.
+					//
+					// So a feature the package includes gets its section and its
+					// working controls, and one it does not gets a single line in
+					// a list at the end. The owner sees what they have, then what
+					// they would gain, once each.
+					$locked = array();
+					$feature = function ( $capability, $title, $summary ) use ( &$locked ) {
+						if ( nika_can( $capability ) ) return true;
+						$locked[] = array(
+							'package' => nika_package_name( nika_capability_package( $capability ) ),
+							'title'   => $title,
+							'summary' => $summary,
+						);
+						return false;
+					};
+
+					$reporting = $feature( 'question_report', __( 'Questions Nika could not answer', 'nika-site-guide' ), __( 'See what visitors asked for and did not get, so you can write the page they were looking for.', 'nika-site-guide' ) );
+					$transfer  = $feature( 'config_transfer', __( 'Move settings between sites', 'nika-site-guide' ), __( 'Download this configuration and apply it to another site.', 'nika-site-guide' ) );
+					$white     = $feature( 'white_label', __( 'Name in this dashboard', 'nika-site-guide' ), __( 'Rename the admin menu and this page, so a client dashboard does not carry our name.', 'nika-site-guide' ) );
+					$presets_on = $feature( 'client_presets', __( 'Saved presets', 'nika-site-guide' ), __( 'Save a configuration under a name and apply it to the next client site in one click.', 'nika-site-guide' ) );
 					?>
-					<?php
-					// Shown on every package, like the rest of them, so an owner
-					// can see what the report is before deciding it is worth
-					// having. The questions themselves are the product.
-					$reporting = nika_can( 'question_report' );
-					$report_package = nika_package_name( nika_capability_package( 'question_report' ) );
-					$unanswered = $reporting ? nika_unanswered_questions() : array();
-					?>
-					<div class="nika-transfer nika-unanswered">
-						<span class="nika-field__head"><span><b><?php esc_html_e( 'Questions Nika could not answer', 'nika-site-guide' ); ?><?php if ( ! $reporting ) : ?> <span class="nika-lock"><?php echo esc_html( $report_package ); ?></span><?php endif; ?></b></span></span>
-						<p class="nika-field__note"><?php echo esc_html( $reporting
-							? __( 'Visitors who asked for something and did not get it. Most asked first. Nothing here identifies anyone.', 'nika-site-guide' )
-							: sprintf( __( 'See what visitors asked for and did not get, so you can write the page they were looking for. Included in %s.', 'nika-site-guide' ), $report_package ) ); ?></p>
-						<?php if ( $reporting ) : ?>
-							<?php if ( $unanswered ) : ?>
-								<ol class="nika-unanswered__list">
-									<?php foreach ( $unanswered as $row ) : ?>
-										<li>
-											<span class="nika-unanswered__q"><?php echo esc_html( $row['question'] ); ?></span>
-											<span class="nika-unanswered__meta">
-												<?php echo esc_html( sprintf( _n( 'asked %d time', 'asked %d times', $row['count'], 'nika-site-guide' ), $row['count'] ) ); ?>
-												<?php if ( $row['path'] ) : ?>· <?php echo esc_html( $row['path'] ); ?><?php endif; ?>
-												<?php if ( $row['reported'] ) : ?>· <?php esc_html_e( 'reported by a visitor', 'nika-site-guide' ); ?><?php endif; ?>
-											</span>
-										</li>
-									<?php endforeach; ?>
-								</ol>
-							<?php else : ?>
-								<p class="nika-field__note"><?php esc_html_e( 'Nothing yet. A question appears here when Nika is asked for a place it cannot reach, or when a visitor reports a reply.', 'nika-site-guide' ); ?></p>
-							<?php endif; ?>
+
+					<?php if ( $reporting ) : $unanswered = nika_unanswered_questions(); ?>
+					<div class="nika-feature">
+						<h3 class="nika-feature__title"><?php esc_html_e( 'Questions Nika could not answer', 'nika-site-guide' ); ?></h3>
+						<p class="nika-field__note"><?php esc_html_e( 'Visitors who asked for something and did not get it. Most asked first. Nothing here identifies anyone.', 'nika-site-guide' ); ?></p>
+						<?php if ( $unanswered ) : ?>
+							<ol class="nika-unanswered__list">
+								<?php foreach ( $unanswered as $row ) : ?>
+									<li>
+										<span class="nika-unanswered__q"><?php echo esc_html( $row['question'] ); ?></span>
+										<span class="nika-unanswered__meta">
+											<?php echo esc_html( sprintf( _n( 'asked %d time', 'asked %d times', $row['count'], 'nika-site-guide' ), $row['count'] ) ); ?>
+											<?php if ( $row['path'] ) : ?>· <?php echo esc_html( $row['path'] ); ?><?php endif; ?>
+											<?php if ( $row['reported'] ) : ?>· <?php esc_html_e( 'reported by a visitor', 'nika-site-guide' ); ?><?php endif; ?>
+										</span>
+									</li>
+								<?php endforeach; ?>
+							</ol>
+						<?php else : ?>
+							<p class="nika-field__note"><?php esc_html_e( 'Nothing yet. A question appears here when Nika is asked for a place it cannot reach, or when a visitor reports a reply.', 'nika-site-guide' ); ?></p>
 						<?php endif; ?>
 					</div>
-					<div class="nika-transfer">
-						<span class="nika-field__head"><span><b><?php esc_html_e( 'Move settings between sites', 'nika-site-guide' ); ?></b><?php if ( ! $transfer ) : ?> <span class="nika-lock"><?php echo esc_html( $transfer_package ); ?></span><?php endif; ?></span></span>
-						<p class="nika-field__note"><?php echo esc_html( $transfer
-							? __( 'Download this configuration and apply it to another site. The AI key and licence key are never included in the file.', 'nika-site-guide' )
-							: sprintf( __( 'Download this configuration and apply it to another site. Included in %s.', 'nika-site-guide' ), $transfer_package ) ); ?></p>
-						<div class="nika-card__actions">
-							<button type="button" class="nika-generate" id="nika-export-config" data-nika-capability="config_transfer" data-nika-package="<?php echo esc_attr( nika_capability_package( 'config_transfer' ) ); ?>"><span><?php esc_html_e( 'Export settings', 'nika-site-guide' ); ?></span></button>
-							<button type="button" class="nika-generate" id="nika-import-config" data-nika-capability="config_transfer" data-nika-package="<?php echo esc_attr( nika_capability_package( 'config_transfer' ) ); ?>"><span><?php esc_html_e( 'Import settings', 'nika-site-guide' ); ?></span></button>
+					<?php endif; ?>
+
+					<?php if ( $transfer ) : ?>
+					<div class="nika-feature">
+						<h3 class="nika-feature__title"><?php esc_html_e( 'Move settings between sites', 'nika-site-guide' ); ?></h3>
+						<p class="nika-field__note"><?php esc_html_e( 'Download this configuration and apply it to another site. The AI key and licence key are never in the file.', 'nika-site-guide' ); ?></p>
+						<div class="nika-feature__actions">
+							<button type="button" class="nika-generate" id="nika-export-config"><span><?php esc_html_e( 'Export settings', 'nika-site-guide' ); ?></span></button>
+							<button type="button" class="nika-generate" id="nika-import-config"><span><?php esc_html_e( 'Import settings', 'nika-site-guide' ); ?></span></button>
 							<input type="file" id="nika-import-file" accept="application/json,.json" hidden>
 						</div>
 						<p class="nika-generator-status" id="nika-transfer-status" aria-live="polite"></p>
 					</div>
-					<?php
-					$white = nika_can( 'white_label' );
-					$white_package = nika_package_name( nika_capability_package( 'white_label' ) );
-					?>
-					<div class="nika-transfer nika-whitelabel">
-						<span class="nika-field__head"><span><b><?php esc_html_e( 'Name in this dashboard', 'nika-site-guide' ); ?><?php if ( ! $white ) : ?> <span class="nika-lock"><?php echo esc_html( $white_package ); ?></span><?php endif; ?></b></span></span>
-						<p class="nika-field__note"><?php echo esc_html( $white
-							? __( 'What the admin menu and this page call the guide. Visitors already see whatever you set under Assistant identity, on every package.', 'nika-site-guide' )
-							: sprintf( __( 'Rename the admin menu and this page, so a client dashboard does not carry our name. Included in %s.', 'nika-site-guide' ), $white_package ) ); ?></p>
-						<?php if ( $white ) : ?>
-							<div class="nika-grid nika-grid--two">
-								<label class="nika-field"><span><?php esc_html_e( 'Menu name', 'nika-site-guide' ); ?><?php echo nika_help( __( 'Leave empty to keep Nika.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[admin_label]" type="text" maxlength="40" value="<?php echo esc_attr( $s['admin_label'] ); ?>" placeholder="<?php esc_attr_e( 'Nika', 'nika-site-guide' ); ?>"></label>
-								<label class="nika-field"><span><?php esc_html_e( 'Menu icon URL', 'nika-site-guide' ); ?><?php echo nika_help( __( 'A square image from your media library. Leave empty to keep the Nika mark.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[admin_icon]" type="url" value="<?php echo esc_attr( $s['admin_icon'] ); ?>" placeholder="https://example.com/mark.png"></label>
-							</div>
-							<p class="nika-field__note"><?php esc_html_e( 'The Plugins screen still lists this as Nika Site Guide. WordPress reads that name from the plugin file itself, so no setting can change it.', 'nika-site-guide' ); ?></p>
-						<?php endif; ?>
+					<?php endif; ?>
+
+					<?php if ( $white ) : ?>
+					<div class="nika-feature">
+						<h3 class="nika-feature__title"><?php esc_html_e( 'Name in this dashboard', 'nika-site-guide' ); ?></h3>
+						<p class="nika-field__note"><?php esc_html_e( 'What the admin menu and this page call the guide. Visitors already see whatever you set under Assistant identity, on every package.', 'nika-site-guide' ); ?></p>
+						<div class="nika-grid nika-grid--two">
+							<label class="nika-field"><span><?php esc_html_e( 'Menu name', 'nika-site-guide' ); ?><?php echo nika_help( __( 'Leave empty to keep Nika.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[admin_label]" type="text" maxlength="40" value="<?php echo esc_attr( $s['admin_label'] ); ?>" placeholder="<?php esc_attr_e( 'Nika', 'nika-site-guide' ); ?>"></label>
+							<label class="nika-field"><span><?php esc_html_e( 'Menu icon URL', 'nika-site-guide' ); ?><?php echo nika_help( __( 'A square image from your media library. Leave empty to keep the Nika mark.', 'nika-site-guide' ) ); ?></span><input name="<?php echo esc_attr( NIKA_OPTION ); ?>[admin_icon]" type="url" value="<?php echo esc_attr( $s['admin_icon'] ); ?>" placeholder="https://example.com/mark.png"></label>
+						</div>
+						<p class="nika-field__note"><?php esc_html_e( 'The Plugins screen still lists this as Nika Site Guide. WordPress reads that name from the plugin file itself, so no setting can change it.', 'nika-site-guide' ); ?></p>
 					</div>
-					<?php
-					$presets_on = nika_can( 'client_presets' );
-					$presets_package = nika_package_name( nika_capability_package( 'client_presets' ) );
-					?>
-					<div class="nika-transfer nika-presets">
-						<span class="nika-field__head"><span><b><?php esc_html_e( 'Saved presets', 'nika-site-guide' ); ?><?php if ( ! $presets_on ) : ?> <span class="nika-lock"><?php echo esc_html( $presets_package ); ?></span><?php endif; ?></b></span></span>
-						<p class="nika-field__note"><?php echo esc_html( $presets_on
-							? __( 'Save this configuration under a name and apply it to the next client site in one click. The AI key and licence key are never part of a preset.', 'nika-site-guide' )
-							: sprintf( __( 'Save a configuration under a name and apply it to the next client site in one click. Included in %s.', 'nika-site-guide' ), $presets_package ) ); ?></p>
-						<?php if ( $presets_on ) : ?>
-							<div class="nika-card__actions">
-								<input type="text" id="nika-preset-name" maxlength="60" placeholder="<?php esc_attr_e( 'Client base setup', 'nika-site-guide' ); ?>" aria-label="<?php esc_attr_e( 'Preset name', 'nika-site-guide' ); ?>">
-								<button type="button" class="nika-generate" id="nika-preset-save"><span><?php esc_html_e( 'Save preset', 'nika-site-guide' ); ?></span></button>
-							</div>
-							<ul class="nika-presets__list" id="nika-preset-list"></ul>
-						<?php endif; ?>
+					<?php endif; ?>
+
+					<?php if ( $presets_on ) : ?>
+					<div class="nika-feature">
+						<h3 class="nika-feature__title"><?php esc_html_e( 'Saved presets', 'nika-site-guide' ); ?></h3>
+						<p class="nika-field__note"><?php esc_html_e( 'Save this configuration under a name and apply it to the next client site in one click. The AI key and licence key are never part of a preset.', 'nika-site-guide' ); ?></p>
+						<div class="nika-feature__actions">
+							<input type="text" id="nika-preset-name" maxlength="60" placeholder="<?php esc_attr_e( 'Client base setup', 'nika-site-guide' ); ?>" aria-label="<?php esc_attr_e( 'Preset name', 'nika-site-guide' ); ?>">
+							<button type="button" class="nika-generate" id="nika-preset-save"><span><?php esc_html_e( 'Save preset', 'nika-site-guide' ); ?></span></button>
+						</div>
+						<ul class="nika-presets__list" id="nika-preset-list"></ul>
 						<p class="nika-generator-status" id="nika-preset-status" aria-live="polite"></p>
 					</div>
+					<?php endif; ?>
+
+					<?php if ( $locked ) : ?>
+					<div class="nika-upsell">
+						<h3 class="nika-upsell__title"><?php esc_html_e( 'Also available', 'nika-site-guide' ); ?></h3>
+						<ul class="nika-upsell__list">
+							<?php foreach ( $locked as $item ) : ?>
+								<li>
+									<span class="nika-upsell__name"><?php echo esc_html( $item['title'] ); ?></span>
+									<span class="nika-lock"><?php echo esc_html( $item['package'] ); ?></span>
+									<span class="nika-upsell__copy"><?php echo esc_html( $item['summary'] ); ?></span>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+						<p class="nika-field__note"><a href="https://abatchan.com/nika#beta-plans" target="_blank" rel="noopener"><?php esc_html_e( 'Compare packages', 'nika-site-guide' ); ?></a></p>
+					</div>
+					<?php endif; ?>
 				</section>
 					<section class="nika-card" id="nika-styles">
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Advanced', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Custom CSS', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'For anything the settings above do not cover. These rules load inside the guide only, so they cannot affect the rest of your site.', 'nika-site-guide' ); ?></p></div></div>
