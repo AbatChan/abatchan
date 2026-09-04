@@ -257,14 +257,20 @@ const embed=readFileSync(new URL('../embed.js',import.meta.url),'utf8');
 const loader=readFileSync(new URL('../universal/nika-universal/public/nika-loader.js',import.meta.url),'utf8');
 const universalServer=readFileSync(new URL('../universal/nika-universal/server.mjs',import.meta.url),'utf8');
 
-check('the guide carries a line naming the software',canonicalShell.includes("branding: true,")&&canonicalShell.includes("assist-brand")&&canonicalShell.includes("Powered by Nika"));
+check('the guide carries a line naming the software',canonicalShell.includes("branding: true,")&&canonicalShell.includes("assist-brand")&&canonicalShell.includes("brandingLabel: 'Powered by',")&&canonicalShell.includes("brandingName: 'Nika',"));
+// The name is the link and carries the accent, so it follows the site's own
+// colour rather than a hard-coded indigo.
+check('the product name is the link, in the configured accent',canonicalGuideCss.includes('.assist-brand a{color:var(--signal,#6366f1)')&&canonicalShell.includes('<a href="${safe(cfg.brandingUrl)}" target="_blank" rel="noopener">${safe(cfg.brandingName)}</a>'));
 check('it is only omitted when branding is explicitly false',canonicalShell.includes("cfg.branding===false?''"));
 // Every default in this chain has to fail towards branded. An old server, a
 // truncated response or a config that predates the field must not produce a
 // free unbranded guide.
 check('both loaders treat a missing field as branded',embed.includes('branding: config.branding !== false')&&loader.includes('branding: config.branding !== false'));
 check('the line survives a small screen',canonicalGuideCss.includes('.assist-brand{')&&!/@media[^{]*\{[^}]*\.assist-brand\{[^}]*display:\s*none/.test(canonicalGuideCss));
-check('and states its own box model like the note above it',canonicalGuideCss.includes('.assist-brand{')&&canonicalGuideCss.includes('margin:0 0 8px!important'));
+// The panel foot is one 4px step: note above the composer, the composer, the
+// credit under it. Stated here, and important, so a host theme cannot set them.
+check('and states its own box model like the note above it',canonicalGuideCss.includes('.assist-brand{')&&canonicalGuideCss.includes('margin:0 0 4px!important'));
+check('the foot spacing is one consistent step',canonicalGuideCss.includes('.assist-note{padding:0 16px;')&&canonicalGuideCss.includes('margin:4px 0 0!important')&&canonicalGuideCss.includes('gap:6px;margin:4px 12px;'));
 
 check('removing it is a package capability, not a free checkbox',php.includes("'branding' => nika_can( 'unbranded' ) ? ! empty( $input['branding'] ) : true,"));
 // The form is not the boundary. A hidden input or a hand-made POST goes through

@@ -54,7 +54,10 @@ export async function mountGuideShell(options = {}) {
     // running with no licence key at all. Removing it is a Business feature and
     // the site's own server decides, which is what self-hosted means.
     branding: true,
-    brandingLabel: 'Powered by Nika',
+    // Split so the product name can be the link and carry the accent, while
+    // the words around it stay quiet. Both halves remain configurable.
+    brandingLabel: 'Powered by',
+    brandingName: 'Nika',
     brandingUrl: 'https://abatchan.com/nika',
     chips: [
       {label:'Show me relevant work',description:'See projects similar to yours'},
@@ -229,7 +232,7 @@ export async function mountGuideShell(options = {}) {
     '</form>'+
     // Below the disclaimer and smaller than it: present and readable, never
     // competing with the site it is a guest on.
-    (cfg.branding===false?'':`<p class="assist-brand"><a href="${safe(cfg.brandingUrl)}" target="_blank" rel="noopener">${safe(cfg.brandingLabel)}</a></p>`);
+    (cfg.branding===false?'':`<p class="assist-brand">${safe(cfg.brandingLabel)} <a href="${safe(cfg.brandingUrl)}" target="_blank" rel="noopener">${safe(cfg.brandingName)}</a></p>`);
 
   (cfg.isolate?scope:document.body).append(launch,panel);
   (cfg.isolate?scope:document.head).append(ownStyle);

@@ -129,7 +129,7 @@ html[data-theme="light"] .assist-error-actions button{color:#151519}
 html[data-theme="light"] .assist-chips button{color:#151519;background:rgba(20,20,24,.025);box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
 html[data-theme="light"] .assist-chip-chevron{filter:none}
 
-.assist-form{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin:8px 12px 6px;padding:8px;
+.assist-form{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin:4px 12px;padding:8px;
   border:1px solid var(--edge);border-radius:17px;background:rgba(255,255,255,.025);box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
 .assist-form textarea{display:block;width:100%;min-width:0;min-height:38px;max-height:132px;padding:5px 7px 2px;resize:none;overflow-y:hidden;
   border:0;background:transparent;color:var(--paper);font:inherit;line-height:1.45;outline:none}
@@ -211,16 +211,19 @@ html[data-theme="light"] .assist-msg-attachment{background:rgba(21,21,25,.035)}
 /* Sits above the composer. The margin is stated here, and marked important,
    for the same reason it always was: a host theme's bare `p` rule would
    otherwise decide the spacing between this and the input. */
-.assist-note{padding:0 16px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center;margin:2px 0 0!important}
+.assist-note{padding:0 16px;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:center;margin:4px 0 0!important}
 
 /* The one line that says whose software this is. Sits under the disclaimer,
    quieter than it, and pins its own box model for the same reason .assist-note
    does: a host theme's `p` or `a` rule would otherwise resize or recolour it.
    Deliberately not hidden on small screens. Branding that disappears on a phone
    is branding a customer has removed without paying for it. */
-.assist-brand{padding:0 16px;color:var(--muted);font-size:9.5px;line-height:1.4;text-align:center;opacity:.72;margin:0 0 8px!important}
-.assist-brand a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
-.assist-brand a:hover,.assist-brand a:focus-visible{color:var(--paper);border-bottom-color:currentColor;outline:0}
+/* The words stay quiet, the name carries the accent and reads as the link it
+   is. The muting lives on the paragraph rather than on an opacity over the
+   whole line, which would have dulled the accent with it. */
+.assist-brand{padding:0 16px;color:var(--muted);font-size:9.5px;line-height:1.4;text-align:center;margin:0 0 4px!important}
+.assist-brand a{color:var(--signal,#6366f1);text-decoration:none;font-weight:650;border-bottom:1px solid transparent}
+.assist-brand a:hover,.assist-brand a:focus-visible{border-bottom-color:currentColor;outline:0}
 
 /* Margin is not inherited, so a shadow root already blocks a theme from
    reaching these. What it does not block is the user-agent default: a <p> or

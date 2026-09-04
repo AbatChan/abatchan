@@ -23,7 +23,7 @@ import { EDITIONS, downloadAllowed, parseVersion } from '../lib/licence/releases
 import { entitledTo, recordEntitlement, signedRelease } from '../lib/licence/store.js';
 import { verifyDownload } from '../lib/licence/download-token.js';
 
-const LATEST = { wordpress: process.env.NIKA_WORDPRESS_VERSION || '1.6.4', universal: process.env.NIKA_UNIVERSAL_VERSION || '1.6.4' };
+const LATEST = { wordpress: process.env.NIKA_WORDPRESS_VERSION || '1.6.5', universal: process.env.NIKA_UNIVERSAL_VERSION || '1.6.5' };
 
 const refuse = (res, status, message, extra = {}) => res.status(status).json({ ok: false, message, ...extra });
 
