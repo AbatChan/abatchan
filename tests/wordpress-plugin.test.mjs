@@ -348,5 +348,30 @@ check('the report is a package feature, checked on the server',php.includes("nik
 check('an empty report is not confused with an excluded one',php.includes('Nothing yet. A question appears here')&&php.includes('See what visitors asked for and did not get'));
 check('the list is rendered from the grouped rows',php.includes('nika-unanswered__list')&&php.includes("_n( 'asked %d time', 'asked %d times'"));
 
+console.log('\n=== the credit cannot be removed through the custom CSS box ===');
+// The switch is a package feature, and a custom CSS field that accepts
+// .assist-brand{display:none} makes the switch decorative.
+check('hiding declarations are dropped without the capability',php.includes('function nika_css_without_brand_hiding(')&&php.includes("if ( '' === $css || nika_can( 'unbranded' ) ) return $css;")&&universalServer.includes('function cssWithoutBrandHiding('));
+check('and it runs on the way into the option',php.includes('return nika_css_without_brand_hiding( mb_substr( trim( $css ), 0, 20000 ) );')&&universalServer.includes('customCss: cssWithoutBrandHiding('));
+// Only the hiding goes. Everything else custom CSS can do, it still does.
+check('styling the same element still works',php.includes("preg_match( '/\\.assist-brand\\b/i', $rule[1] )")&&php.includes('$kept ? $rule[1]'));
+check('other selectors are never touched',php.includes('if ( ! preg_match')&&universalServer.includes("if (!/\\.assist-brand\\b/i.test(selector)) return rule;"));
+
+console.log('\n=== saved presets ===');
+// A preset is a stored export on purpose: built by the export document and
+// applied through the import reader, so it inherits those rules rather than
+// carrying a second copy of them that can drift.
+check('a preset is built and applied through the transfer path',php.includes("'document' => nika_export_document()")&&php.includes('$result = nika_import_settings( $presets[ $id ][\'document\'] );'));
+check('so no key can be inside one',php.includes('nika_private_keys()')&&php.includes('No AI key, no licence key, images from another site dropped'));
+check('presets live outside the settings they configure',php.includes("get_option( 'nika_presets'")&&php.includes("never carries somebody else"));
+check('the same name replaces rather than duplicates',php.includes('mb_strtolower( $preset[\'name\'] ) === mb_strtolower( $name )'));
+check('and the list never carries the stored settings',php.includes('function nika_preset_list()')&&php.includes("'version' => (string) ( $preset['document']['version'] ?? '' ),")&&!/nika_preset_list[\s\S]{0,400}'document' =>/.test(php));
+check('every preset route checks the package',php.includes("if ( ! nika_can( 'client_presets' ) ) return nika_presets_denied();")&&(php.match(/nika_presets_denied\(\);/g)||[]).length===2);
+check('one write route, because it is one permission over one list',php.includes('function nika_presets_write_response(')&&php.includes("'save' === $action")&&php.includes("'apply' === $action")&&php.includes("'delete' === $action"));
+// Applying overwrites this site. The confirmation is the button changing, which
+// cannot be dismissed by a stray click the way a dialog can.
+check('applying asks before it replaces anything',adminJs.includes("apply.querySelector('span').textContent = 'Apply, replacing these settings?'"));
+check('the card is shown to every package, marked with its own',php.includes("esc_html_e( 'Saved presets', 'nika-site-guide' )")&&php.includes("nika_capability_package( 'client_presets' )"));
+
 if(failed)process.exit(1);
 console.log('\nall passed');

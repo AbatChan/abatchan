@@ -33,6 +33,7 @@ const CONFIG_PATH = process.env.NIKA_CONFIG_FILE || join(ROOT, 'nika.config.json
 const CONTENT_PATH = process.env.NIKA_CONTENT_FILE || join(ROOT, 'content.json');
 const DATA_DIR = process.env.NIKA_DATA_DIR || join(ROOT, 'data');
 const FEEDBACK_PATH = join(DATA_DIR, 'feedback.json');
+const PRESETS_PATH = join(DATA_DIR, 'presets.json');
 const SITE_ROOT = process.env.NIKA_SITE_ROOT ? resolve(process.env.NIKA_SITE_ROOT) : '';
 const AUTO_INDEX_SECONDS = numberBetween(process.env.NIKA_AUTO_INDEX_SECONDS, 1, 86400, 60);
 let discovered = { expiresAt: 0, pages: [] };
@@ -113,6 +114,26 @@ function publishedContent() {
   }
 }
 
+// Drop declarations whose only purpose is to hide the credit line, unless the
+// package removes it properly.
+//
+// The switch for that is a package feature, and a custom CSS box that accepts
+// `.assist-brand{display:none}` makes the switch decorative. Same rule as the
+// rest of the settings screen: gate the shortcut, never the destination. Every
+// other thing custom CSS can do it still does, and anyone with file access can
+// edit the server, which is true of all self-hosted software and is not what
+// this is for.
+function cssWithoutBrandHiding(css) {
+  if (!css || licence.can('unbranded')) return css;
+  const hides = /^\s*(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0*(?:\.0+)?\s*(?:!important)?$|content\s*:|font-size\s*:\s*0|transform\s*:\s*scale\s*\(\s*0|clip-path\s*:|height\s*:\s*0|max-height\s*:\s*0|width\s*:\s*0|max-width\s*:\s*0|text-indent\s*:\s*-|position\s*:\s*absolute|margin-\w+\s*:\s*-)/i;
+  return css.replace(/([^{}]*)\{([^{}]*)\}/g, (rule, selector, body) => {
+    if (!/\.assist-brand\b/i.test(selector)) return rule;
+    // Only the hiding declarations go. Colour, spacing and font survive.
+    const kept = body.split(';').map(part => part.trim()).filter(part => part && !hides.test(part));
+    return kept.length ? `${selector}{${kept.join(';')}}` : '';
+  });
+}
+
 function siteData() {
   const config = readJson(CONFIG_PATH, {});
   const content = publishedContent();
@@ -148,7 +169,7 @@ function siteData() {
       shadowColour: /^#[0-9a-f]{6}$/i.test(config.shadowColour || '') ? config.shadowColour : '#4f46e5',
       textColour: /^#[0-9a-f]{6}$/i.test(config.textColour || '') ? config.textColour : '#f5f5f3',
       iconColour: /^#[0-9a-f]{6}$/i.test(config.iconColour || '') ? config.iconColour : '#ffffff',
-      customCss: String(config.customCss || '').replace(/<\/\s*style/gi, '<\\/style').slice(0, 20000),
+      customCss: cssWithoutBrandHiding(String(config.customCss || '').replace(/<\/\s*style/gi, '<\\/style').slice(0, 20000)),
       logoSize: numberBetween(config.logoSize, 14, 64, 26),
       markSize: numberBetween(config.markSize, 14, 44, 24),
       disclaimer: text(config.disclaimer, 160),
@@ -240,6 +261,64 @@ function adminAllowed(req) {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
+// Named configurations to apply to the next client site.
+//
+// A preset is a stored export, deliberately: built by exportDocument and applied
+// through importDocument, so it inherits every rule that path already has. No
+// credential is in one because none is in the config file, images from another
+// site are dropped rather than hotlinked, and the guide is never switched on
+// where there is no provider. A second copy of those rules would drift.
+//
+// Kept in their own file, so a configuration someone imports never arrives
+// carrying somebody else's preset list.
+function readPresets() {
+  const stored = readJson(PRESETS_PATH, {});
+  return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
+}
+
+function writePresets(presets) {
+  const temporary = `${PRESETS_PATH}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(presets, null, 2)}\n`, { mode: 0o600 });
+  renameSync(temporary, PRESETS_PATH);
+}
+
+// Names and dates only. The stored settings never travel to a screen.
+function presetList() {
+  return Object.entries(readPresets())
+    .map(([id, preset]) => ({ id, name: String(preset?.name || ''), at: String(preset?.at || ''), version: String(preset?.document?.version || '') }))
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+}
+
+function savePreset(rawName) {
+  const name = text(rawName, 60).trim();
+  if (!name) throw Object.assign(new Error('Give the preset a name.'), { status: 400 });
+  const presets = readPresets();
+  if (Object.keys(presets).length >= 24) throw Object.assign(new Error('That is 24 presets already. Delete one first.'), { status: 400 });
+  // The same name replaces rather than duplicates: two presets called "Client
+  // base" are indistinguishable in the only list that matters.
+  const existing = Object.entries(presets).find(([, preset]) => String(preset?.name || '').toLowerCase() === name.toLowerCase());
+  const id = existing ? existing[0] : `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  presets[id] = { name, document: exportDocument(), at: new Date().toISOString() };
+  writePresets(presets);
+  return { id, presets: presetList() };
+}
+
+function deletePreset(rawId) {
+  const presets = readPresets();
+  const id = text(rawId, 40);
+  if (!presets[id]) throw Object.assign(new Error('That preset no longer exists.'), { status: 404 });
+  delete presets[id];
+  writePresets(presets);
+  return { ok: true, presets: presetList() };
+}
+
+function applyPreset(rawId) {
+  const presets = readPresets();
+  const id = text(rawId, 40);
+  if (!presets[id]?.document) throw Object.assign(new Error('That preset no longer exists.'), { status: 404 });
+  return importDocument(presets[id].document);
+}
+
 // The questions this installation could not answer, most frequent first. Grouped
 // by question, so twenty people asking the same thing read as one row with a
 // count, which is the number that decides whether to write the page.
@@ -279,7 +358,7 @@ function adminConfig() {
       package: state.tier,
       packageName: PACKAGE_NAMES[state.tier] || PACKAGE_NAMES.personal,
       capabilities: licence.capabilities(),
-      packageFor: { unbranded: PACKAGE_NAMES[packageFor('unbranded')] || '', config_transfer: PACKAGE_NAMES[packageFor('config_transfer')] || '', question_report: PACKAGE_NAMES[packageFor('question_report')] || '' },
+      packageFor: { unbranded: PACKAGE_NAMES[packageFor('unbranded')] || '', config_transfer: PACKAGE_NAMES[packageFor('config_transfer')] || '', question_report: PACKAGE_NAMES[packageFor('question_report')] || '', client_presets: PACKAGE_NAMES[packageFor('client_presets')] || '' },
       sitesAllowed: state.sitesAllowed,
       sitesUsed: state.sitesUsed,
       updatesUntil: state.updatesUntil,
@@ -825,6 +904,23 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/nika/admin/config-import') {
       try { return send(res, 200, importDocument(await bodyJson(req))); }
       catch (error) { return send(res, error.status || 500, { error: error.status ? error.message : 'The settings file could not be saved. Check that nika.config.json is writable.' }); }
+    }
+  }
+  // One route for the list and for save, apply and delete: the same permission
+  // over the same list, and three routes would be three places to forget it.
+  if (url.pathname === '/nika/admin/presets') {
+    if (!adminAllowed(req)) return send(res, 401, { error: ADMIN_TOKEN ? 'Enter the Nika admin token.' : 'Set NIKA_ADMIN_TOKEN on the server first.' });
+    if (!licence.can('client_presets')) return send(res, 403, { error: `Saved presets are included in ${PACKAGE_NAMES[packageFor('client_presets')]}.` });
+    if (req.method === 'GET') return send(res, 200, { presets: presetList() });
+    if (req.method === 'POST') {
+      try {
+        const body = await bodyJson(req);
+        const action = String(body?.action || '');
+        if (action === 'save') return send(res, 200, savePreset(body?.name));
+        if (action === 'apply') return send(res, 200, applyPreset(body?.id));
+        if (action === 'delete') return send(res, 200, deletePreset(body?.id));
+        return send(res, 400, { error: 'Unknown preset action.' });
+      } catch (error) { return send(res, error.status || 500, { error: error.status ? error.message : 'The preset could not be saved.' }); }
     }
   }
   if (req.method === 'GET' && url.pathname === '/nika/admin/ip') {

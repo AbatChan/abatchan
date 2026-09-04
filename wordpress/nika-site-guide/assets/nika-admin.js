@@ -369,6 +369,91 @@
     });
   }
 
+  /* Saved presets ------------------------------------------------------------ */
+
+  // A preset is a stored export, so everything here goes through the same
+  // endpoint rules as Import: no keys, no borrowed images, never switched on
+  // without a provider. This file only draws the list and asks.
+  const presetList = document.querySelector('#nika-preset-list');
+  const presetName = document.querySelector('#nika-preset-name');
+  const presetSave = document.querySelector('#nika-preset-save');
+  const presetStatus = document.querySelector('#nika-preset-status');
+
+  if (presetList && presetSave) {
+    const sayPreset = (message, tone) => {
+      presetStatus.textContent = message;
+      presetStatus.dataset.tone = tone || '';
+    };
+    const drawPresets = (presets) => {
+      presetList.innerHTML = '';
+      if (!presets.length) { sayPreset('No presets yet. Save this configuration to reuse it on the next site.'); return; }
+      for (const preset of presets) {
+        const row = document.createElement('li');
+        const name = document.createElement('span');
+        name.className = 'nika-presets__name';
+        name.textContent = preset.name;
+        const meta = document.createElement('span');
+        meta.className = 'nika-presets__meta';
+        meta.textContent = [preset.version && `saved from ${preset.version}`, preset.at && new Date(preset.at * 1000).toLocaleDateString()].filter(Boolean).join(' · ');
+        const apply = document.createElement('button');
+        apply.type = 'button'; apply.className = 'nika-generate';
+        apply.innerHTML = '<span>Apply</span>';
+        const remove = document.createElement('button');
+        remove.type = 'button'; remove.className = 'nika-generate nika-presets__delete';
+        remove.innerHTML = '<span>Delete</span>';
+        // Applying replaces this site's settings, so it is confirmed in the
+        // button itself rather than a dialog: a second click on a changed
+        // label, which cannot be dismissed by accident.
+        let armed = false;
+        apply.addEventListener('click', async () => {
+          if (!armed) { armed = true; apply.querySelector('span').textContent = 'Apply, replacing these settings?'; setTimeout(() => { armed = false; apply.querySelector('span').textContent = 'Apply'; }, 4000); return; }
+          sayPreset(`Applying ${preset.name}…`);
+          try {
+            const response = await request(window.NikaAdmin.presetEndpoint, { method: 'POST', body: JSON.stringify({ action: 'apply', id: preset.id }) });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Could not apply that preset.');
+            const notes = Array.isArray(result.notes) ? result.notes : [];
+            sayPreset(['Preset applied. Reloading…'].concat(notes).join(' '));
+            setTimeout(() => window.location.reload(), notes.length ? 2600 : 900);
+          } catch (error) { sayPreset(error.message, 'error'); }
+        });
+        remove.addEventListener('click', async () => {
+          try {
+            const response = await request(window.NikaAdmin.presetEndpoint, { method: 'POST', body: JSON.stringify({ action: 'delete', id: preset.id }) });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Could not delete that preset.');
+            drawPresets(result.presets || []);
+            sayPreset(`Deleted ${preset.name}.`);
+          } catch (error) { sayPreset(error.message, 'error'); }
+        });
+        const actions = document.createElement('span');
+        actions.className = 'nika-presets__actions';
+        actions.append(apply, remove);
+        row.append(name, meta, actions);
+        presetList.append(row);
+      }
+    };
+
+    presetSave.addEventListener('click', async () => {
+      const name = (presetName.value || '').trim();
+      if (!name) { sayPreset('Give the preset a name first.', 'error'); presetName.focus(); return; }
+      sayPreset('Saving…');
+      try {
+        const response = await request(window.NikaAdmin.presetEndpoint, { method: 'POST', body: JSON.stringify({ action: 'save', name }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Could not save that preset.');
+        presetName.value = '';
+        drawPresets(result.presets || []);
+        sayPreset(`Saved ${name}. It holds this configuration, without the keys.`);
+      } catch (error) { sayPreset(error.message, 'error'); }
+    });
+
+    request(window.NikaAdmin.presetEndpoint, { method: 'GET' })
+      .then(response => response.json())
+      .then(result => drawPresets(Array.isArray(result.presets) ? result.presets : []))
+      .catch(() => {});
+  }
+
   /* Reset appearance --------------------------------------------------------- */
 
   // Restores the look a fresh install has. It only touches appearance, so a

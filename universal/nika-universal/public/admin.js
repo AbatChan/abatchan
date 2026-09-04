@@ -49,6 +49,16 @@
         li.append(q,meta);list.append(li);
       }
     }
+    // Presets are Agency. The endpoint refuses without it too; this only decides
+    // what the page offers.
+    const presets=capabilities.has('client_presets');
+    document.querySelector('#presets-package').hidden=presets;
+    document.querySelector('#presets-package').textContent=packageFor.client_presets||'';
+    document.querySelector('#presets-controls').hidden=!presets;
+    document.querySelector('#presets-note').textContent=presets
+      ?'Save this configuration under a name and apply it to the next client site. No key is ever part of a preset.'
+      :`Save a configuration under a name and apply it to the next client site in one click. Included in ${packageFor.client_presets||'Agency'}.`;
+    if(presets)loadPresets();
     mark(document.querySelector('#export-config'),'config_transfer');
     mark(document.querySelector('#import-config'),'config_transfer');
   };
@@ -73,6 +83,43 @@
   const generate=async(kind,button,status)=>{button.disabled=true;button.setAttribute('aria-busy','true');status.textContent=kind==='suggestions'?'Reading indexed content and creating three suggestions.':'Reading indexed content and drafting instructions.';try{const data=await request('/nika/admin/generate',{method:'POST',body:JSON.stringify({kind})});if(kind==='suggestions'){suggestionMarkup(data.suggestions);status.textContent='New suggestions are ready. Review them, then save changes.'}else{fields().instructions.value=data.instructions||'';fields().instructions.dispatchEvent(new Event('input',{bubbles:true}));status.textContent='Draft ready. Review it, then save changes.'}}catch(error){status.textContent=error.message;notify(error.message,true)}finally{button.disabled=false;button.removeAttribute('aria-busy')}};
   document.querySelector('#generate-suggestions').addEventListener('click',event=>generate('suggestions',event.currentTarget,document.querySelector('#suggestions-status')));
   document.querySelector('#draft-instructions').addEventListener('click',event=>generate('instructions',event.currentTarget,document.querySelector('#instructions-status')));
+  const presetList=document.querySelector('#preset-list');
+  const drawPresets=rows=>{
+    presetList.innerHTML='';
+    for(const preset of rows){
+      const li=document.createElement('li');
+      const name=document.createElement('span');name.className='nika-presets__name';name.textContent=preset.name;
+      const meta=document.createElement('span');meta.className='nika-presets__meta';
+      meta.textContent=[preset.version&&`saved from ${preset.version}`,preset.at&&new Date(preset.at).toLocaleDateString()].filter(Boolean).join(' · ');
+      const apply=document.createElement('button');apply.type='button';apply.className='secondary';apply.textContent='Apply';
+      const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='Delete';
+      // Applying replaces this server's settings, so it asks in the button
+      // itself: a second click on a changed label, which no stray click dismisses.
+      let armed=false;
+      apply.addEventListener('click',async()=>{
+        if(!armed){armed=true;apply.textContent='Apply, replacing these settings?';setTimeout(()=>{armed=false;apply.textContent='Apply'},4000);return}
+        try{
+          const result=await request('/nika/admin/presets',{method:'POST',body:JSON.stringify({action:'apply',id:preset.id})});
+          fill(result.config);
+          notify(['Preset applied.'].concat(Array.isArray(result.notes)?result.notes:[]).join(' '));
+        }catch(error){notify(error.message,true)}
+      });
+      remove.addEventListener('click',async()=>{
+        try{const result=await request('/nika/admin/presets',{method:'POST',body:JSON.stringify({action:'delete',id:preset.id})});drawPresets(result.presets||[]);notify(`Deleted ${preset.name}.`)}
+        catch(error){notify(error.message,true)}
+      });
+      const actions=document.createElement('span');actions.className='nika-presets__actions';actions.append(apply,remove);
+      li.append(name,meta,actions);presetList.append(li);
+    }
+  };
+  const loadPresets=async()=>{try{drawPresets((await request('/nika/admin/presets')).presets||[])}catch{}};
+  document.querySelector('#preset-save').addEventListener('click',async()=>{
+    const field=document.querySelector('#preset-name');
+    const name=field.value.trim();
+    if(!name){notify('Give the preset a name first.',true);field.focus();return}
+    try{const result=await request('/nika/admin/presets',{method:'POST',body:JSON.stringify({action:'save',name})});field.value='';drawPresets(result.presets||[]);notify(`Saved ${name}.`)}
+    catch(error){notify(error.message,true)}
+  });
   const transferStatus=()=>document.querySelector('#transfer-status');
   const refuse=capability=>{transferStatus().textContent=`Moving settings between sites is included in ${packageFor[capability]||'Business'}.`};
   document.querySelector('#export-config').addEventListener('click',async()=>{

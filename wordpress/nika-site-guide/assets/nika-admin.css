@@ -118,6 +118,18 @@
 .nika-unanswered__list li { color: #171827; font-size: 13px; line-height: 1.45; }
 .nika-unanswered__q { display: block; font-weight: 650; }
 .nika-unanswered__meta { display: block; margin-top: 2px; color: #777b89; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* Saved presets. A short list of named configurations with their two actions on
+   the right, so the row reads as a thing you can do something to. */
+.nika-presets .nika-card__actions { align-items: center; }
+.nika-presets input[type="text"] { flex: 1 1 200px; min-height: 30px; padding: 0 10px; border: 1px solid #d8d9e2; border-radius: 8px; background: #fbfbfd; font: inherit; font-size: 13px; }
+.nika-presets__list { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.nika-presets__list li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px 11px; border: 1px solid #e8e8ef; border-radius: 10px; background: #fbfbfd; }
+.nika-presets__name { font-size: 13px; font-weight: 650; }
+.nika-presets__meta { flex: 1 1 auto; color: #777b89; font-size: 12px; font-variant-numeric: tabular-nums; }
+.nika-presets__actions { display: flex; gap: 6px; }
+.nika-presets__delete { color: #8a1f1f; background: #fdf1f1; border-color: #f2d6d6; }
+.nika-presets__delete:hover, .nika-presets__delete:focus-visible { color: #fff; background: #a52a2a; border-color: #a52a2a; }
 .nika-transfer .nika-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .nika-transfer .nika-field__note { margin: 0; }
 .nika-admin .nika-generator-status[data-tone="error"] { color: #8a1f1f; }

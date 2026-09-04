@@ -3,7 +3,7 @@
  * Plugin Name:       Nika Site Guide
  * Plugin URI:        https://abatchan.com/nika
  * Description:       Answers visitor questions from your published pages and guides them to the right one. Your AI key, your database, no monthly fee.
- * Version:           1.6.5
+ * Version:           1.6.6
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            abatchan
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-const NIKA_VERSION = '1.6.5';
+const NIKA_VERSION = '1.6.6';
 const NIKA_OPTION  = 'nika_site_guide';
 const NIKA_UPDATE_MANIFEST = 'https://abatchan.com/api/update';
 const NIKA_LICENCE_API = 'https://abatchan.com/api/licence';
@@ -183,6 +183,7 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 		'keyEndpoint' => rest_url( 'nika/v1/admin/key' ),
 		'instructionsEndpoint' => rest_url( 'nika/v1/admin/instructions' ),
 		'ipEndpoint' => rest_url( 'nika/v1/admin/ip' ),
+		'presetEndpoint' => rest_url( 'nika/v1/admin/presets' ),
 		'exportEndpoint' => rest_url( 'nika/v1/admin/config-export' ),
 		'importEndpoint' => rest_url( 'nika/v1/admin/config-import' ),
 		'bundledAvatar' => plugin_dir_url( __FILE__ ) . 'assets/nika-admin-icon.png',
@@ -489,6 +490,24 @@ function nika_settings_page() {
 						</div>
 						<p class="nika-generator-status" id="nika-transfer-status" aria-live="polite"></p>
 					</div>
+					<?php
+					$presets_on = nika_can( 'client_presets' );
+					$presets_package = nika_package_name( nika_capability_package( 'client_presets' ) );
+					?>
+					<div class="nika-transfer nika-presets">
+						<span class="nika-field__head"><span><b><?php esc_html_e( 'Saved presets', 'nika-site-guide' ); ?><?php if ( ! $presets_on ) : ?> <span class="nika-lock"><?php echo esc_html( $presets_package ); ?></span><?php endif; ?></b></span></span>
+						<p class="nika-field__note"><?php echo esc_html( $presets_on
+							? __( 'Save this configuration under a name and apply it to the next client site in one click. The AI key and licence key are never part of a preset.', 'nika-site-guide' )
+							: sprintf( __( 'Save a configuration under a name and apply it to the next client site in one click. Included in %s.', 'nika-site-guide' ), $presets_package ) ); ?></p>
+						<?php if ( $presets_on ) : ?>
+							<div class="nika-card__actions">
+								<input type="text" id="nika-preset-name" maxlength="60" placeholder="<?php esc_attr_e( 'Client base setup', 'nika-site-guide' ); ?>" aria-label="<?php esc_attr_e( 'Preset name', 'nika-site-guide' ); ?>">
+								<button type="button" class="nika-generate" id="nika-preset-save"><span><?php esc_html_e( 'Save preset', 'nika-site-guide' ); ?></span></button>
+							</div>
+							<ul class="nika-presets__list" id="nika-preset-list"></ul>
+						<?php endif; ?>
+						<p class="nika-generator-status" id="nika-preset-status" aria-live="polite"></p>
+					</div>
 				</section>
 					<section class="nika-card" id="nika-styles">
 					<div class="nika-card__head"><div><p class="nika-card__eyebrow"><?php esc_html_e( 'Advanced', 'nika-site-guide' ); ?></p><h2><?php esc_html_e( 'Custom CSS', 'nika-site-guide' ); ?></h2><p><?php esc_html_e( 'For anything the settings above do not cover. These rules load inside the guide only, so they cannot affect the rest of your site.', 'nika-site-guide' ); ?></p></div></div>
@@ -576,12 +595,44 @@ add_action( 'rest_api_init', function () {
 	// Both sides check the package as well as the WordPress capability. Being an
 	// administrator says you may change this site; the package says whether moving
 	// a configuration between sites is something you bought.
+	register_rest_route( 'nika/v1', '/admin/presets', array(
+		array( 'methods' => 'GET', 'callback' => 'nika_presets_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ),
+		array( 'methods' => 'POST', 'callback' => 'nika_presets_write_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ),
+	) );
 	register_rest_route( 'nika/v1', '/admin/config-export', array( 'methods' => 'GET', 'callback' => 'nika_config_export_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 	register_rest_route( 'nika/v1', '/admin/config-import', array( 'methods' => 'POST', 'callback' => 'nika_config_import_response', 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 	register_rest_route( 'nika/v1', '/admin/ip', array( 'methods' => 'GET', 'callback' => function () { return rest_ensure_response( array( 'ip' => nika_client_ip() ) ); }, 'permission_callback' => function () { return current_user_can( 'manage_options' ); } ) );
 } );
 
 /** Refuses in the customer's terms, naming the package rather than a slug. */
+function nika_presets_denied() {
+	$package = nika_package_name( nika_capability_package( 'client_presets' ) );
+	/* translators: %s: package name. */
+	return new WP_Error( 'nika_package', sprintf( __( 'Saved presets are included in %s.', 'nika-site-guide' ), $package ), array( 'status' => 403 ) );
+}
+
+function nika_presets_response() {
+	if ( ! nika_can( 'client_presets' ) ) return nika_presets_denied();
+	return rest_ensure_response( array( 'presets' => nika_preset_list() ) );
+}
+
+/**
+ * One route for save, apply and delete, because they are the same permission
+ * over the same list and three routes would be three places to forget the check.
+ */
+function nika_presets_write_response( WP_REST_Request $request ) {
+	if ( ! nika_can( 'client_presets' ) ) return nika_presets_denied();
+	$body = $request->get_json_params();
+	$action = sanitize_key( $body['action'] ?? '' );
+	if ( 'save' === $action ) $result = nika_save_preset( $body['name'] ?? '' );
+	elseif ( 'apply' === $action ) $result = nika_apply_preset( $body['id'] ?? '' );
+	elseif ( 'delete' === $action ) $result = nika_delete_preset( $body['id'] ?? '' );
+	else return new WP_Error( 'nika_preset', __( 'Unknown preset action.', 'nika-site-guide' ), array( 'status' => 400 ) );
+	if ( is_wp_error( $result ) ) return $result;
+	return rest_ensure_response( $result );
+}
+
+
 function nika_transfer_denied() {
 	$package = nika_package_name( nika_capability_package( 'config_transfer' ) );
 	/* translators: %s: package name. */
@@ -742,7 +793,35 @@ function nika_clip_phrase( $text, $length ) {
 function nika_sanitize_custom_css( $value ) {
 	$css = (string) wp_unslash( $value );
 	$css = preg_replace( '#</\s*style#i', '<\\/style', $css );
-	return mb_substr( trim( $css ), 0, 20000 );
+	return nika_css_without_brand_hiding( mb_substr( trim( $css ), 0, 20000 ) );
+}
+
+/**
+ * Drop rules whose only purpose is to hide the credit line, unless the package
+ * removes it properly.
+ *
+ * The switch for that is a package feature, and a custom CSS box that will
+ * happily accept `.assist-brand{display:none}` makes the switch decorative. This
+ * is the same rule as everywhere else in the settings screen: gate the shortcut,
+ * never the destination. Every other thing custom CSS can do it still does, and
+ * a site owner with file access can always edit the plugin, which is true of all
+ * self-hosted software and is not what this is for.
+ *
+ * Only declarations that would remove the line are dropped, so a rule that
+ * restyles it, colours it or moves it survives untouched.
+ */
+function nika_css_without_brand_hiding( $css ) {
+	if ( '' === $css || nika_can( 'unbranded' ) ) return $css;
+	return preg_replace_callback( '/([^{}]*)\{([^{}]*)\}/', function ( $rule ) {
+		if ( ! preg_match( '/\.assist-brand\b/i', $rule[1] ) ) return $rule[0];
+		$kept = array_filter( array_map( 'trim', explode( ';', $rule[2] ) ), function ( $declaration ) {
+			if ( '' === $declaration ) return false;
+			// The handful of ways a line is made to disappear. Anything else,
+			// including colour, spacing and font, is left exactly as written.
+			return ! preg_match( '/^\s*(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0*(?:\.0+)?\s*(?:!important)?$|content\s*:|font-size\s*:\s*0|transform\s*:\s*scale\s*\(\s*0|clip-path\s*:|height\s*:\s*0|max-height\s*:\s*0|width\s*:\s*0|max-width\s*:\s*0|text-indent\s*:\s*-|position\s*:\s*absolute|margin-\w+\s*:\s*-)/i', $declaration );
+		} );
+		return $kept ? $rule[1] . '{' . implode( ';', $kept ) . '}' : '';
+	}, $css );
 }
 
 /**
@@ -1654,6 +1733,73 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ( $li
 	array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=nika-site-guide' ) ) . '">' . esc_html__( 'Settings', 'nika-site-guide' ) . '</a>' );
 	return $links;
 } );
+
+/**
+ * Named configurations an agency can apply to the next client site.
+ *
+ * A preset is a stored export, deliberately: it is built by nika_export_document
+ * and applied through nika_import_settings, so it inherits every rule that path
+ * already has. No AI key, no licence key, images from another site dropped
+ * rather than hotlinked, and the guide never switched on where there is no
+ * provider. Writing a second copy of those rules is how the two would drift.
+ *
+ * Kept in their own option rather than inside the settings, so importing a
+ * configuration never carries somebody else's preset list with it.
+ */
+function nika_presets() {
+	$presets = get_option( 'nika_presets', array() );
+	return is_array( $presets ) ? $presets : array();
+}
+
+function nika_save_preset( $name ) {
+	$name = sanitize_text_field( wp_unslash( (string) $name ) );
+	if ( '' === trim( $name ) ) return new WP_Error( 'nika_preset', __( 'Give the preset a name.', 'nika-site-guide' ), array( 'status' => 400 ) );
+	$presets = nika_presets();
+	if ( count( $presets ) >= 24 ) return new WP_Error( 'nika_preset', __( 'That is 24 presets already. Delete one first.', 'nika-site-guide' ), array( 'status' => 400 ) );
+	$id = 'p' . substr( md5( $name . microtime() ), 0, 10 );
+	// Saving the same name twice replaces it, because two presets called
+	// "Client base" are indistinguishable in the list that matters.
+	foreach ( $presets as $key => $preset ) {
+		if ( isset( $preset['name'] ) && mb_strtolower( $preset['name'] ) === mb_strtolower( $name ) ) { $id = $key; break; }
+	}
+	$presets[ $id ] = array( 'name' => mb_substr( $name, 0, 60 ), 'document' => nika_export_document(), 'at' => time() );
+	update_option( 'nika_presets', $presets, false );
+	return array( 'id' => $id, 'presets' => nika_preset_list() );
+}
+
+function nika_delete_preset( $id ) {
+	$presets = nika_presets();
+	$id = sanitize_key( $id );
+	if ( ! isset( $presets[ $id ] ) ) return new WP_Error( 'nika_preset', __( 'That preset no longer exists.', 'nika-site-guide' ), array( 'status' => 404 ) );
+	unset( $presets[ $id ] );
+	update_option( 'nika_presets', $presets, false );
+	return array( 'ok' => true, 'presets' => nika_preset_list() );
+}
+
+function nika_apply_preset( $id ) {
+	$presets = nika_presets();
+	$id = sanitize_key( $id );
+	if ( ! isset( $presets[ $id ]['document'] ) ) return new WP_Error( 'nika_preset', __( 'That preset no longer exists.', 'nika-site-guide' ), array( 'status' => 404 ) );
+	$result = nika_import_settings( $presets[ $id ]['document'] );
+	if ( is_wp_error( $result ) ) return $result;
+	update_option( NIKA_OPTION, $result['settings'] );
+	return array( 'ok' => true, 'notes' => $result['notes'] );
+}
+
+/** The list a screen needs: names and dates, never the stored settings. */
+function nika_preset_list() {
+	$list = array();
+	foreach ( nika_presets() as $id => $preset ) {
+		$list[] = array(
+			'id' => $id,
+			'name' => (string) ( $preset['name'] ?? '' ),
+			'at' => (int) ( $preset['at'] ?? 0 ),
+			'version' => (string) ( $preset['document']['version'] ?? '' ),
+		);
+	}
+	usort( $list, function ( $a, $b ) { return $b['at'] <=> $a['at']; } );
+	return $list;
+}
 
 /**
  * Settings that must never leave this site in a file.
