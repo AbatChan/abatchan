@@ -9,6 +9,7 @@ const suites = [
   'licence.test.mjs',
   'page-anchors.test.mjs',
   'download-gate.test.mjs',
+  'activations.test.mjs',
   'admin-assistant-generate.test.mjs',
   'assistant-ui.test.mjs',
   'dictation-transcript.test.mjs',

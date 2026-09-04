@@ -1024,3 +1024,24 @@ html[data-theme="light"] .chip-count{background:rgba(21,21,25,.1)}
 .work-more[hidden]{display:none}
 .work-more .arrow{transition:transform .25s var(--ease)}
 .work-more .btn:hover .arrow{transform:translateY(3px)}
+
+
+/* Licence dashboard. A short form and a list of hosts, so it reads as a thing
+   you look at once and act on, not a control panel. One column: .doc-body is a
+   two-column grid expecting a table of contents, which put the footnote in a
+   column of its own beside the form. */
+.act-body{padding:26px 0 110px;max-width:760px}
+.act-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:0 0 14px}
+.act-field{display:grid;gap:6px;flex:1 1 320px;font-size:13px;font-weight:650}
+.act-field input{width:100%;min-height:46px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--paper);font:inherit;letter-spacing:.02em}
+.act-field input:focus{border-color:var(--signal);outline:0;box-shadow:0 0 0 3px color-mix(in srgb,var(--signal) 22%,transparent)}
+.act-status{min-height:20px;margin:0 0 10px;color:var(--muted);font-size:13px}
+.act-status[data-tone="error"]{color:#e06a6a}html[data-theme="light"] .act-status[data-tone="error"]{color:#a52a2a}
+.act-summary{margin:0 0 12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--paper);font-size:13px;font-weight:650;font-variant-numeric:tabular-nums}
+.act-list{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.act-list li{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--paper)}
+.act-host{font-size:14px;font-weight:650;color:var(--paper);word-break:break-all}
+.act-meta{flex:1 1 auto;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.act-release{min-height:34px;padding:0 12px;font-size:12.5px}
+.act-note{margin:16px 0 0;color:var(--muted);font-size:12.5px;line-height:1.6;max-width:62ch}
+@media(max-width:560px){.act-form{flex-direction:column;align-items:stretch}.act-list li{align-items:flex-start}}

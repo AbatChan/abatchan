@@ -44,7 +44,7 @@ check('Business is the explicit smallest fit for branding removal on up to five 
 
 console.log('\n=== the destination directory derives from the tenant ===');
 const map = composePageMap(abatchan);
-check('every published route is present', Object.keys(map).length, 12);
+check('every published route is present', Object.keys(map).length, 13);
 check('a route maps to its visitor state', map['/pricing'], 'The visitor is comparing starting prices and delivery expectations.');
 check('an unlisted route is absent', Object.hasOwn(map, '/admin'), false);
 

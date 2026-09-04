@@ -237,6 +237,26 @@ check('and to close by asking for a review, in its own words',role.includes('che
 // browser's new answer would have been thrown away on abatchan.com.
 check('the server honours a browser that reports the target missing',chatStream.includes('const targetVerified=routeVerified&&actionResult.target_found===true;')&&chatStream.includes('can only ever downgrade the outcome'));
 
+console.log('\n=== the licence dashboard ===');
+const activationsApi=readFileSync(new URL('../api/activations.js',import.meta.url),'utf8');
+const activationsPage=readFileSync(new URL('../activations.js',import.meta.url),'utf8');
+// The key is the only credential, so it is proved before a row is read and the
+// tail used to find rows comes from the validated key rather than the caller.
+check('nothing is read before the key is proved',activationsApi.indexOf('identify(key')<activationsApi.indexOf('await rowsFor(keyTail)')&&activationsApi.includes('const keyTail = key.slice(-8);'));
+check('a row has to belong to the key that asked',activationsApi.includes('if (!rowKey.startsWith(`${PREFIX}${keyTail}.`))'));
+// Lemon Squeezy owns the count, so a failure there must not leave our list
+// saying the slot is free.
+check('the count is released before our record is',activationsApi.indexOf("lemon('deactivate'")<activationsApi.indexOf('await forget(rowKey)')&&activationsApi.includes('if (!result?.deactivated) return res.status(502)'));
+check('an unreachable service changes nothing and says so',activationsApi.includes('Nothing has changed; please try again shortly.'));
+// A licence key in localStorage is a licence key in every backup and extension
+// that browser ever meets.
+// The word appears in the comment saying why it is not used, so this looks for
+// the call rather than the mention.
+check('the page never stores the key',!/\b(?:local|session)Storage\s*\.\s*setItem/.test(activationsPage)&&activationsPage.includes('kept only in memory'));
+check('releasing a site is confirmed in the button, not a dialog',activationsPage.includes('release.textContent = `Release ${site.host}?`'));
+// Our record and the count that decides an overage are different numbers.
+check('both counts are shown when they disagree',activationsPage.includes('if (data.sites.length !== used)'));
+
 console.log('\n=== the licence endpoint answers, it never blocks ===');
 // The endpoint and the vocabulary it answers in are two files now, because
 // /api/download has to reach the same verdict about the same key. Read both:

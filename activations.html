@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0D0D0D"><meta name="description" content="See which websites your Nika licence is running on, and release one when a site moves or a client finishes."><title>your Nika sites | abatchan</title><meta property="og:type" content="website"><meta property="og:site_name" content="abatchan"><meta name="robots" content="noindex,nofollow"><link rel="canonical" href="https://abatchan.com/activations"><link rel="preconnect" href="https://fdubcelrwfpzjjnqipku.supabase.co" crossorigin><link rel="stylesheet" href="/styles.css?v=35"><script src="/navigation-boot.js?v=1"></script><link rel="icon" href="/assets/abatchan-symbol-indigo-tight.svg"><link rel="alternate icon" href="/assets/abatchan-favicon.ico" sizes="any"><link rel="apple-touch-icon" href="/assets/abatchan-favicon-192.png"></head><body><header class="site-header"></header>
+
+<main>
+<section class="doc-hero shell">
+  <div class="eyebrow reveal"><span class="signal"></span>your licence</div>
+  <h1 class="reveal">The sites your licence is running on.</h1>
+  <p class="reveal">Enter your licence key to see which websites are using it, and to release one when a site moves or a client finishes. Your key is checked each time and is never stored here.</p>
+</section>
+
+<section class="shell act-body">
+  <form class="act-form" id="act-form" autocomplete="off">
+    <label class="act-field" for="act-key">Licence key
+      <input id="act-key" name="key" type="text" inputmode="text" spellcheck="false" autocomplete="off" placeholder="0000-0000-0000-0000" required>
+    </label>
+    <button class="btn primary" type="submit" id="act-submit">Show my sites</button>
+  </form>
+  <p class="act-status" id="act-status" role="status" aria-live="polite"></p>
+  <div class="act-summary" id="act-summary" hidden></div>
+  <ul class="act-list" id="act-list" hidden></ul>
+  <p class="act-note">Releasing a site frees its activation immediately. Nika keeps running on that site: it simply stops counting against your licence, and stops receiving updates until the key is entered there again. Development, staging and local installs never use an activation, so they will not appear here.</p>
+</section>
+</main>
+
+<footer></footer>
+<nav class="mobile-tabs"></nav>
+<script src="/supabase-config.js?v=3"></script><script src="/script.js?v=67"></script><script src="/site-settings-fixes.js?v=1"></script><script src="/activations.js?v=1"></script><script src="/assistant-v2.js?v=57"></script></body></html>
